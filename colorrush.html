@@ -47,10 +47,15 @@
             border-radius: clamp(12px, 1.5vw, 15px);
         }
 
+        /* Game container - no text selection */
         #game-container {
-            width: 100%;
-            height: 100%;
             position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
 
         /* Score display - top of screen */
@@ -234,6 +239,9 @@
             z-index: 50;
             display: none;
             transition: transform 0.1s;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
 
         .game-coin:active,
@@ -246,7 +254,10 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            border-radius: 50%;
+            pointer-events: none;
+            -webkit-user-drag: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         @keyframes goldPulse {
@@ -371,6 +382,9 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             position: relative;
             overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
 
         .btn::before {
@@ -399,6 +413,12 @@
             box-shadow: 0 4px 20px rgba(0, 210, 255, 0.4);
         }
 
+        #continue-btn {
+            background: linear-gradient(135deg, #2ed573, #26d0ce);
+            color: white;
+            box-shadow: 0 4px 20px rgba(46, 213, 115, 0.4);
+        }
+
         #new-game-btn, #new-game-menu-btn {
             background: linear-gradient(135deg, #ffd700, #ff6b6b);
             color: #1a1a2e;
@@ -406,11 +426,16 @@
         }
 
         #exit-btn {
-            display: none;
+            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
+            color: white;
+            box-shadow: 0 4px 20px rgba(162, 155, 254, 0.4);
         }
 
         #exit-start-btn {
-            display: none;
+            background: linear-gradient(135deg, #ff4757, #ff6b6b);
+            color: white;
+            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4);
+            margin-top: 20px;
         }
 
         #title {
@@ -523,28 +548,6 @@
         #stop-btn.start-mode {
             background: linear-gradient(135deg, #2ed573, #1e90ff);
             box-shadow: 0 4px 20px rgba(46, 213, 115, 0.4), 0 0 30px rgba(46, 213, 115, 0.2);
-        }
-
-        #stop-btn.start-mode:hover {
-            box-shadow: 0 6px 25px rgba(46, 213, 115, 0.6), 0 0 40px rgba(46, 213, 115, 0.3);
-        }
-
-        /* Exit game button - Telegram style */
-        #exit-game-btn {
-            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
-            border: none;
-            color: white;
-            padding: clamp(12px, 2vh, 15px) clamp(35px, 4vw, 50px);
-            border-radius: clamp(25px, 3vw, 30px);
-            cursor: pointer;
-            font-size: clamp(16px, 2vw, 18px);
-            font-weight: bold;
-            box-shadow: 0 4px 20px rgba(162, 155, 254, 0.4), 0 0 30px rgba(162, 155, 254, 0.2);
-            transition: all 0.3s ease;
-            min-width: clamp(150px, 20vw, 180px);
-            flex: 0 0 auto;
-            position: relative;
-            overflow: hidden;
         }
 
         #exit-game-btn:hover {
@@ -724,9 +727,6 @@
     <div id="game-frame"></div>
     
     <div id="game-container">
-        <div id="stats-display">
-            Bosildi: <span id="total-clicks">0</span>
-        </div>
         <div id="score-display">
             <div class="score-box">
                 <div class="score-label">TON</div>
@@ -775,13 +775,6 @@
             <button class="btn" id="continue-btn">▶️ Davom ettirish</button>
             <button class="btn" id="new-game-btn">🔄 Yangi o'yin</button>
         </div>
-        
-        <button id="exit-start-btn" style="display: none;">🚪 Chiqish</button>
-        
-        <div id="new-game-section">
-            <button class="btn" id="start-btn">🎮 O'yinni Boshlash</button>
-        </div>
-
         <div class="instructions">
             <p>
                 Tangani bosib TON yig'ing!
@@ -935,6 +928,65 @@
         function saveGlobalStats() {
             globalStats.lastPlayed = new Date().toISOString();
             localStorage.setItem(GLOBAL_STATS_KEY, JSON.stringify(globalStats));
+            
+            // Backend ga ham yuborish agar user login qilgan bo'lsa
+            if (userId) {
+                saveGlobalStatsToBackend();
+            }
+        }
+
+        // Backend ga global stats yuborish
+        async function saveGlobalStatsToBackend() {
+            if (!userId) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/user/${userId}/stats`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(globalStats)
+                });
+                
+                if (response.ok) {
+                    console.log('📊 Global stats backend ga saqlandi');
+                }
+            } catch (error) {
+                console.error('Global stats backend saqlashda xatolik:', error);
+            }
+        }
+
+        // Backend dan global stats yuklash
+        async function loadGlobalStatsFromBackend() {
+            if (!userId) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/user/${userId}/stats`);
+                const data = await response.json();
+                
+                if (data.success && data.globalStats) {
+                    // Backend dan kelgan stats ni localStorage bilan birlashtirish
+                    const backendStats = data.globalStats;
+                    
+                    // Agar backend da katta qiymatlar bo'lsa, ularni qabul qilish
+                    if (backendStats.totalClicksAllTime > globalStats.totalClicksAllTime) {
+                        globalStats.totalClicksAllTime = backendStats.totalClicksAllTime;
+                    }
+                    if (backendStats.totalCoinsCollected > globalStats.totalCoinsCollected) {
+                        globalStats.totalCoinsCollected = backendStats.totalCoinsCollected;
+                    }
+                    if (backendStats.totalTonEarned > globalStats.totalTonEarned) {
+                        globalStats.totalTonEarned = backendStats.totalTonEarned;
+                    }
+                    if (backendStats.gamesPlayed > globalStats.gamesPlayed) {
+                        globalStats.gamesPlayed = backendStats.gamesPlayed;
+                    }
+                    
+                    // Yangilangan stats ni saqlash
+                    saveGlobalStats();
+                    console.log('📊 Global stats backend dan yuklandi');
+                }
+            } catch (error) {
+                console.error('Global stats backend yuklashda xatolik:', error);
+            }
         }
 
         // Update global stats when coin is clicked
@@ -1050,6 +1102,9 @@
                     // Load user data and shop items
                     loadUserData();
                     loadShopItems();
+                    
+                    // Load global stats from backend
+                    loadGlobalStatsFromBackend();
                     
                     // Reopen modal to show deposit section
                     walletModal.classList.add('show');
@@ -1304,17 +1359,8 @@
                 width: window.innerWidth,
                 height: window.innerHeight
             };
-            const margin = 60;
-            const minDistance = coinSize + 50; // Minimum distance between coins
-            
-            // Divide screen into zones for better distribution
-            const zones = [
-                { x: [margin, screen.width * 0.4], y: [margin, screen.height * 0.4] }, // Top-left
-                { x: [screen.width * 0.6, screen.width - margin - coinSize], y: [margin, screen.height * 0.4] }, // Top-right
-                { x: [margin, screen.width * 0.4], y: [screen.height * 0.6, screen.height - margin - coinSize] }, // Bottom-left
-                { x: [screen.width * 0.6, screen.width - margin - coinSize], y: [screen.height * 0.6, screen.height - margin - coinSize] }, // Bottom-right
-                { x: [screen.width * 0.3, screen.width * 0.7], y: [screen.height * 0.3, screen.height * 0.7] } // Center
-            ];
+            const margin = 40; // Reduced margin for smaller screens
+            const minDistance = coinSize * 0.6; // Reduced distance - coins can be closer
             
             // Get existing coin positions
             const existingPositions = [];
@@ -1327,16 +1373,16 @@
                 }
             });
             
-            // Try to find a position that doesn't overlap
+            // Try to find a position that doesn't overlap - more attempts for better distribution
             let attempts = 0;
             let pos;
             let isValid = false;
             
-            while (!isValid && attempts < 50) {
-                const zone = zones[Math.floor(Math.random() * zones.length)];
+            while (!isValid && attempts < 100) {
+                // Random position anywhere on screen (with margins) - no zones
                 pos = {
-                    x: zone.x[0] + Math.random() * (zone.x[1] - zone.x[0]),
-                    y: zone.y[0] + Math.random() * (zone.y[1] - zone.y[0])
+                    x: margin + Math.random() * (screen.width - margin * 2 - coinSize),
+                    y: margin + Math.random() * (screen.height - margin * 2 - coinSize)
                 };
                 
                 // Check distance from all existing coins
@@ -1972,7 +2018,7 @@
             }
         });
 
-        // Telegram Web App
+        // Telegram Web App - avto start
         if (window.Telegram && window.Telegram.WebApp) {
             Telegram.WebApp.ready();
             Telegram.WebApp.expand();
@@ -1986,6 +2032,31 @@
                     titleEl.innerHTML = `👋 ${user.first_name}`;
                 }
             }
+            
+            // Telegram da start ekranini yashirish va avto start
+            setTimeout(() => {
+                const saved = localStorage.getItem('tonCoinRushSave');
+                if (saved) {
+                    // Saqlangan o'yin bo'lsa davom ettirish
+                    continueGame();
+                } else {
+                    // Yangi o'yin boshlash
+                    startNewGame();
+                }
+            }, 500);
+        }
+
+        // Browser da start ekranini yashirish (telefondagiday)
+        if (!window.Telegram || !window.Telegram.WebApp) {
+            // Brauzerda ham avto start
+            setTimeout(() => {
+                const saved = localStorage.getItem('tonCoinRushSave');
+                if (saved) {
+                    continueGame();
+                } else {
+                    startNewGame();
+                }
+            }, 500);
         }
 
         // Initialize TON Connect when page loads
