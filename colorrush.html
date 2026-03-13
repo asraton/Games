@@ -56,20 +56,20 @@
         /* Score display - top of screen */
         #score-display {
             position: fixed;
-            top: clamp(70px, 10vh, 80px);
+            top: clamp(10px, 3vh, 20px);
             left: 50%;
             transform: translateX(-50%);
             color: #ffd700;
             font-size: clamp(12px, 2vw, 14px);
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.7);
             padding: clamp(8px, 1.5vh, 12px) clamp(15px, 3vw, 25px);
             border-radius: clamp(15px, 2vw, 20px);
             z-index: 90;
-            border: 1px solid rgba(255, 215, 0, 0.3);
+            border: 2px solid rgba(255, 215, 0, 0.5);
             display: flex;
-            flex-direction: row;
-            align-items: center;
-            gap: clamp(10px, 2vw, 20px);
+            gap: clamp(10px, 2vw, 15px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
         }
 
         .score-box {
@@ -221,18 +221,7 @@
         }
 
         #bonus-ton .bonus-text {
-            position: absolute;
-            bottom: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(135deg, #ffd700 0%, #ff6b6b 100%);
-            color: #1a1a2e;
-            font-size: clamp(10px, 1.5vw, 12px);
-            font-weight: bold;
-            padding: 4px 10px;
-            border-radius: 10px;
-            white-space: nowrap;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            display: none;
         }
 
         /* Qora (penalty) styles - alohida pozitsiya */
@@ -320,7 +309,8 @@
         }
 
         /* Coin styles - responsive sizing */
-        #coin {
+        .game-coin,
+        #coin, #coin2, #coin3 {
             position: absolute;
             width: clamp(120px, 20vw, 220px);
             height: clamp(120px, 20vw, 220px);
@@ -330,11 +320,13 @@
             transition: transform 0.1s;
         }
 
-        #coin:active {
+        .game-coin:active,
+        #coin:active, #coin2:active, #coin3:active {
             transform: scale(0.9);
         }
 
-        #coin img {
+        .game-coin img,
+        #coin img, #coin2 img, #coin3 img {
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -457,13 +449,32 @@
             font-weight: bold;
             border-radius: clamp(25px, 3vw, 30px);
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: all 0.3s ease;
             margin: clamp(8px, 1.5vh, 10px);
             min-width: clamp(220px, 35vw, 280px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
         }
 
         .btn:active {
             transform: scale(0.95);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
 
         #start-btn, #resume-menu-btn {
@@ -497,6 +508,12 @@
             margin-bottom: clamp(8px, 1.5vh, 10px);
             text-align: center;
             text-shadow: 0 0 30px rgba(0, 210, 255, 0.8);
+            animation: titleGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% { text-shadow: 0 0 30px rgba(0, 210, 255, 0.8); }
+            50% { text-shadow: 0 0 50px rgba(0, 210, 255, 1), 0 0 80px rgba(0, 210, 255, 0.6); }
         }
 
         #subtitle {
@@ -551,7 +568,7 @@
             width: auto;
         }
 
-        /* Stop/Start button - responsive */
+        /* Stop/Start button - Telegram style with glow */
         #stop-btn {
             background: linear-gradient(135deg, #ff4757, #ff6b6b);
             border: none;
@@ -561,26 +578,47 @@
             cursor: pointer;
             font-size: clamp(16px, 2vw, 18px);
             font-weight: bold;
-            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4);
-            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4), 0 0 30px rgba(255, 71, 87, 0.2);
+            transition: all 0.3s ease;
             min-width: clamp(150px, 20vw, 180px);
             flex: 0 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #stop-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        #stop-btn:active::after {
+            width: 300px;
+            height: 300px;
         }
 
         #stop-btn:hover {
-            box-shadow: 0 6px 25px rgba(255, 71, 87, 0.6);
+            box-shadow: 0 6px 25px rgba(255, 71, 87, 0.6), 0 0 40px rgba(255, 71, 87, 0.3);
+            transform: translateY(-2px);
         }
 
         #stop-btn.start-mode {
             background: linear-gradient(135deg, #2ed573, #1e90ff);
-            box-shadow: 0 4px 20px rgba(46, 213, 115, 0.4);
+            box-shadow: 0 4px 20px rgba(46, 213, 115, 0.4), 0 0 30px rgba(46, 213, 115, 0.2);
         }
 
         #stop-btn.start-mode:hover {
-            box-shadow: 0 6px 25px rgba(46, 213, 115, 0.6);
+            box-shadow: 0 6px 25px rgba(46, 213, 115, 0.6), 0 0 40px rgba(46, 213, 115, 0.3);
         }
 
-        /* Exit game button */
+        /* Exit game button - Telegram style */
         #exit-game-btn {
             background: linear-gradient(135deg, #a29bfe, #6c5ce7);
             border: none;
@@ -590,17 +628,20 @@
             cursor: pointer;
             font-size: clamp(16px, 2vw, 18px);
             font-weight: bold;
-            box-shadow: 0 4px 20px rgba(162, 155, 254, 0.4);
-            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(162, 155, 254, 0.4), 0 0 30px rgba(162, 155, 254, 0.2);
+            transition: all 0.3s ease;
             min-width: clamp(150px, 20vw, 180px);
             flex: 0 0 auto;
+            position: relative;
+            overflow: hidden;
         }
 
         #exit-game-btn:hover {
-            box-shadow: 0 6px 25px rgba(162, 155, 254, 0.6);
+            box-shadow: 0 6px 25px rgba(162, 155, 254, 0.6), 0 0 40px rgba(162, 155, 254, 0.3);
+            transform: translateY(-2px);
         }
 
-        /* Wallet modal */
+        /* Wallet modal - backdrop to hide buttons behind */
         #wallet-modal {
             position: fixed;
             top: 0;
@@ -608,11 +649,13 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.95);
+            z-index: 300;
             display: none;
             flex-direction: column;
+            justify-content: flex-start;
             align-items: center;
-            justify-content: center;
-            z-index: 300;
+            padding: 20px;
+            overflow-y: auto;
         }
 
         #wallet-modal.show {
@@ -707,17 +750,23 @@
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                gap: 10px !important;
+                gap: 12px !important;
                 width: 100% !important;
+                margin-bottom: 12px !important;
             }
             #saved-game-section .btn,
             #continue-btn,
-            #new-game-btn,
+            #new-game-btn {
+                display: block !important;
+                width: 90% !important;
+                max-width: 300px !important;
+                margin: 0 auto !important;
+            }
             #exit-start-btn {
                 display: block !important;
                 width: 90% !important;
                 max-width: 300px !important;
-                margin: 5px auto !important;
+                margin: 0 auto !important;
             }
         }
 
@@ -785,8 +834,15 @@
     </div>
 
     <!-- Coin, Qora, Bonus elements (har doim body ichida) -->
-    <div id="coin">
+    <!-- Asosiy tanga (1-2 ta random chiqadi) -->
+    <div id="coin" class="game-coin">
         <img src="/assets/tanga.png" alt="TON Tanga">
+    </div>
+    <div id="coin2" class="game-coin">
+        <img src="/assets/tanga.png" alt="TON Tanga 2">
+    </div>
+    <div id="coin3" class="game-coin">
+        <img src="/assets/tanga.png" alt="TON Tanga 3">
     </div>
 
     <!-- Qora - tasodifiy paydo bo'ladi, bosilmasa yo'qoladi -->
@@ -1284,62 +1340,131 @@
         // Tanga ranglari
         const pulseColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 'pulse-cyan', 'pulse-purple', 'pulse-orange'];
 
-        // Show coin
-        function showCoin() {
-            if (!gameActive || isPaused) return;
-            
-            // Random rang tanlash
-            const coinImg = coin.querySelector('img');
-            pulseColors.forEach(c => coinImg.classList.remove(c));
-            const randomColor = pulseColors[Math.floor(Math.random() * pulseColors.length)];
-            coinImg.classList.add(randomColor);
-            
-            // Random position within frame
+        // Multiple coins array
+        const coins = [
+            document.getElementById('coin'),
+            document.getElementById('coin2'),
+            document.getElementById('coin3')
+        ];
+        const coinTimeouts = [null, null, null];
+        const coinVisible = [false, false, false];
+
+        // Get random position for coins - more distributed across screen
+        function getRandomPosition(coinSize) {
             const screen = {
                 width: window.innerWidth,
                 height: window.innerHeight
             };
-            const margin = 80;
-            const x = margin + Math.random() * (screen.width - margin * 2 - 180);
-            const y = margin + Math.random() * (screen.height - margin * 2 - 180);
+            const margin = 60;
+            // Divide screen into zones for better distribution
+            const zones = [
+                { x: [margin, screen.width * 0.4], y: [margin, screen.height * 0.4] }, // Top-left
+                { x: [screen.width * 0.6, screen.width - margin - coinSize], y: [margin, screen.height * 0.4] }, // Top-right
+                { x: [margin, screen.width * 0.4], y: [screen.height * 0.6, screen.height - margin - coinSize] }, // Bottom-left
+                { x: [screen.width * 0.6, screen.width - margin - coinSize], y: [screen.height * 0.6, screen.height - margin - coinSize] }, // Bottom-right
+                { x: [screen.width * 0.3, screen.width * 0.7], y: [screen.height * 0.3, screen.height * 0.7] } // Center
+            ];
+            const zone = zones[Math.floor(Math.random() * zones.length)];
+            const x = zone.x[0] + Math.random() * (zone.x[1] - zone.x[0]);
+            const y = zone.y[0] + Math.random() * (zone.y[1] - zone.y[0]);
+            return { x, y };
+        }
+
+        // Show coin at index
+        function showCoinAt(index) {
+            if (!gameActive || isPaused) return;
             
-            coin.style.left = x + 'px';
-            coin.style.top = y + 'px';
-            coin.style.display = 'block';
-            coin.classList.add('coin-pop');
+            const coinEl = coins[index];
+            if (!coinEl) return;
+            
+            // Random rang tanlash
+            const coinImg = coinEl.querySelector('img');
+            pulseColors.forEach(c => coinImg.classList.remove(c));
+            const randomColor = pulseColors[Math.floor(Math.random() * pulseColors.length)];
+            coinImg.classList.add(randomColor);
+            
+            // Random position - har xil joylarda
+            const coinSize = 180;
+            const pos = getRandomPosition(coinSize);
+            
+            coinEl.style.left = pos.x + 'px';
+            coinEl.style.top = pos.y + 'px';
+            coinEl.style.display = 'block';
+            coinEl.classList.add('coin-pop');
+            coinVisible[index] = true;
             
             setTimeout(() => {
-                coin.classList.remove('coin-pop');
+                coinEl.classList.remove('coin-pop');
             }, 400);
 
             // Auto-hide after calculated time based on TON speed
             const visibleTime = calculateSpeed();
             
-            coinTimeout = setTimeout(() => {
+            clearTimeout(coinTimeouts[index]);
+            coinTimeouts[index] = setTimeout(() => {
                 if (gameActive && !isPaused) {
-                    hideCoin();
+                    hideCoinAt(index);
                 }
             }, visibleTime);
         }
 
-        function hideCoin() {
-            clearTimeout(coinTimeout);
-            coin.classList.add('coin-shrink');
-            coinTimeout = setTimeout(() => {
-                coin.style.display = 'none';
-                coin.classList.remove('coin-shrink');
+        // Hide coin at index
+        function hideCoinAt(index) {
+            clearTimeout(coinTimeouts[index]);
+            const coinEl = coins[index];
+            if (!coinEl) return;
+            
+            coinEl.classList.add('coin-shrink');
+            coinTimeouts[index] = setTimeout(() => {
+                coinEl.style.display = 'none';
+                coinEl.classList.remove('coin-shrink');
+                coinVisible[index] = false;
                 if (gameActive && !isPaused) {
-                    showCoin();
+                    // Random delay before showing again
+                    setTimeout(() => showCoinAt(index), Math.random() * 500);
                 }
             }, 300);
         }
 
-        // Catch coin
-        function catchCoin(e) {
+        // Show coins - random 1-2 ta tanga chiqadi
+        function showCoin() {
+            if (!gameActive || isPaused) return;
+            
+            // Random 1 yoki 2 ta tanga chiqadi
+            const numCoins = Math.random() < 0.6 ? 1 : 2;
+            
+            // Birinchi tangani har doim ko'rsatish
+            showCoinAt(0);
+            
+            // Ikkinchi tangani 40% ehtimollik bilan ko'rsatish
+            if (numCoins === 2) {
+                setTimeout(() => showCoinAt(1), 200);
+            }
+            
+            // Uchinchi tangani kamroq ehtimollik bilan (faqat ba'zan)
+            if (Math.random() < 0.15) {
+                setTimeout(() => showCoinAt(2), 400);
+            }
+        }
+
+        // Hide all coins
+        function hideCoin() {
+            coins.forEach((coinEl, index) => {
+                if (coinEl && coinVisible[index]) {
+                    hideCoinAt(index);
+                }
+            });
+        }
+
+        // Catch coin - handle any coin click
+        function catchCoin(e, coinIndex) {
             e.preventDefault();
             if (!gameActive || isPaused) return;
+            
+            // Check if this coin is visible
+            if (coinIndex !== undefined && !coinVisible[coinIndex]) return;
 
-            clearTimeout(coinTimeout);
+            clearTimeout(coinTimeouts[coinIndex || 0]);
             totalClicks++;
 
             const reward = getReward();
@@ -1362,15 +1487,19 @@
             }
 
             // Visual feedback
-            const x = e.clientX || e.touches[0].clientX;
-            const y = e.clientY || e.touches[0].clientY;
+            const x = e.clientX || (e.touches && e.touches[0].clientX);
+            const y = e.clientY || (e.touches && e.touches[0].clientY);
             
-            showFloatText(x, y - 50, `+${reward} nTON`, 'float-plus');
+            if (x && y) {
+                showFloatText(x, y - 50, `+${reward} nTON`, 'float-plus');
+            }
 
             updateDisplay();
 
-            // Hide and show next
-            hideCoin();
+            // Hide the clicked coin and show new one
+            if (coinIndex !== undefined) {
+                hideCoinAt(coinIndex);
+            }
         }
 
         // Show qora (penalty) - alohida random joyda, FAQAT QIZIL RANGDA
@@ -1592,8 +1721,10 @@
                 // Stop the game
                 isPaused = true;
                 gameActive = false;
-                clearTimeout(coinTimeout);
-                coin.style.display = 'none';
+                coinTimeouts.forEach((timeout, index) => {
+                    clearTimeout(timeout);
+                    if (coins[index]) coins[index].style.display = 'none';
+                });
                 
                 saveGame();
                 
@@ -1627,8 +1758,10 @@
             saveGame();
             gameActive = false;
             isPaused = false;
-            clearTimeout(coinTimeout);
-            coin.style.display = 'none';
+            coinTimeouts.forEach((timeout, index) => {
+                clearTimeout(timeout);
+                if (coins[index]) coins[index].style.display = 'none';
+            });
             startScreen.classList.remove('hidden');
             
             stopBtn.textContent = '⏹️ STOP';
@@ -1749,8 +1882,13 @@
             walletModal.classList.remove('show');
         });
 
-        coin.addEventListener('click', catchCoin);
-        coin.addEventListener('touchstart', catchCoin, { passive: false });
+        // Event listeners for all coins
+        coins.forEach((coinEl, index) => {
+            if (coinEl) {
+                coinEl.addEventListener('click', (e) => catchCoin(e, index));
+                coinEl.addEventListener('touchstart', (e) => catchCoin(e, index), { passive: false });
+            }
+        });
 
         // Qora event listeners
         if (qoraContainer) {
@@ -1906,8 +2044,10 @@
             if (document.hidden && gameActive && !isPaused) {
                 saveGame();
                 isPaused = true;
-                clearTimeout(coinTimeout);
-                coin.style.display = 'none';
+                coinTimeouts.forEach((timeout, index) => {
+                    clearTimeout(timeout);
+                    if (coins[index]) coins[index].style.display = 'none';
+                });
                 
                 stopBtn.textContent = '▶️ START';
                 stopBtn.classList.add('start-mode');
