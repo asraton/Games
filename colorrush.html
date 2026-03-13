@@ -7,10 +7,30 @@
     <!-- TON Connect SDK -->
     <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
     <style>
+        /* Global - no text selection for all elements */
         * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        button, .btn, #start-btn, #exit-start-btn, #continue-btn, #new-game-btn {
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            border: none;
+        }
+
+        button:focus, .btn:focus {
+            outline: none;
+        }
+
+        button:active, .btn:active {
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -239,6 +259,21 @@
         }
 
         /* Coin styles - responsive sizing */
+        /* Coin red glow effect when clicked */
+        .game-coin.coin-clicked,
+        #coin.coin-clicked, #coin2.coin-clicked, #coin3.coin-clicked {
+            background: radial-gradient(circle, rgba(255, 50, 50, 0.8) 0%, rgba(255, 50, 50, 0.4) 40%, transparent 70%);
+            border-radius: 50%;
+            box-shadow: 0 0 30px rgba(255, 50, 50, 0.8), 0 0 60px rgba(255, 50, 50, 0.5);
+            animation: redPulse 0.5s ease-out;
+        }
+
+        @keyframes redPulse {
+            0% { transform: scale(1); box-shadow: 0 0 30px rgba(255, 50, 50, 0.8); }
+            50% { transform: scale(1.1); box-shadow: 0 0 50px rgba(255, 50, 50, 1); }
+            100% { transform: scale(0.9); box-shadow: 0 0 30px rgba(255, 50, 50, 0.8); }
+        }
+
         .game-coin,
         #coin, #coin2, #coin3 {
             position: absolute;
@@ -422,6 +457,18 @@
             box-shadow: 0 4px 20px rgba(0, 210, 255, 0.4);
         }
 
+        #new-game-section {
+            display: block;
+            margin: 20px 0;
+        }
+
+        #exit-start-btn {
+            background: linear-gradient(135deg, #ff4757, #ff6b6b);
+            color: white;
+            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4);
+            margin-top: 20px;
+        }
+
         #continue-btn {
             background: linear-gradient(135deg, #2ed573, #26d0ce);
             color: white;
@@ -511,6 +558,14 @@
             gap: clamp(10px, 2vw, 20px);
             z-index: 100;
             width: auto;
+            pointer-events: auto;
+        }
+
+        /* Game controls buttons - fix for mobile */
+        .game-controls button, #stop-btn, #exit-game-btn {
+            pointer-events: auto;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: rgba(255, 71, 87, 0.3);
         }
 
         /* Stop/Start button - Telegram style with glow */
@@ -784,6 +839,13 @@
             <button class="btn" id="continue-btn">▶️ Davom ettirish</button>
             <button class="btn" id="new-game-btn">🔄 Yangi o'yin</button>
         </div>
+        
+        <div id="new-game-section">
+            <button class="btn" id="start-btn">🎮 O'yinni Boshlash</button>
+        </div>
+        
+        <button class="btn" id="exit-start-btn">🚪 Chiqish</button>
+        
         <div class="instructions">
             <p>
                 Tangani bosib TON yig'ing!
@@ -1526,7 +1588,15 @@
                 showBonus();
             }
 
-            // Visual feedback
+            // Visual feedback - red glow effect
+            if (coinIndex !== undefined && coins[coinIndex]) {
+                coins[coinIndex].classList.add('coin-clicked');
+                setTimeout(() => {
+                    coins[coinIndex].classList.remove('coin-clicked');
+                }, 500);
+            }
+
+            // Visual feedback - floating text
             const x = e.clientX || (e.touches && e.touches[0].clientX);
             const y = e.clientY || (e.touches && e.touches[0].clientY);
             
