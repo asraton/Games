@@ -103,35 +103,35 @@
             text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
         }
 
-        /* Stats - pastki qismda */
+        /* Stats - yanada pastda */
         #stats-display {
             position: fixed;
-            bottom: clamp(100px, 15vh, 130px);
+            bottom: clamp(60px, 10vh, 80px);
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(10px);
-            padding: clamp(8px, 1.5vh, 10px) clamp(15px, 2vw, 20px);
-            border-radius: clamp(15px, 2vw, 20px);
+            padding: clamp(6px, 1vh, 8px) clamp(12px, 1.5vw, 15px);
+            border-radius: clamp(10px, 1.5vw, 12px);
             color: white;
-            font-size: clamp(12px, 1.5vw, 14px);
-            z-index: 100;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            font-size: clamp(10px, 1.2vw, 12px);
+            z-index: 90;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        /* Wallet button with PNG - o'ng yuqori burchakda */
+        /* Wallet button with PNG - chap yuqori burchakda kattaroq */
         #wallet-btn {
             position: fixed;
-            top: clamp(20px, 3vh, 30px);
-            right: clamp(40px, 5vw, 60px);
+            top: clamp(15px, 2vh, 25px);
+            right: clamp(60px, 8vw, 100px);
             background: rgba(0, 0, 0, 0.4);
             border: 2px solid rgba(0, 210, 255, 0.5);
             border-radius: 50%;
             cursor: pointer;
             z-index: 55;
-            padding: clamp(8px, 1.5vw, 12px);
-            width: clamp(45px, 7vw, 55px);
-            height: clamp(45px, 7vw, 55px);
+            padding: clamp(10px, 2vw, 15px);
+            width: clamp(55px, 9vw, 70px);
+            height: clamp(55px, 9vw, 70px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -406,16 +406,11 @@
         }
 
         #exit-btn {
-            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
-            color: white;
-            box-shadow: 0 4px 20px rgba(162, 155, 254, 0.4);
+            display: none;
         }
 
         #exit-start-btn {
-            background: linear-gradient(135deg, #ff4757, #ff6b6b);
-            color: white;
-            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4);
-            margin-top: 20px;
+            display: none;
         }
 
         #title {
@@ -781,7 +776,7 @@
             <button class="btn" id="new-game-btn">🔄 Yangi o'yin</button>
         </div>
         
-        <button class="btn" id="exit-start-btn">🚪 Chiqish</button>
+        <button id="exit-start-btn" style="display: none;">🚪 Chiqish</button>
         
         <div id="new-game-section">
             <button class="btn" id="start-btn">🎮 O'yinni Boshlash</button>
@@ -913,6 +908,45 @@
         let coinTimeout = null;
         let totalClicks = 0;
         let currentSpeedLevel = 1;
+
+        // Global persistent stats - restart bo'lganda ham saqlanadi
+        const GLOBAL_STATS_KEY = 'tonCoinRushGlobalStats';
+        let globalStats = {
+            totalClicksAllTime: 0,
+            totalCoinsCollected: 0,
+            totalTonEarned: 0,
+            gamesPlayed: 0,
+            firstPlayed: null,
+            lastPlayed: null
+        };
+
+        // Load global stats from localStorage
+        function loadGlobalStats() {
+            const saved = localStorage.getItem(GLOBAL_STATS_KEY);
+            if (saved) {
+                const data = JSON.parse(saved);
+                globalStats = { ...globalStats, ...data };
+            } else {
+                globalStats.firstPlayed = new Date().toISOString();
+            }
+        }
+
+        // Save global stats to localStorage
+        function saveGlobalStats() {
+            globalStats.lastPlayed = new Date().toISOString();
+            localStorage.setItem(GLOBAL_STATS_KEY, JSON.stringify(globalStats));
+        }
+
+        // Update global stats when coin is clicked
+        function updateGlobalStats(reward) {
+            globalStats.totalClicksAllTime++;
+            globalStats.totalCoinsCollected++;
+            globalStats.totalTonEarned += reward;
+            saveGlobalStats();
+        }
+
+        // Initialize global stats on load
+        loadGlobalStats();
 
         // Wallet state
         let tonConnect = null;
@@ -1198,7 +1232,14 @@
                 const savedNton = (data.nanoScore || 0) % NANO_PER_TON;
                 document.getElementById('saved-ton').textContent = savedTon + ' TON';
                 document.getElementById('saved-nton').textContent = savedNton.toLocaleString() + ' nTON';
-                document.getElementById('saved-clicks').textContent = data.totalClicks + ' ta bosish';
+                // Show both current session and all-time clicks
+                const sessionClicks = data.totalClicks || 0;
+                const allTimeClicks = globalStats.totalClicksAllTime || 0;
+                if (allTimeClicks > sessionClicks) {
+                    document.getElementById('saved-clicks').textContent = allTimeClicks.toLocaleString() + ' ta bosish (jami)';
+                } else {
+                    document.getElementById('saved-clicks').textContent = sessionClicks + ' ta bosish';
+                }
                 savedGameSection.style.display = 'block';
                 newGameSection.style.display = 'none';
             }
@@ -1416,6 +1457,9 @@
             const reward = getReward();
             nanoScore += reward;
 
+            // Update persistent global stats
+            updateGlobalStats(reward);
+
             // Check if reached 1 TON
             if (nanoScore >= NANO_PER_TON) {
                 tonCount++;
@@ -1551,6 +1595,12 @@
             tonDisplayElement.textContent = tonCount;
             ntonDisplayElement.textContent = nanoScore.toString().padStart(9, '0');
             totalClicksElement.textContent = totalClicks;
+            
+            // Update saved stats display with persistent data
+            const savedClicksEl = document.getElementById('saved-clicks');
+            if (savedClicksEl && globalStats.totalClicksAllTime > 0) {
+                savedClicksEl.textContent = globalStats.totalClicksAllTime.toLocaleString() + ' ta bosish (jami)';
+            }
         }
 
         // Start new game
@@ -1562,6 +1612,10 @@
             hideBonus();
             gameActive = true;
             isPaused = false;
+            
+            // Track game start in global stats
+            globalStats.gamesPlayed++;
+            saveGlobalStats();
             
             updateDisplay();
             startScreen.classList.add('hidden');
