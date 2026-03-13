@@ -455,6 +455,7 @@
             background: linear-gradient(135deg, #00d2ff, #3a7bd5);
             color: white;
             box-shadow: 0 4px 20px rgba(0, 210, 255, 0.4);
+            pointer-events: auto;
         }
 
         #new-game-section {
@@ -467,18 +468,21 @@
             color: white;
             box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4);
             margin-top: 20px;
+            pointer-events: auto;
         }
 
         #continue-btn {
             background: linear-gradient(135deg, #2ed573, #26d0ce);
             color: white;
             box-shadow: 0 4px 20px rgba(46, 213, 115, 0.4);
+            pointer-events: auto;
         }
 
         #new-game-btn, #new-game-menu-btn {
             background: linear-gradient(135deg, #ffd700, #ff6b6b);
             color: #1a1a2e;
             box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4);
+            pointer-events: auto;
         }
 
         #exit-btn {
@@ -1919,11 +1923,49 @@
             }
         }
 
-        // Event listeners
-        document.getElementById('start-btn').addEventListener('click', () => showNewGameConfirm('start'));
-        document.getElementById('new-game-btn').addEventListener('click', () => showNewGameConfirm('saved'));
-        document.getElementById('continue-btn').addEventListener('click', continueGame);
-        document.getElementById('exit-start-btn').addEventListener('click', exitToMenu);
+        // Event listeners - DOM tayyor bo'lganda qo'shish
+        document.addEventListener('DOMContentLoaded', function() {
+            const startBtn = document.getElementById('start-btn');
+            const newGameBtn = document.getElementById('new-game-btn');
+            const continueBtn = document.getElementById('continue-btn');
+            const exitStartBtn = document.getElementById('exit-start-btn');
+            
+            if (startBtn) {
+                startBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Start button clicked');
+                    showNewGameConfirm('start');
+                });
+            }
+            
+            if (newGameBtn) {
+                newGameBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('New game button clicked');
+                    showNewGameConfirm('saved');
+                });
+            }
+            
+            if (continueBtn) {
+                continueBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Continue button clicked');
+                    continueGame();
+                });
+            }
+            
+            if (exitStartBtn) {
+                exitStartBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Exit button clicked');
+                    exitToMenu();
+                });
+            }
+        });
         exitGameBtn.addEventListener('click', exitToMenu);
         stopBtn.addEventListener('click', toggleStop);
         walletBtn.addEventListener('click', showWalletSelection);
