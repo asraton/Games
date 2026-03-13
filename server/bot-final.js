@@ -1,16 +1,9 @@
-require('dotenv').config({ path: require('path').join(__dirname, '.env') });
-
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
-const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const GAME_URL = process.env.GAME_URL;
-const API_BASE_URL = process.env.API_BASE_URL;
-
-if (!TOKEN) {
-    console.error('❌ TELEGRAM_BOT_TOKEN topilmadi! .env faylni tekshiring.');
-    process.exit(1);
-}
+const TOKEN = '8206421731:AAEgsCtnpqeZ5iI8GgA_YmTGiI2s84gKMw8';
+const GAME_URL = process.env.GAME_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000/api';
 
 console.log('========================================');
 console.log('🤖 nTonGame Bot - Ishga tushmoqda...');
