@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "outputDirectory": ".",
+  "builds": [
+    {
+      "src": "colorrush.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/colorrush.html"
+    }
+  ]
+}
