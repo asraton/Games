@@ -736,7 +736,7 @@
 <body>
     <!-- Fixed Wallet Button - har doim ko'rinib turadi -->
     <button id="wallet-btn" title="Hamyon qo'shing" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
-        <img src="assets/walletcon.svg" alt="Wallet" id="wallet-icon-img">
+        <img src="/assets/walletcon.svg" alt="Wallet" id="wallet-icon-img">
     </button>
 
     <div id="game-frame"></div>
@@ -764,17 +764,17 @@
 
     <!-- Coin, Qora, Bonus elements (har doim body ichida) -->
     <div id="coin">
-        <img src="assets/tanga.png" alt="TON Tanga">
+        <img src="/assets/tanga.png" alt="TON Tanga">
     </div>
 
     <!-- Qora - tasodifiy paydo bo'ladi, bosilmasa yo'qoladi -->
     <div id="qora-container">
-        <img id="qora" src="assets/qora.svg" alt="Qora">
+        <img id="qora" src="/assets/qora.svg" alt="Qora">
     </div>
 
     <!-- Bonus TON - tasodifiy paydo bo'ladi -->
     <div id="bonus-ton">
-        <img id="bonus-img" src="assets/tanga.png" alt="Bonus TON">
+        <img id="bonus-img" src="/assets/tanga.png" alt="Bonus TON">
         <span class="bonus-text">Bonus</span>
     </div>
 
@@ -809,7 +809,7 @@
     <!-- Wallet Modal - Deposit tizimi -->
     <div id="wallet-modal">
         <h1 id="title" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-            <img src="assets/wallet.svg" alt="Wallet" style="width: clamp(30px, 5vw, 40px); height: clamp(30px, 5vw, 40px);">
+            <img src="/assets/wallet.svg" alt="Wallet" style="width: clamp(30px, 5vw, 40px); height: clamp(30px, 5vw, 40px);">
             Hamyon
         </h1>
         
@@ -1438,7 +1438,7 @@
             
             // Tasodifiy wallet SVG tanlash
             const randomWalletSvg = walletSvgs[Math.floor(Math.random() * walletSvgs.length)];
-            bonusImg.src = 'assets/' + randomWalletSvg;
+            bonusImg.src = '/assets/' + randomWalletSvg;
             
             // Katta bonuslar uchun kattaroq ko'rsatish
             if (currentBonusAmount >= 600) {
