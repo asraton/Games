@@ -2139,7 +2139,7 @@
             }
         });
 
-        // Telegram Web App - avto start
+        // Telegram Web App - avto start (faqat saqlangan o'yin bo'lsa)
         if (window.Telegram && window.Telegram.WebApp) {
             Telegram.WebApp.ready();
             Telegram.WebApp.expand();
@@ -2154,30 +2154,34 @@
                 }
             }
             
-            // Telegram da start ekranini yashirish va avto start
-            setTimeout(() => {
+            // Avto-start - faqat saqlangan o'yin bo'lsa va foydalanuvchi hech narsa bosmagan bo'lsa
+            // 3000ms kutish va agar tugma bosilmagan bo'lsa avto-start
+            let autoStartTimer = setTimeout(() => {
                 const saved = localStorage.getItem('tonCoinRushSave');
-                if (saved) {
+                if (saved && !window.userClickedButton) {
                     // Saqlangan o'yin bo'lsa davom ettirish
                     continueGame();
-                } else {
-                    // Yangi o'yin boshlash
-                    startNewGame();
                 }
-            }, 500);
+            }, 3000);
+            
+            // Tugma bosilganda avto-start ni bekor qilish
+            window.userClickedButton = false;
+            ['start-btn', 'new-game-btn', 'continue-btn', 'exit-start-btn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.addEventListener('click', () => {
+                        window.userClickedButton = true;
+                        clearTimeout(autoStartTimer);
+                    });
+                }
+            });
         }
 
-        // Browser da start ekranini yashirish (telefondagiday)
+        // Browser da start ekranini ko'rsatish (avto-start yo'q)
+        // Foydalanuvchi tugmalarni bosishi uchun kutish
         if (!window.Telegram || !window.Telegram.WebApp) {
-            // Brauzerda ham avto start
-            setTimeout(() => {
-                const saved = localStorage.getItem('tonCoinRushSave');
-                if (saved) {
-                    continueGame();
-                } else {
-                    startNewGame();
-                }
-            }, 500);
+            // Brauzerda avto-start yo'q - foydalanuvchi tugmani bosadi
+            console.log('Browser mode - waiting for user to click buttons');
         }
 
         // Initialize TON Connect when page loads
