@@ -2,7 +2,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
 const TOKEN = '8206421731:AAEjI_gcmJpJwidDVip86oYQlPcKBlfTQE4';
-const GAME_URL = process.env.GAME_URL || 'http://localhost:8080';
+const GAME_URL = 'https://n-ton-games.vercel.app';
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000/api';
 
 console.log('========================================');
