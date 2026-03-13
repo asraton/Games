@@ -702,6 +702,18 @@
                 font-size: clamp(10px, 2.5vw, 11px);
                 padding: clamp(6px, 1.5vw, 8px) clamp(12px, 3vw, 15px);
             }
+            /* Saved game buttons - vertical stack on mobile */
+            #saved-game-section {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+            #saved-game-section .btn {
+                width: 100%;
+                max-width: 280px;
+                margin: 0 auto;
+            }
         }
 
         @media (min-width: 481px) and (max-width: 768px) {
