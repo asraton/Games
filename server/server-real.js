@@ -14,7 +14,7 @@ const shopItems = new Map();
 const purchases = [];
 
 // TON Center API config
-const TON_API_KEY = process.env.TON_API_KEY || '';
+const TON_API_KEY = process.env.TON_API_KEY || '5ba7895066f2f1d949132be194057a0fa11d38763285909d8aff84f69f258c4e';
 const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
 
 // TON client with API key
