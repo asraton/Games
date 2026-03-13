@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SVG to PNG Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .converter {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        canvas {
+            border: 2px solid #00d2ff;
+            border-radius: 10px;
+            margin: 10px;
+            background: transparent;
+        }
+        button {
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .info {
+            background: rgba(0, 210, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="converter">
+        <h1>💼 Wallet Icon Converter</h1>
+        
+        <div class="info">
+            <p>SVG fayllarni PNG ga aylantirish uchun quyidagi tugmalarni bosing:</p>
+            <p><strong>Yaratilgan wallet ikonkalari:</strong></p>
+            <ul style="text-align: left; display: inline-block;">
+                <li>wallet.svg - Asosiy (ko'k/Ton rang)</li>
+                <li>wallet_1.svg - Classic (oltin)</li>
+                <li>wallet_2.svg - Modern (yashil/ko'k)</li>
+                <li>wallet_3.svg - Premium (qizil/ko'k)</li>
+                <li>wallet_4.svg - Minimal (oq)</li>
+            </ul>
+        </div>
+
+        <h3>Qanday foydalanish:</h3>
+        <ol style="text-align: left; display: inline-block; max-width: 400px;">
+            <li>Brauzerda bu faylni oching</li>
+            <li>Har bir SVG faylni brauzerda alohida oching</li>
+            <li>Right click → "Save image as" → PNG formatda saqlang</li>
+            <li>Yoki online converter ishlating:</li>
+        </ol>
+        
+        <p style="margin-top: 20px;">
+            <a href="https://convertio.co/svg-png/" target="_blank" style="color: #00d2ff;">
+                🌐 Online SVG to PNG Converter
+            </a>
+        </p>
+        
+        <div style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 10px;">
+            <h4>📁 Yaratilgan fayllar:</h4>
+            <p>assets/wallet.svg</p>
+            <p>assets/wallet_1.svg</p>
+            <p>assets/wallet_2.svg</p>
+            <p>assets/wallet_3.svg</p>
+            <p>assets/wallet_4.svg</p>
+        </div>
+    </div>
+</body>
+</html>

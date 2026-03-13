@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TON Coin Rush</title>
+    <!-- TON Connect SDK -->
+    <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #00122e;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Game border frame - responsive for all devices */
+        #game-frame {
+            position: fixed;
+            top: 1vh;
+            left: 1vw;
+            right: 1vw;
+            bottom: 1vh;
+            border: clamp(2px, 0.3vw, 3px) solid #00d2ff;
+            border-radius: clamp(15px, 2vw, 20px);
+            pointer-events: none;
+            z-index: 90;
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.5),
+                        inset 0 0 20px rgba(0, 210, 255, 0.2);
+        }
+
+        #game-frame::before {
+            content: '';
+            position: absolute;
+            top: 0.5vh;
+            left: 0.5vw;
+            right: 0.5vw;
+            bottom: 0.5vh;
+            border: 1px solid rgba(0, 210, 255, 0.5);
+            border-radius: clamp(12px, 1.5vw, 15px);
+        }
+
+        #game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* Score display - top of screen */
+        #score-display {
+            position: fixed;
+            top: clamp(70px, 10vh, 80px);
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffd700;
+            font-size: clamp(12px, 2vw, 14px);
+            background: rgba(0, 0, 0, 0.5);
+            padding: clamp(8px, 1.5vh, 12px) clamp(15px, 3vw, 25px);
+            border-radius: clamp(15px, 2vw, 20px);
+            z-index: 90;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: clamp(10px, 2vw, 20px);
+        }
+
+        .score-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: clamp(8px, 1.5vh, 10px) clamp(15px, 2vw, 25px);
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: clamp(12px, 1.5vw, 15px);
+            border: 1px solid rgba(0, 210, 255, 0.3);
+            min-width: clamp(80px, 10vw, 100px);
+        }
+
+        .score-label {
+            font-size: clamp(10px, 1.2vw, 12px);
+            color: #aaa;
+            margin-bottom: 0.5vh;
+            text-transform: uppercase;
+        }
+
+        .score-value {
+            font-size: clamp(14px, 2vw, 18px);
+            color: #00d2ff;
+            text-shadow: 0 0 10px rgba(0, 210, 255, 0.8);
+            font-family: 'Courier New', monospace;
+            white-space: nowrap;
+        }
+
+        #ton-value {
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+        }
+
+        /* Stats - pastki qismda */
+        #stats-display {
+            position: fixed;
+            bottom: clamp(100px, 15vh, 130px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            padding: clamp(8px, 1.5vh, 10px) clamp(15px, 2vw, 20px);
+            border-radius: clamp(15px, 2vw, 20px);
+            color: white;
+            font-size: clamp(12px, 1.5vw, 14px);
+            z-index: 100;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Wallet button with PNG - o'ng yuqori burchakda */
+        #wallet-btn {
+            position: fixed;
+            top: clamp(20px, 3vh, 30px);
+            right: clamp(40px, 5vw, 60px);
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(0, 210, 255, 0.5);
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 55;
+            padding: clamp(8px, 1.5vw, 12px);
+            width: clamp(45px, 7vw, 55px);
+            height: clamp(45px, 7vw, 55px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        #wallet-btn:hover {
+            transform: scale(1.1);
+            border-color: rgba(0, 210, 255, 0.8);
+        }
+
+        #wallet-btn:active {
+            transform: scale(0.95);
+        }
+
+        #wallet-btn img {
+            width: 80%;
+            height: 80%;
+            object-fit: contain;
+        }
+
+        #wallet-btn.connected {
+            border-color: rgba(0, 255, 100, 0.7);
+            background: rgba(0, 255, 100, 0.2);
+        }
+
+        #wallet-btn.connected img {
+            filter: none;
+        }
+
+        /* Bonus TON - pastki qismda random joyda */
+        #bonus-ton {
+            position: fixed;
+            width: clamp(80px, 12vw, 100px);
+            height: clamp(80px, 12vw, 100px);
+            cursor: pointer;
+            z-index: 45;
+            display: none;
+            transition: transform 0.2s;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        #bonus-ton.show {
+            display: flex;
+            animation: bonusPop 0.5s ease-out forwards;
+        }
+
+        #bonus-ton img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
+            animation: bonusPulse 0.6s ease-in-out infinite;
+        }
+
+        /* Bonus rangli pulsatsiya klasslari */
+        #bonus-ton.bonus-yellow img { animation: bonusPulseYellow 0.6s ease-in-out infinite; }
+        #bonus-ton.bonus-green img { animation: bonusPulseGreen 0.6s ease-in-out infinite; }
+        #bonus-ton.bonus-cyan img { animation: bonusPulseCyan 0.6s ease-in-out infinite; }
+        #bonus-ton.bonus-orange img { animation: bonusPulseOrange 0.6s ease-in-out infinite; }
+
+        @keyframes bonusPulseYellow {
+            0%, 100% { filter: brightness(1.2) drop-shadow(0 0 15px rgba(255, 215, 0, 0.9)); }
+            50% { filter: brightness(1.5) drop-shadow(0 0 30px rgba(255, 215, 0, 1)); }
+        }
+
+        @keyframes bonusPulseGreen {
+            0%, 100% { filter: brightness(1.2) drop-shadow(0 0 15px rgba(0, 255, 100, 0.9)); }
+            50% { filter: brightness(1.5) drop-shadow(0 0 30px rgba(0, 255, 100, 1)); }
+        }
+
+        @keyframes bonusPulseCyan {
+            0%, 100% { filter: brightness(1.2) drop-shadow(0 0 15px rgba(0, 210, 255, 0.9)); }
+            50% { filter: brightness(1.5) drop-shadow(0 0 30px rgba(0, 210, 255, 1)); }
+        }
+
+        @keyframes bonusPulseOrange {
+            0%, 100% { filter: brightness(1.2) drop-shadow(0 0 15px rgba(255, 150, 0, 0.9)); }
+            50% { filter: brightness(1.5) drop-shadow(0 0 30px rgba(255, 150, 0, 1)); }
+        }
+
+        @keyframes bonusPulse {
+            0%, 100% { filter: brightness(1.2) drop-shadow(0 0 15px rgba(0, 210, 255, 0.9)); }
+            50% { filter: brightness(1.5) drop-shadow(0 0 30px rgba(0, 210, 255, 1)); }
+        }
+
+        #bonus-ton .bonus-text {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ffd700 0%, #ff6b6b 100%);
+            color: #1a1a2e;
+            font-size: clamp(10px, 1.5vw, 12px);
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 10px;
+            white-space: nowrap;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Qora (penalty) styles - alohida pozitsiya */
+        #qora-container {
+            position: fixed;
+            width: clamp(80px, 12vw, 100px);
+            height: clamp(80px, 12vw, 100px);
+            cursor: pointer;
+            z-index: 46;
+            display: none;
+            transition: transform 0.2s;
+        }
+
+        #qora-container.show {
+            display: block;
+            animation: qoraPop 0.4s ease-out;
+        }
+
+        #qora {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
+            animation: qoraPulse 0.6s ease-in-out infinite;
+        }
+
+        /* Qora rangli pulsatsiya klasslari */
+        #qora-container.qora-red #qora { animation: qoraPulseRed 0.6s ease-in-out infinite; }
+        #qora-container.qora-purple #qora { animation: qoraPulsePurple 0.6s ease-in-out infinite; }
+        #qora-container.qora-blue #qora { animation: qoraPulseBlue 0.6s ease-in-out infinite; }
+        #qora-container.qora-green #qora { animation: qoraPulseGreen 0.6s ease-in-out infinite; }
+
+        @keyframes qoraPulseRed {
+            0%, 100% { filter: brightness(0.8) drop-shadow(0 0 15px rgba(255, 50, 50, 0.9)); }
+            50% { filter: brightness(1) drop-shadow(0 0 25px rgba(255, 80, 80, 1)); }
+        }
+
+        @keyframes qoraPulsePurple {
+            0%, 100% { filter: brightness(0.8) drop-shadow(0 0 15px rgba(200, 0, 255, 0.9)); }
+            50% { filter: brightness(1) drop-shadow(0 0 25px rgba(220, 50, 255, 1)); }
+        }
+
+        @keyframes qoraPulseBlue {
+            0%, 100% { filter: brightness(0.8) drop-shadow(0 0 15px rgba(50, 100, 255, 0.9)); }
+            50% { filter: brightness(1) drop-shadow(0 0 25px rgba(80, 130, 255, 1)); }
+        }
+
+        @keyframes qoraPulseGreen {
+            0%, 100% { filter: brightness(0.8) drop-shadow(0 0 15px rgba(0, 200, 100, 0.9)); }
+            50% { filter: brightness(1) drop-shadow(0 0 25px rgba(50, 220, 130, 1)); }
+        }
+
+        @keyframes qoraPulse {
+            0%, 100% { filter: brightness(0.8) drop-shadow(0 0 10px rgba(0, 0, 0, 0.9)); }
+            50% { filter: brightness(1) drop-shadow(0 0 20px rgba(50, 50, 50, 1)); }
+        }
+
+        @keyframes qoraPop {
+            0% { transform: scale(0); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        #qora-container:active {
+            transform: scale(0.9);
+        }
+
+        #qora-container.qora-collected {
+            animation: qoraShrink 0.4s ease-out forwards !important;
+        }
+
+        @keyframes qoraShrink {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0) rotate(180deg); opacity: 0; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+        .bonus-collected {
+            animation: bonusCollected 0.4s ease-out forwards !important;
+        }
+
+        @keyframes bonusCollected {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3) rotate(-180deg); }
+            100% { transform: scale(0) rotate(-360deg); opacity: 0; }
+        }
+
+        /* Coin styles - responsive sizing */
+        #coin {
+            position: absolute;
+            width: clamp(120px, 20vw, 220px);
+            height: clamp(120px, 20vw, 220px);
+            cursor: pointer;
+            z-index: 50;
+            display: none;
+            transition: transform 0.1s;
+        }
+
+        #coin:active {
+            transform: scale(0.9);
+        }
+
+        #coin img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        @keyframes goldPulse {
+            0%, 100% { 
+                filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 215, 0, 0.9)); 
+            }
+            50% { 
+                filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 215, 0, 1)); 
+            }
+        }
+
+        /* 7 ta rangli pulsatsiya klasslari */
+        #coin img.pulse-yellow { animation: pulseYellow 0.6s ease-in-out infinite; }
+        #coin img.pulse-red { animation: pulseRed 0.6s ease-in-out infinite; }
+        #coin img.pulse-green { animation: pulseGreen 0.6s ease-in-out infinite; }
+        #coin img.pulse-blue { animation: pulseBlue 0.6s ease-in-out infinite; }
+        #coin img.pulse-cyan { animation: pulseCyan 0.6s ease-in-out infinite; }
+        #coin img.pulse-purple { animation: pulsePurple 0.6s ease-in-out infinite; }
+        #coin img.pulse-orange { animation: pulseOrange 0.6s ease-in-out infinite; }
+
+        @keyframes pulseYellow {
+            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 215, 0, 0.9)); }
+            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 215, 0, 1)); }
+        }
+        @keyframes pulseRed {
+            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 50, 50, 0.9)); }
+            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 50, 50, 1)); }
+        }
+        @keyframes pulseGreen {
+            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 255, 100, 0.9)); }
+            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 255, 100, 1)); }
+        }
+        @keyframes pulseBlue {
+            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 150, 255, 0.9)); }
+            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 150, 255, 1)); }
+        }
+        @keyframes pulseCyan {
+            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 255, 255, 0.9)); }
+            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 255, 255, 1)); }
+        }
+        @keyframes pulsePurple {
+            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(200, 0, 255, 0.9)); }
+            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(200, 0, 255, 1)); }
+        }
+        @keyframes pulseOrange {
+            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 150, 0, 0.9)); }
+            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 150, 0, 1)); }
+        }
+
+        /* Pop up animation */
+        @keyframes popUp {
+            0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+            60% { transform: scale(1.1) rotate(10deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        @keyframes shrinkOut {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0) rotate(180deg); opacity: 0; }
+        }
+
+        .coin-pop {
+            animation: popUp 0.4s ease-out forwards;
+        }
+
+        .coin-shrink {
+            animation: shrinkOut 0.3s ease-in forwards;
+        }
+
+        /* Floating text - responsive */
+        .float-text {
+            position: absolute;
+            font-size: clamp(16px, 2.5vw, 22px);
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            z-index: 60;
+            text-shadow: 0 0 15px currentColor;
+        }
+
+        .float-plus { color: #ffd700; }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            50% { transform: translateY(clamp(-20px, -4vh, -30px)) scale(1.3); }
+            100% { transform: translateY(clamp(-35px, -6vh, -50px)) scale(0.8); opacity: 0; }
+        }
+
+        /* Screens */
+        #start-screen, #menu-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+
+        #start-screen.hidden, #menu-screen {
+            display: none;
+        }
+
+        #menu-screen.show {
+            display: flex;
+        }
+
+        .btn {
+            border: none;
+            padding: clamp(14px, 2.5vh, 18px) clamp(30px, 4vw, 45px);
+            font-size: clamp(18px, 2.5vw, 22px);
+            font-weight: bold;
+            border-radius: clamp(25px, 3vw, 30px);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: clamp(8px, 1.5vh, 10px);
+            min-width: clamp(220px, 35vw, 280px);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        #start-btn, #resume-menu-btn {
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            color: white;
+            box-shadow: 0 4px 20px rgba(0, 210, 255, 0.4);
+        }
+
+        #new-game-btn, #new-game-menu-btn {
+            background: linear-gradient(135deg, #ffd700, #ff6b6b);
+            color: #1a1a2e;
+            box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4);
+        }
+
+        #exit-btn {
+            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
+            color: white;
+            box-shadow: 0 4px 20px rgba(162, 155, 254, 0.4);
+        }
+
+        #exit-start-btn {
+            background: linear-gradient(135deg, #ff4757, #ff6b6b);
+            color: white;
+            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4);
+            margin-top: 20px;
+        }
+
+        #title {
+            color: #00d2ff;
+            font-size: clamp(28px, 5vw, 42px);
+            margin-bottom: clamp(8px, 1.5vh, 10px);
+            text-align: center;
+            text-shadow: 0 0 30px rgba(0, 210, 255, 0.8);
+        }
+
+        #subtitle {
+            color: #aaa;
+            font-size: clamp(14px, 2vw, 16px);
+            margin-bottom: clamp(25px, 5vh, 40px);
+            text-align: center;
+        }
+
+        .saved-stats {
+            background: rgba(255, 255, 255, 0.1);
+            padding: clamp(15px, 3vh, 20px) clamp(30px, 5vw, 40px);
+            border-radius: clamp(15px, 2vw, 20px);
+            margin-bottom: clamp(20px, 4vh, 30px);
+            text-align: center;
+            border: 2px solid rgba(0, 210, 255, 0.3);
+        }
+
+        .saved-stats h3 {
+            color: #ffd700;
+            font-size: clamp(20px, 3vw, 24px);
+            margin-bottom: clamp(8px, 1.5vh, 10px);
+        }
+
+        .saved-stats p {
+            color: white;
+            font-size: clamp(14px, 2vw, 16px);
+            margin: clamp(4px, 1vh, 5px) 0;
+        }
+
+        .instructions {
+            color: #888;
+            font-size: clamp(12px, 1.8vw, 14px);
+            margin-top: clamp(20px, 4vh, 30px);
+            text-align: center;
+            padding: 0 clamp(20px, 5vw, 30px);
+            max-width: min(500px, 80vw);
+            line-height: 1.6;
+        }
+
+        /* Game controls container */
+        .game-controls {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 30px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: clamp(10px, 2vw, 20px);
+            z-index: 100;
+        }
+
+        /* Stop/Start button - responsive */
+        #stop-btn {
+            background: linear-gradient(135deg, #ff4757, #ff6b6b);
+            border: none;
+            color: white;
+            padding: clamp(12px, 2vh, 15px) clamp(35px, 4vw, 50px);
+            border-radius: clamp(25px, 3vw, 30px);
+            cursor: pointer;
+            font-size: clamp(16px, 2vw, 18px);
+            font-weight: bold;
+            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4);
+            transition: all 0.3s;
+            min-width: clamp(150px, 20vw, 180px);
+        }
+
+        #stop-btn:hover {
+            box-shadow: 0 6px 25px rgba(255, 71, 87, 0.6);
+        }
+
+        #stop-btn.start-mode {
+            background: linear-gradient(135deg, #2ed573, #1e90ff);
+            box-shadow: 0 4px 20px rgba(46, 213, 115, 0.4);
+        }
+
+        #stop-btn.start-mode:hover {
+            box-shadow: 0 6px 25px rgba(46, 213, 115, 0.6);
+        }
+
+        /* Exit game button */
+        #exit-game-btn {
+            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
+            border: none;
+            color: white;
+            padding: clamp(12px, 2vh, 15px) clamp(35px, 4vw, 50px);
+            border-radius: clamp(25px, 3vw, 30px);
+            cursor: pointer;
+            font-size: clamp(16px, 2vw, 18px);
+            font-weight: bold;
+            box-shadow: 0 4px 20px rgba(162, 155, 254, 0.4);
+            transition: all 0.3s;
+            min-width: clamp(150px, 20vw, 180px);
+        }
+
+        #exit-game-btn:hover {
+            box-shadow: 0 6px 25px rgba(162, 155, 254, 0.6);
+        }
+
+        /* Wallet modal */
+        #wallet-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+        }
+
+        #wallet-modal.show {
+            display: flex;
+        }
+
+        #wallet-connect-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: min(400px, 90vw);
+        }
+
+        .wallet-list {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(10px, 2vh, 15px);
+            max-width: min(400px, 90vw);
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .wallet-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(0, 210, 255, 0.3);
+            padding: clamp(12px, 2vh, 15px) clamp(20px, 3vw, 25px);
+            border-radius: clamp(12px, 2vw, 15px);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: clamp(10px, 2vw, 15px);
+            transition: all 0.3s;
+            width: 80%;
+            max-width: 300px;
+            margin: 0 auto;
+            padding-left: clamp(30px, 5vw, 50px);
+        }
+
+        .wallet-item img {
+            width: clamp(32px, 5vw, 40px);
+            height: clamp(32px, 5vw, 40px);
+            border-radius: 10px;
+        }
+
+        .wallet-item span {
+            color: white;
+            font-size: clamp(16px, 2.5vw, 18px);
+            font-weight: bold;
+        }
+
+        #close-wallet-modal {
+            margin-top: clamp(20px, 4vh, 30px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: clamp(10px, 2vh, 12px) clamp(25px, 3vw, 30px);
+            border-radius: clamp(15px, 2vw, 20px);
+            cursor: pointer;
+            font-size: clamp(14px, 2vw, 16px);
+        }
+
+        #close-wallet-modal:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Media queries for different screen sizes */
+        @media (max-width: 480px) {
+            /* Small phones */
+            #score-display {
+                gap: clamp(6px, 1.5vw, 8px);
+                padding: clamp(6px, 2vw, 8px) clamp(12px, 4vw, 15px);
+            }
+            .score-box {
+                padding: clamp(5px, 1.5vw, 6px) clamp(10px, 3vw, 12px);
+                min-width: clamp(60px, 15vw, 70px);
+            }
+            #stats-display {
+                font-size: clamp(10px, 2.5vw, 11px);
+                padding: clamp(5px, 1.5vw, 6px) clamp(10px, 3vw, 12px);
+            }
+            #wallet-btn {
+                font-size: clamp(10px, 2.5vw, 11px);
+                padding: clamp(6px, 1.5vw, 8px) clamp(12px, 3vw, 15px);
+            }
+        }
+
+        @media (min-width: 481px) and (max-width: 768px) {
+            /* Tablets and large phones */
+            #coin {
+                width: clamp(140px, 18vw, 180px);
+                height: clamp(140px, 18vw, 180px);
+            }
+        }
+
+        @media (min-width: 1200px) {
+            /* Large desktops */
+            #coin {
+                width: clamp(220px, 15vw, 260px);
+                height: clamp(220px, 15vw, 260px);
+            }
+            .btn {
+                min-width: clamp(280px, 25vw, 320px);
+            }
+        }
+
+        @media (max-height: 600px) {
+            /* Short screens (landscape phones) */
+            #score-display {
+                top: 1vh;
+            }
+            #stop-btn {
+                bottom: clamp(10px, 2vh, 15px);
+            }
+            .saved-stats {
+                margin-bottom: clamp(10px, 2vh, 15px);
+                padding: clamp(12px, 2vh, 15px) clamp(25px, 4vw, 30px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Fixed Wallet Button - har doim ko'rinib turadi -->
+    <button id="wallet-btn" title="Hamyon qo'shing" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+        <img src="assets/walletcon.svg" alt="Wallet" id="wallet-icon-img">
+    </button>
+
+    <div id="game-frame"></div>
+    
+    <div id="game-container">
+        <div id="stats-display">
+            Bosildi: <span id="total-clicks">0</span>
+        </div>
+        <div id="score-display">
+            <div class="score-box">
+                <div class="score-label">TON</div>
+                <div class="score-value" id="ton-value">0</div>
+            </div>
+            <div class="score-box">
+                <div class="score-label">nTON</div>
+                <div class="score-value" id="nton-display">000000000</div>
+            </div>
+        </div>
+
+        <div class="game-controls">
+            <button id="stop-btn">⏹️ STOP</button>
+            <button id="exit-game-btn">🚪 CHIQISH</button>
+        </div>
+    </div>
+
+    <!-- Coin, Qora, Bonus elements (har doim body ichida) -->
+    <div id="coin">
+        <img src="assets/tanga.png" alt="TON Tanga">
+    </div>
+
+    <!-- Qora - tasodifiy paydo bo'ladi, bosilmasa yo'qoladi -->
+    <div id="qora-container">
+        <img id="qora" src="assets/qora.svg" alt="Qora">
+    </div>
+
+    <!-- Bonus TON - tasodifiy paydo bo'ladi -->
+    <div id="bonus-ton">
+        <img id="bonus-img" src="assets/ton_.png" alt="Bonus TON">
+        <span class="bonus-text">Bonus</span>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1 id="title">⚡ TON Coin Rush</h1>
+        
+        <div id="saved-game-section" style="display: none;">
+            <div class="saved-stats">
+                <h3>💾 Saqlangan o'yin</h3>
+                <p id="saved-ton">0 TON</p>
+                <p id="saved-nton">0 TON</p>
+                <p id="saved-clicks">0 ta bosish</p>
+            </div>
+            <button class="btn" id="continue-btn">▶️ Davom ettirish</button>
+            <button class="btn" id="new-game-btn">🔄 Yangi o'yin</button>
+        </div>
+        
+        <button class="btn" id="exit-start-btn">🚪 Chiqish</button>
+        
+        <div id="new-game-section">
+            <button class="btn" id="start-btn">🎮 O'yinni Boshlash</button>
+        </div>
+
+        <div class="instructions">
+            <p>
+                Tangani bosib TON yig'ing!
+            </p>
+        </div>
+    </div>
+
+    <!-- Wallet Modal - Deposit tizimi -->
+    <div id="wallet-modal">
+        <h1 id="title" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <img src="assets/wallet.svg" alt="Wallet" style="width: clamp(30px, 5vw, 40px); height: clamp(30px, 5vw, 40px);">
+            Hamyon
+        </h1>
+        
+        <!-- Wallet ulanmagan - ulanish tugmasi -->
+        <div id="wallet-connect-section" style="width: 100%; max-width: min(400px, 90vw);">
+            <p style="color: #aaa; text-align: center; margin-bottom: 20px;">O'yin balansini to'ldirish uchun wallet ulang</p>
+            <div class="wallet-list" id="wallet-list"></div>
+        </div>
+        
+        <!-- Wallet ulangan - deposit ko'rsatish -->
+        <div id="wallet-deposit-section" style="display: none; width: 100%; max-width: min(400px, 90vw);">
+            <!-- Jetton Balans -->
+            <div style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 107, 107, 0.2)); border: 2px solid rgba(255, 215, 0, 0.5); border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="color: #ffd700; margin-bottom: 15px; font-size: clamp(14px, 2vw, 16px);">💎 Jetton Balans</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <span style="color: #aaa;">Mavjud:</span>
+                    <span id="jetton-balance" style="color: #ffd700; font-weight: bold; font-size: 24px;">0 💎</span>
+                </div>
+                <button id="convert-ton-btn" style="width: 100%; background: linear-gradient(135deg, #00d2ff, #3a7bd5); border: none; color: white; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 14px;">
+                    🔄 TON ni Jetton ga almashtirish (1 TON = 1000 💎)
+                </button>
+            </div>
+
+            <!-- TON Balans -->
+            <div style="background: rgba(0, 210, 255, 0.1); border: 2px solid rgba(0, 210, 255, 0.3); border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="color: #00d2ff; margin-bottom: 15px; font-size: clamp(14px, 2vw, 16px);">💰 TON Balans</h3>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="color: #aaa;">Balans:</span>
+                    <span id="game-balance" style="color: #ffd700; font-weight: bold;">0.00 TON</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #aaa;">Jami deposit:</span>
+                    <span id="total-deposited" style="color: #00d2ff;">0.00 TON</span>
+                </div>
+            </div>
+            
+            <!-- Shop Section -->
+            <div id="shop-section" style="background: rgba(46, 213, 115, 0.1); border: 2px solid rgba(46, 213, 115, 0.3); border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="color: #2ed573; margin-bottom: 15px; font-size: clamp(14px, 2vw, 16px);">🛒 Do'kon</h3>
+                <div id="shop-items" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Shop items dynamically loaded here -->
+                    <p style="color: #aaa; text-align: center;">Yuklanmoqda...</p>
+                </div>
+            </div>
+            
+            <div style="background: rgba(255, 215, 0, 0.1); border: 2px solid rgba(255, 215, 0, 0.3); border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="color: #ffd700; margin-bottom: 15px; font-size: clamp(14px, 2vw, 16px);">💰 Deposit qilish</h3>
+                <p style="color: #aaa; font-size: 12px; margin-bottom: 10px;">Quyidagi adresga TON yuboring:</p>
+                
+                <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 15px; margin-bottom: 15px; word-break: break-all; font-family: monospace; font-size: 14px; color: #fff;" id="deposit-address">
+                    Ulanmoqda...
+                </div>
+                
+                <button id="copy-address-btn" style="width: 100%; background: linear-gradient(135deg, #00d2ff, #3a7bd5); border: none; color: white; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 14px; margin-bottom: 10px;">
+                    📋 Adresni nusxa olish
+                </button>
+                
+                <button id="check-deposit-btn" style="width: 100%; background: linear-gradient(135deg, #ffd700, #ff6b6b); border: none; color: #1a1a2e; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: bold;">
+                    🔄 Balansni yangilash
+                </button>
+            </div>
+            
+            <!-- Withdraw Section -->
+            <div style="background: rgba(255, 71, 87, 0.1); border: 2px solid rgba(255, 71, 87, 0.3); border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="color: #ff4757; margin-bottom: 15px; font-size: clamp(14px, 2vw, 16px);">💸 Pul yechib olish</h3>
+                <p style="color: #aaa; font-size: 12px; margin-bottom: 10px;">Wallet adresingizga TON yuborish:</p>
+                
+                <input type="text" id="withdraw-address" placeholder="TON wallet adresi" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; padding: 12px; margin-bottom: 10px; color: #fff; font-family: monospace; font-size: 14px;">
+                
+                <input type="number" id="withdraw-amount" placeholder="Miqdor (TON)" step="0.1" min="0.1" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; padding: 12px; margin-bottom: 10px; color: #fff; font-size: 14px;">
+                
+                <button id="withdraw-btn" style="width: 100%; background: linear-gradient(135deg, #ff4757, #ff6b6b); border: none; color: white; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: bold;">
+                    💸 Pul yechib olish
+                </button>
+                
+                <div id="withdraw-status" style="display: none; margin-top: 10px; padding: 10px; border-radius: 8px; text-align: center; font-size: 12px;"></div>
+            </div>
+            
+            <div id="deposit-status" style="display: none; background: rgba(46, 213, 115, 0.2); border: 1px solid rgba(46, 213, 115, 0.5); border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center;">
+                <span style="color: #2ed573; font-weight: bold;">✅ Yangi deposit qabul qilindi!</span>
+            </div>
+        </div>
+        
+        <button id="disconnect-wallet-btn" style="display: none; background: rgba(255, 71, 87, 0.3); border: 2px solid rgba(255, 71, 87, 0.5); color: white; padding: 10px 30px; border-radius: 20px; cursor: pointer; margin-bottom: 10px;">Walletni uzish</button>
+        <button id="close-wallet-modal">Yopish</button>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; justify-content: center; align-items: center;">
+        <div style="background: linear-gradient(135deg, #1a1a2e, #16213e); border: 2px solid rgba(255, 71, 87, 0.5); border-radius: 20px; padding: 30px; max-width: 400px; width: 90%; text-align: center;">
+            <h2 style="color: #ff4757; margin-bottom: 20px;">⚠️ Diqqat!</h2>
+            <p style="color: #fff; margin-bottom: 15px; font-size: 16px;">Yangi o'yin boshlashingiz bilan:</p>
+            <ul style="color: #aaa; text-align: left; margin-bottom: 20px; padding-left: 20px; font-size: 14px;">
+                <li>Yig'ilgan <span id="confirm-ton">0</span> TON 0 ga tushadi</li>
+                <li>Yig'ilgan <span id="confirm-nton">0</span> nTON 0 ga tushadi</li>
+                <li>Barcha tanga hisobi qayta boshlanadi</li>
+            </ul>
+            <p style="color: #ffd700; margin-bottom: 25px; font-weight: bold;">Davom etasizmi?</p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button id="confirm-yes" style="background: linear-gradient(135deg, #ff4757, #ff6b6b); border: none; color: white; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-weight: bold;">Ha, yangi boshlayman</button>
+                <button id="confirm-no" style="background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); color: white; padding: 12px 30px; border-radius: 25px; cursor: pointer;">Yo'q, bekor</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let nanoScore = 0; // Current nTON (0-999,999,999)
+        let tonCount = 0; // Full TON count
+        const NANO_PER_TON = 1000000000;
+        let gameActive = false;
+        let isPaused = false;
+        let coinTimeout = null;
+        let totalClicks = 0;
+        let currentSpeedLevel = 1;
+
+        // Wallet state
+        let tonConnect = null;
+        let connectedWallet = null;
+
+        // Deposit wallet state
+        let depositWalletAddress = null;
+        let userId = null;
+        const API_BASE_URL = `${window.location.origin}/api`; // Avtomatik URL
+
+        // Elements
+        const coin = document.getElementById('coin');
+        const qoraContainer = document.getElementById('qora-container');
+        const qoraEl = document.getElementById('qora');
+        const tonDisplayElement = document.getElementById('ton-value');
+        const ntonDisplayElement = document.getElementById('nton-display');
+        const totalClicksElement = document.getElementById('total-clicks');
+        const startScreen = document.getElementById('start-screen');
+        const savedGameSection = document.getElementById('saved-game-section');
+        const newGameSection = document.getElementById('new-game-section');
+        const stopBtn = document.getElementById('stop-btn');
+        const exitGameBtn = document.getElementById('exit-game-btn');
+        const walletBtn = document.getElementById('wallet-btn');
+        const walletModal = document.getElementById('wallet-modal');
+        const walletList = document.getElementById('wallet-list');
+        const walletConnectSection = document.getElementById('wallet-connect-section');
+        const walletDepositSection = document.getElementById('wallet-deposit-section');
+        const depositAddressEl = document.getElementById('deposit-address');
+        const gameBalanceEl = document.getElementById('game-balance');
+        const totalDepositedEl = document.getElementById('total-deposited');
+        const depositStatusEl = document.getElementById('deposit-status');
+        const disconnectWalletBtn = document.getElementById('disconnect-wallet-btn');
+        const jettonBalanceEl = document.getElementById('jetton-balance');
+        const shopItemsEl = document.getElementById('shop-items');
+        const convertTonBtn = document.getElementById('convert-ton-btn');
+
+        // Initialize TON Connect
+        function initTonConnect() {
+            if (typeof TonConnectSDK === 'undefined') {
+                console.log('TonConnect SDK not loaded yet');
+                return;
+            }
+            
+            tonConnect = new TonConnectSDK.TonConnect({
+                manifestUrl: window.location.origin + '/tonconnect-manifest.json'
+            });
+
+            // Listen for connection status
+            tonConnect.onStatusChange((wallet) => {
+                if (wallet) {
+                    connectedWallet = wallet;
+                    walletBtn.classList.add('connected');
+                    walletBtn.title = wallet.account.address.slice(0, 6) + '...' + wallet.account.address.slice(-4);
+                    
+                    // Register user with backend
+                    registerUserWithBackend(wallet.account.address);
+                } else {
+                    connectedWallet = null;
+                    walletBtn.classList.remove('connected');
+                    walletBtn.title = 'Hamyon qo\'shing';
+                    
+                    // Show connect section, hide deposit section
+                    if (walletConnectSection) walletConnectSection.style.display = 'block';
+                    if (walletDepositSection) walletDepositSection.style.display = 'none';
+                    if (disconnectWalletBtn) disconnectWalletBtn.style.display = 'none';
+                }
+            });
+
+            // Try to restore connection
+            tonConnect.restoreConnection();
+        }
+
+        // Register user with backend and get deposit wallet
+        async function registerUserWithBackend(walletAddress) {
+            try {
+                // Generate unique userId from wallet address
+                userId = walletAddress.slice(0, 20);
+                
+                const response = await fetch(`${API_BASE_URL}/user/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: userId,
+                        connectedWallet: walletAddress
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    depositWalletAddress = data.user.depositAddress;
+                    
+                    // Show deposit section
+                    if (walletConnectSection) walletConnectSection.style.display = 'none';
+                    if (walletDepositSection) walletDepositSection.style.display = 'block';
+                    if (disconnectWalletBtn) disconnectWalletBtn.style.display = 'inline-block';
+                    
+                    // Update UI
+                    if (depositAddressEl) depositAddressEl.textContent = depositWalletAddress;
+                    if (gameBalanceEl) gameBalanceEl.textContent = data.user.balance.toFixed(4) + ' TON';
+                    if (jettonBalanceEl) jettonBalanceEl.textContent = data.user.jettonBalance.toLocaleString() + ' 💎';
+                    
+                    // Load user data and shop items
+                    loadUserData();
+                    loadShopItems();
+                    
+                    // Reopen modal to show deposit section
+                    walletModal.classList.add('show');
+                }
+            } catch (error) {
+                console.error('Backend registration error:', error);
+            }
+        }
+
+        // Load user data from backend
+        async function loadUserData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/user/${userId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (gameBalanceEl) gameBalanceEl.textContent = data.user.balance.toFixed(4) + ' TON';
+                    if (totalDepositedEl) totalDepositedEl.textContent = data.user.totalDeposited.toFixed(4) + ' TON';
+                    if (jettonBalanceEl) jettonBalanceEl.textContent = data.user.jettonBalance.toLocaleString() + ' 💎';
+                }
+            } catch (error) {
+                console.error('Load user data error:', error);
+            }
+        }
+
+        // Check for new deposits
+        async function checkDeposit() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/check-deposit/${userId}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (gameBalanceEl) gameBalanceEl.textContent = data.totalBalance.toFixed(4) + ' TON';
+                    if (totalDepositedEl) totalDepositedEl.textContent = data.totalDeposited?.toFixed(4) + ' TON';
+                    
+                    if (data.newDeposit > 0) {
+                        // Show success message
+                        if (depositStatusEl) {
+                            depositStatusEl.style.display = 'block';
+                            depositStatusEl.innerHTML = `<span style="color: #2ed573; font-weight: bold;">✅ ${data.newDeposit.toFixed(4)} TON deposit qabul qilindi!</span>`;
+                            
+                            setTimeout(() => {
+                                depositStatusEl.style.display = 'none';
+                            }, 5000);
+                        }
+                        
+                        // Add deposited amount to game balance
+                        const depositedNano = Math.floor(data.newDeposit * NANO_PER_TON);
+                        nanoScore += depositedNano;
+                        
+                        if (nanoScore >= NANO_PER_TON) {
+                            tonCount += Math.floor(nanoScore / NANO_PER_TON);
+                            nanoScore = nanoScore % NANO_PER_TON;
+                        }
+                        
+                        updateDisplay();
+                    }
+                }
+            } catch (error) {
+                console.error('Check deposit error:', error);
+            }
+        }
+
+        // Copy deposit address to clipboard
+        function copyDepositAddress() {
+            if (depositWalletAddress) {
+                navigator.clipboard.writeText(depositWalletAddress).then(() => {
+                    alert('Deposit adresi nusxa olindi: ' + depositWalletAddress.slice(0, 10) + '...');
+                }).catch(err => {
+                    console.error('Copy failed:', err);
+                });
+            }
+        }
+
+        // Show wallet selection / deposit modal
+        async function showWalletSelection() {
+            // Wallet allaqachon ulangan bo'lsa, deposit qismini ko'rsatish
+            if (connectedWallet && depositWalletAddress) {
+                // Show deposit section
+                if (walletConnectSection) walletConnectSection.style.display = 'none';
+                if (walletDepositSection) walletDepositSection.style.display = 'block';
+                if (disconnectWalletBtn) disconnectWalletBtn.style.display = 'inline-block';
+                
+                // Load latest data
+                loadUserData();
+                loadShopItems(); // Do'kon itemlarini yuklash
+                walletModal.classList.add('show');
+                return;
+            }
+            
+            // Wallet ulanmagan - ulanish jarayoni
+            if (!tonConnect) {
+                alert('Wallet ulanish tayyor emas. Iltimos, bir oz kuting.');
+                return;
+            }
+
+            // Show connect section
+            if (walletConnectSection) walletConnectSection.style.display = 'block';
+            if (walletDepositSection) walletDepositSection.style.display = 'none';
+            if (disconnectWalletBtn) disconnectWalletBtn.style.display = 'none';
+            
+            walletList.innerHTML = '';
+            
+            try {
+                const wallets = await tonConnect.getWallets();
+                
+                // Check if opened inside a wallet
+                const embeddedWallet = wallets.find(w => w.embedded);
+                if (embeddedWallet) {
+                    await tonConnect.connect({ jsBridgeKey: embeddedWallet.jsBridgeKey });
+                    return;
+                }
+
+                // Show only first 3 wallets (maximum)
+                const limitedWallets = wallets.slice(0, 3);
+                
+                limitedWallets.forEach(wallet => {
+                    const item = document.createElement('div');
+                    item.className = 'wallet-item';
+                    item.innerHTML = `
+                        <img src="${wallet.imageUrl}" alt="${wallet.name}">
+                        <span>${wallet.name}</span>
+                    `;
+                    item.onclick = () => connectWallet(wallet);
+                    walletList.appendChild(item);
+                });
+
+                walletModal.classList.add('show');
+            } catch (e) {
+                console.error('Failed to get wallets:', e);
+            }
+        }
+
+        // Connect to specific wallet
+        async function connectWallet(wallet) {
+            try {
+                console.log('Connecting to wallet:', wallet.name, wallet);
+                
+                // Show loading state
+                walletModal.classList.remove('show');
+                
+                if (wallet.injected) {
+                    // Injected wallet (browser extension)
+                    await tonConnect.connect({ jsBridgeKey: wallet.jsBridgeKey });
+                } else if (wallet.universalLink) {
+                    // Universal link for mobile/desktop wallets
+                    const connection = await tonConnect.connect({
+                        universalLink: wallet.universalLink,
+                        bridgeUrl: wallet.bridgeUrl
+                    });
+                    
+                    // Open wallet app - works on both mobile and desktop
+                    if (connection && connection.link) {
+                        window.open(connection.link, '_blank');
+                    } else if (wallet.universalLink) {
+                        // Fallback - direct universal link
+                        window.open(wallet.universalLink, '_blank');
+                    }
+                } else if (wallet.deepLink) {
+                    // Deep link for mobile apps
+                    window.open(wallet.deepLink, '_blank');
+                } else {
+                    alert('Wallet ulanish havolasi mavjud emas: ' + wallet.name);
+                }
+            } catch (e) {
+                console.error('Connection failed:', e);
+                alert('Wallet ga ulanishda xatolik: ' + e.message);
+            }
+        }
+
+        // Check for saved game
+        function checkSavedGame() {
+            const saved = localStorage.getItem('tonCoinRushSave');
+            if (saved) {
+                const data = JSON.parse(saved);
+                const savedTon = Math.floor((data.nanoScore || 0) / NANO_PER_TON);
+                const savedNton = (data.nanoScore || 0) % NANO_PER_TON;
+                document.getElementById('saved-ton').textContent = savedTon + ' TON';
+                document.getElementById('saved-nton').textContent = savedNton.toLocaleString() + ' nTON';
+                document.getElementById('saved-clicks').textContent = data.totalClicks + ' ta bosish';
+                savedGameSection.style.display = 'block';
+                newGameSection.style.display = 'none';
+            }
+        }
+
+        // Save game
+        function saveGame() {
+            const totalNano = tonCount * NANO_PER_TON + nanoScore;
+            const saveData = {
+                nanoScore: totalNano,
+                totalClicks: totalClicks,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('tonCoinRushSave', JSON.stringify(saveData));
+        }
+
+        // Load game
+        function loadGame() {
+            const saved = localStorage.getItem('tonCoinRushSave');
+            if (saved) {
+                const data = JSON.parse(saved);
+                const totalNano = data.nanoScore || 0;
+                tonCount = Math.floor(totalNano / NANO_PER_TON);
+                nanoScore = totalNano % NANO_PER_TON;
+                totalClicks = data.totalClicks || 0;
+                updateDisplay();
+            }
+        }
+
+        // Calculate speed based on TON amount (1 TON = 2x, 2 TON = 3x, etc.)
+        function calculateSpeed() {
+            // Faqat to'liq TON hisobiga qarab tezlik oshadi
+            currentSpeedLevel = Math.max(1, tonCount + 1);
+            
+            // Base delay decreases as speed increases
+            // Speed 1 = 2000ms, Speed 2 = 1500ms, Speed 3 = 1200ms, etc.
+            const baseDelay = Math.max(300, 2500 - (currentSpeedLevel * 400));
+            
+            return baseDelay;
+        }
+
+        // Get reward - simple random 1-100
+        function getReward() {
+            return Math.floor(Math.random() * 100) + 1; // 1 to 100
+        }
+
+        // Tanga ranglari
+        const pulseColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 'pulse-cyan', 'pulse-purple', 'pulse-orange'];
+
+        // Show coin
+        function showCoin() {
+            if (!gameActive || isPaused) return;
+            
+            // Random rang tanlash
+            const coinImg = coin.querySelector('img');
+            pulseColors.forEach(c => coinImg.classList.remove(c));
+            const randomColor = pulseColors[Math.floor(Math.random() * pulseColors.length)];
+            coinImg.classList.add(randomColor);
+            
+            // Random position within frame
+            const screen = {
+                width: window.innerWidth,
+                height: window.innerHeight
+            };
+            const margin = 80;
+            const x = margin + Math.random() * (screen.width - margin * 2 - 180);
+            const y = margin + Math.random() * (screen.height - margin * 2 - 180);
+            
+            coin.style.left = x + 'px';
+            coin.style.top = y + 'px';
+            coin.style.display = 'block';
+            coin.classList.add('coin-pop');
+            
+            setTimeout(() => {
+                coin.classList.remove('coin-pop');
+            }, 400);
+
+            // Auto-hide after calculated time based on TON speed
+            const visibleTime = calculateSpeed();
+            
+            coinTimeout = setTimeout(() => {
+                if (gameActive && !isPaused) {
+                    hideCoin();
+                }
+            }, visibleTime);
+        }
+
+        function hideCoin() {
+            clearTimeout(coinTimeout);
+            coin.classList.add('coin-shrink');
+            coinTimeout = setTimeout(() => {
+                coin.style.display = 'none';
+                coin.classList.remove('coin-shrink');
+                if (gameActive && !isPaused) {
+                    showCoin();
+                }
+            }, 300);
+        }
+
+        // Catch coin
+        function catchCoin(e) {
+            e.preventDefault();
+            if (!gameActive || isPaused) return;
+
+            clearTimeout(coinTimeout);
+            totalClicks++;
+
+            const reward = getReward();
+            nanoScore += reward;
+
+            // Check if reached 1 TON
+            if (nanoScore >= NANO_PER_TON) {
+                tonCount++;
+                nanoScore = nanoScore - NANO_PER_TON;
+            }
+
+            // Check for bonus (tasodifiy 15% chance)
+            if (Math.random() < 0.15) {
+                showBonus();
+            }
+
+            // Check for qora (penalty) - tasodifiy 10% chance
+            if (Math.random() < 0.10) {
+                showQora();
+            }
+
+            // Visual feedback
+            const x = e.clientX || e.touches[0].clientX;
+            const y = e.clientY || e.touches[0].clientY;
+            
+            showFloatText(x, y - 50, `+${reward} nTON`, 'float-plus');
+
+            updateDisplay();
+
+            // Hide and show next
+            hideCoin();
+        }
+
+        // Show qora (penalty) - alohida random joyda, FAQAT QIZIL RANGDA
+        let qoraTimeout = null;
+        const qoraColors = ['qora-red']; // Faqat qizil rang
+        function showQora() {
+            if (!qoraContainer || !gameActive || isPaused) return;
+            
+            // Faqat qizil rang
+            qoraColors.forEach(c => qoraContainer.classList.remove(c));
+            qoraContainer.classList.add('qora-red');
+
+            // Random position anywhere on screen (with margins)
+            const screen = {
+                width: window.innerWidth,
+                height: window.innerHeight
+            };
+            const margin = 80;
+            
+            const x = margin + Math.random() * (screen.width - margin * 2 - 100);
+            const y = margin + Math.random() * (screen.height - margin * 2 - 100);
+            
+            qoraContainer.style.left = x + 'px';
+            qoraContainer.style.top = y + 'px';
+            qoraContainer.classList.add('show');
+
+            // Auto-hide after 5 seconds if not clicked (bosish ixtiyoriy)
+            qoraTimeout = setTimeout(() => {
+                hideQora();
+            }, 5000);
+        }
+
+        // Catch qora (penalty) - ayiradi
+        function catchQora(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!gameActive || isPaused || !qoraContainer.classList.contains('show')) return;
+
+            // Subtract random penalty (100-1000 TON, 100 ga karrali)
+            const penaltyAmount = (Math.floor(Math.random() * 10) + 1) * 100; // 100, 200, 300... 1000
+            
+            // Subtract from score
+            const totalNano = tonCount * NANO_PER_TON + nanoScore;
+            let newTotal = totalNano - penaltyAmount;
+            if (newTotal < 0) newTotal = 0;
+            
+            tonCount = Math.floor(newTotal / NANO_PER_TON);
+            nanoScore = newTotal % NANO_PER_TON;
+
+            // Visual feedback
+            showFloatText(e.clientX || e.touches[0].clientX, (e.clientY || e.touches[0].clientY) - 50, `-${penaltyAmount} nTON!`, 'float-minus');
+
+            updateDisplay();
+
+            // Animation and hide
+            qoraContainer.classList.add('qora-collected');
+            clearTimeout(qoraTimeout);
+            
+            setTimeout(() => {
+                hideQora();
+            }, 400);
+        }
+
+        // Hide qora
+        function hideQora() {
+            if (!qoraContainer) return;
+            clearTimeout(qoraTimeout);
+            qoraColors.forEach(c => qoraContainer.classList.remove(c));
+            qoraContainer.classList.remove('show');
+            qoraContainer.classList.remove('qora-collected');
+        }
+
+        // Bonus uchun wallet SVG fayllari
+        const walletSvgs = ['wallet.svg', 'wallet_1.svg', 'wallet_2.svg', 'wallet_3.svg', 'wallet_4.svg'];
+
+        // Show bonus TON
+        let bonusTimeout = null;
+        let currentBonusAmount = 100;
+        const bonusColors = ['bonus-yellow', 'bonus-green', 'bonus-cyan', 'bonus-orange'];
+        function showBonus() {
+            const bonusEl = document.getElementById('bonus-ton');
+            const bonusImg = document.getElementById('bonus-img');
+            if (!bonusEl || !bonusImg) return;
+
+            // Random bonus amount (100-1000 nTON, 100 ga karrali)
+            currentBonusAmount = (Math.floor(Math.random() * 10) + 1) * 100;
+            
+            // Tasodifiy wallet SVG tanlash
+            const randomWalletSvg = walletSvgs[Math.floor(Math.random() * walletSvgs.length)];
+            bonusImg.src = 'assets/' + randomWalletSvg;
+            
+            // Katta bonuslar uchun kattaroq ko'rsatish
+            if (currentBonusAmount >= 600) {
+                bonusEl.classList.add('bonus-large');
+            } else {
+                bonusEl.classList.remove('bonus-large');
+            }
+
+            // Random rang tanlash
+            bonusColors.forEach(c => bonusEl.classList.remove(c));
+            const randomColor = bonusColors[Math.floor(Math.random() * bonusColors.length)];
+            bonusEl.classList.add(randomColor);
+
+            // Random position anywhere on screen (with margins)
+            const screen = {
+                width: window.innerWidth,
+                height: window.innerHeight
+            };
+            const margin = 80;
+            
+            const x = margin + Math.random() * (screen.width - margin * 2 - 100);
+            const y = margin + Math.random() * (screen.height - margin * 2 - 100);
+            
+            bonusEl.style.left = x + 'px';
+            bonusEl.style.top = y + 'px';
+            bonusEl.classList.add('show');
+
+            // Auto-hide after 5 seconds if not clicked
+            bonusTimeout = setTimeout(() => {
+                hideBonus();
+            }, 5000);
+        }
+
+        // Hide bonus
+        function hideBonus() {
+            const bonusEl = document.getElementById('bonus-ton');
+            if (!bonusEl) return;
+            
+            clearTimeout(bonusTimeout);
+            bonusColors.forEach(c => bonusEl.classList.remove(c));
+            bonusEl.classList.remove('show');
+            bonusEl.classList.remove('bonus-collected');
+            bonusEl.classList.remove('bonus-large');
+        }
+
+        // Catch bonus
+        function catchBonus(e) {
+            e.preventDefault();
+            if (!gameActive || isPaused) return;
+
+            const bonusEl = document.getElementById('bonus-ton');
+            if (!bonusEl || !bonusEl.classList.contains('show')) return;
+
+            // Add bonus amount
+            nanoScore += currentBonusAmount;
+
+            // Check if reached 1 TON
+            if (nanoScore >= NANO_PER_TON) {
+                tonCount++;
+                nanoScore = nanoScore - NANO_PER_TON;
+            }
+
+            // Visual feedback
+            showFloatText(e.clientX || e.touches[0].clientX, (e.clientY || e.touches[0].clientY) - 50, `+${currentBonusAmount} nTON BONUS!`, 'float-plus');
+
+            updateDisplay();
+
+            // Animation and hide
+            bonusEl.classList.add('bonus-collected');
+            clearTimeout(bonusTimeout);
+            
+            setTimeout(() => {
+                hideBonus();
+            }, 400);
+        }
+
+        function showFloatText(x, y, text, className) {
+            const floatEl = document.createElement('div');
+            floatEl.className = `float-text ${className}`;
+            floatEl.textContent = text;
+            floatEl.style.left = (x - 40) + 'px';
+            floatEl.style.top = y + 'px';
+            document.body.appendChild(floatEl);
+            setTimeout(() => floatEl.remove(), 1000);
+        }
+
+        function updateDisplay() {
+            tonDisplayElement.textContent = tonCount;
+            ntonDisplayElement.textContent = nanoScore.toString().padStart(9, '0');
+            totalClicksElement.textContent = totalClicks;
+        }
+
+        // Start new game
+        function startNewGame() {
+            nanoScore = 0;
+            tonCount = 0;
+            totalClicks = 0;
+            currentSpeedLevel = 1;
+            hideQora();
+            hideBonus();
+            gameActive = true;
+            isPaused = false;
+            
+            updateDisplay();
+            startScreen.classList.add('hidden');
+            
+            stopBtn.textContent = '⏹️ STOP';
+            stopBtn.classList.remove('start-mode');
+            
+            showCoin();
+        }
+
+        // Continue saved game
+        function continueGame() {
+            loadGame();
+            gameActive = true;
+            isPaused = false;
+            startScreen.classList.add('hidden');
+            
+            stopBtn.textContent = '⏹️ STOP';
+            stopBtn.classList.remove('start-mode');
+            
+            showCoin();
+        }
+
+        // Toggle stop/start
+        function toggleStop() {
+            if (gameActive) {
+                // Stop the game
+                isPaused = true;
+                gameActive = false;
+                clearTimeout(coinTimeout);
+                coin.style.display = 'none';
+                
+                saveGame();
+                
+                stopBtn.textContent = '▶️ START';
+                stopBtn.classList.add('start-mode');
+            } else {
+                // Resume from stopped state
+                isPaused = false;
+                gameActive = true;
+                
+                stopBtn.textContent = '⏹️ STOP';
+                stopBtn.classList.remove('start-mode');
+                
+                showCoin();
+            }
+        }
+
+        // Resume from stopped state
+        function resumeFromMenu() {
+            isPaused = false;
+            gameActive = true;
+            
+            stopBtn.textContent = '⏹️ STOP';
+            stopBtn.classList.remove('start-mode');
+            
+            showCoin();
+        }
+
+        // Exit to main menu
+        function exitToMenu() {
+            saveGame();
+            gameActive = false;
+            isPaused = false;
+            clearTimeout(coinTimeout);
+            coin.style.display = 'none';
+            startScreen.classList.remove('hidden');
+            
+            stopBtn.textContent = '⏹️ STOP';
+            stopBtn.classList.remove('start-mode');
+            
+            checkSavedGame();
+        }
+
+        // Shop funksiyalari
+        async function loadShopItems() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/shop/items`);
+                const data = await response.json();
+                
+                if (data.success && shopItemsEl) {
+                    shopItemsEl.innerHTML = '';
+                    
+                    data.items.forEach(item => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.style.cssText = 'background: rgba(0,0,0,0.3); border-radius: 10px; padding: 15px; display: flex; justify-content: space-between; align-items: center;';
+                        itemDiv.innerHTML = `
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; color: #fff; margin-bottom: 5px;">${item.name}</div>
+                                <div style="font-size: 12px; color: #aaa; margin-bottom: 5px;">${item.description || ''}</div>
+                                <div style="color: #ffd700; font-size: 14px;">${item.price} 💎</div>
+                            </div>
+                            <button onclick="purchaseItem('${item.itemId}')" 
+                                style="background: linear-gradient(135deg, #2ed573, #26d0ce); border: none; color: white; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: 12px;">
+                                Sotib olish
+                            </button>
+                        `;
+                        shopItemsEl.appendChild(itemDiv);
+                    });
+                }
+            } catch (error) {
+                console.error('Load shop items error:', error);
+                if (shopItemsEl) {
+                    shopItemsEl.innerHTML = '<p style="color: #ff6b6b; text-align: center;">Do\'kon yuklanmadi</p>';
+                }
+            }
+        }
+
+        // Item sotib olish
+        async function purchaseItem(itemId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/shop/purchase`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, itemId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`${data.message}\nQolgan balans: ${data.remainingBalance} 💎`);
+                    
+                    // Update jetton balance display
+                    if (jettonBalanceEl) {
+                        jettonBalanceEl.textContent = data.remainingBalance.toLocaleString() + ' 💎';
+                    }
+                    
+                    // Reload shop items to show updated state
+                    loadShopItems();
+                } else {
+                    alert('Xatolik: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Purchase error:', error);
+                alert('Sotib olishda xatolik yuz berdi');
+            }
+        }
+
+        // TON -> Jetton konvertatsiya
+        async function convertTonToJetton() {
+            if (!userId) {
+                alert('Avval wallet ulang');
+                return;
+            }
+            
+            const tonAmount = prompt('Nechi TON konvertatsiya qilmoqchisiz?\n1 TON = 1000 💎', '1');
+            if (!tonAmount || isNaN(tonAmount) || tonAmount <= 0) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/convert-ton`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, tonAmount: parseFloat(tonAmount) })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`${data.message}\n\TON balans: ${data.tonBalance.toFixed(4)} TON\nJetton balans: ${data.jettonBalance.toLocaleString()} 💎`);
+                    
+                    // Update displays
+                    if (gameBalanceEl) gameBalanceEl.textContent = data.tonBalance.toFixed(4) + ' TON';
+                    if (jettonBalanceEl) jettonBalanceEl.textContent = data.jettonBalance.toLocaleString() + ' 💎';
+                } else {
+                    alert('Xatolik: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Convert TON error:', error);
+                alert('Konvertatsiyada xatolik yuz berdi');
+            }
+        }
+
+        // Event listeners
+        document.getElementById('start-btn').addEventListener('click', () => showNewGameConfirm('start'));
+        document.getElementById('new-game-btn').addEventListener('click', () => showNewGameConfirm('saved'));
+        document.getElementById('continue-btn').addEventListener('click', continueGame);
+        document.getElementById('exit-start-btn').addEventListener('click', exitToMenu);
+        exitGameBtn.addEventListener('click', exitToMenu);
+        stopBtn.addEventListener('click', toggleStop);
+        walletBtn.addEventListener('click', showWalletSelection);
+        document.getElementById('close-wallet-modal').addEventListener('click', () => {
+            walletModal.classList.remove('show');
+        });
+
+        coin.addEventListener('click', catchCoin);
+        coin.addEventListener('touchstart', catchCoin, { passive: false });
+
+        // Qora event listeners
+        if (qoraContainer) {
+            qoraContainer.addEventListener('click', catchQora);
+            qoraContainer.addEventListener('touchstart', catchQora, { passive: false });
+        }
+
+        // Bonus TON event listeners
+        const bonusEl = document.getElementById('bonus-ton');
+        if (bonusEl) {
+            bonusEl.addEventListener('click', catchBonus);
+            bonusEl.addEventListener('touchstart', catchBonus, { passive: false });
+        }
+
+        // Deposit wallet event listeners
+        const copyAddressBtn = document.getElementById('copy-address-btn');
+        if (copyAddressBtn) {
+            copyAddressBtn.addEventListener('click', copyDepositAddress);
+        }
+
+        const checkDepositBtn = document.getElementById('check-deposit-btn');
+        if (checkDepositBtn) {
+            checkDepositBtn.addEventListener('click', checkDeposit);
+        }
+
+        // Withdraw funksiyasi
+        async function withdraw() {
+            const withdrawAddress = document.getElementById('withdraw-address').value.trim();
+            const withdrawAmount = parseFloat(document.getElementById('withdraw-amount').value);
+            const statusEl = document.getElementById('withdraw-status');
+            
+            if (!withdrawAddress || !withdrawAmount || withdrawAmount <= 0) {
+                statusEl.style.display = 'block';
+                statusEl.style.background = 'rgba(255, 71, 87, 0.2)';
+                statusEl.style.color = '#ff4757';
+                statusEl.textContent = '❌ Adres va miqdor kiriting';
+                return;
+            }
+            
+            if (withdrawAmount < 0.1) {
+                statusEl.style.display = 'block';
+                statusEl.style.background = 'rgba(255, 71, 87, 0.2)';
+                statusEl.style.color = '#ff4757';
+                statusEl.textContent = '❌ Minimum 0.1 TON';
+                return;
+            }
+            
+            try {
+                statusEl.style.display = 'block';
+                statusEl.style.background = 'rgba(0, 210, 255, 0.2)';
+                statusEl.style.color = '#00d2ff';
+                statusEl.textContent = '⏳ Yuborilmoqda...';
+                
+                const response = await fetch(`${API_BASE_URL}/withdraw`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: userId,
+                        amount: withdrawAmount,
+                        toAddress: withdrawAddress
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusEl.style.background = 'rgba(46, 213, 115, 0.2)';
+                    statusEl.style.color = '#2ed573';
+                    statusEl.textContent = `✅ ${withdrawAmount} TON yuborildi!`;
+                    
+                    // Clear inputs
+                    document.getElementById('withdraw-address').value = '';
+                    document.getElementById('withdraw-amount').value = '';
+                    
+                    // Refresh balance
+                    loadUserData();
+                } else {
+                    statusEl.style.background = 'rgba(255, 71, 87, 0.2)';
+                    statusEl.style.color = '#ff4757';
+                    statusEl.textContent = '❌ ' + (data.error || 'Xatolik yuz berdi');
+                }
+            } catch (error) {
+                console.error('Withdraw error:', error);
+                statusEl.style.background = 'rgba(255, 71, 87, 0.2)';
+                statusEl.style.color = '#ff4757';
+                statusEl.textContent = '❌ Tarmoq xatoligi';
+            }
+        }
+
+        // Withdraw tugmasi
+        const withdrawBtn = document.getElementById('withdraw-btn');
+        if (withdrawBtn) {
+            withdrawBtn.addEventListener('click', withdraw);
+        }
+
+        // Jetton konvertatsiya tugmasi
+        if (convertTonBtn) {
+            convertTonBtn.addEventListener('click', convertTonToJetton);
+        }
+
+        // Confirm modal elements
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmTon = document.getElementById('confirm-ton');
+        const confirmNton = document.getElementById('confirm-nton');
+        const confirmYes = document.getElementById('confirm-yes');
+        const confirmNo = document.getElementById('confirm-no');
+
+        // Show confirm modal for new game
+        function showNewGameConfirm(from) {
+            // Joriy yoki saqlangan hisobni olish
+            let displayTon = tonCount;
+            let displayNton = nanoScore;
+            
+            // Agar joriy o'yin bo'lmasa, saqlangan o'yindan olish
+            if (!gameActive && displayTon === 0 && displayNton === 0) {
+                const saved = localStorage.getItem('tonCoinRushSave');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    const totalNano = data.nanoScore || 0;
+                    displayTon = Math.floor(totalNano / NANO_PER_TON);
+                    displayNton = totalNano % NANO_PER_TON;
+                }
+            }
+            
+            // Hisobni ko'rsatish
+            confirmTon.textContent = displayTon;
+            confirmNton.textContent = displayNton.toLocaleString();
+            
+            confirmModal.style.display = 'flex';
+            
+            // Ha tugmasi
+            confirmYes.onclick = () => {
+                confirmModal.style.display = 'none';
+                startNewGame();
+            };
+            
+            // Yo'q tugmasi
+            confirmNo.onclick = () => {
+                confirmModal.style.display = 'none';
+            };
+        }
+
+        if (disconnectWalletBtn) {
+            disconnectWalletBtn.addEventListener('click', async () => {
+                if (tonConnect) {
+                    await tonConnect.disconnect();
+                }
+            });
+        }
+
+        // Auto-save when page hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && gameActive && !isPaused) {
+                saveGame();
+                isPaused = true;
+                clearTimeout(coinTimeout);
+                coin.style.display = 'none';
+                
+                stopBtn.textContent = '▶️ START';
+                stopBtn.classList.add('start-mode');
+            }
+        });
+
+        // Telegram Web App
+        if (window.Telegram && window.Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+            
+            // Foydalanuvchi nomini olish va ko'rsatish
+            const user = Telegram.WebApp.initDataUnsafe?.user;
+            if (user && user.first_name) {
+                // Sarlavha o'rniga foydalanuvchi nomini ko'rsatish
+                const titleEl = document.getElementById('title');
+                if (titleEl) {
+                    titleEl.innerHTML = `👋 ${user.first_name}`;
+                }
+            }
+        }
+
+        // Initialize TON Connect when page loads
+        window.addEventListener('load', () => {
+            initTonConnect();
+        });
+
+        // Check for saved game on load
+        checkSavedGame();
+    </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "name": "tongame",
+  "version": "1.0.0",
+  "description": "TON Coin Rush Game with Real TON Blockchain",
+  "main": "server/server-real.js",
+  "scripts": {
+    "start": "node server/server-real.js",
+    "build": "echo 'No build step required'",
+    "dev": "nodemon server/server-real.js"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "dependencies": {
+    "@ton/crypto": "^3.2.0",
+    "@ton/ton": "^13.0.0",
+    "axios": "^1.13.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.0",
+    "express": "^4.18.2",
+    "mongoose": "^8.0.0",
+    "node-telegram-bot-api": "^0.67.0"
+  }
+}
