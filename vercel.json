@@ -4,6 +4,14 @@
   "framework": null,
   "routes": [
     {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/(.*\\.(png|svg|jpg|jpeg|gif|ico|json|js|css))",
+      "dest": "/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/colorrush.html"
     }
