@@ -544,8 +544,11 @@
             left: 50%;
             transform: translateX(-50%);
             display: flex;
+            justify-content: center;
+            align-items: center;
             gap: clamp(10px, 2vw, 20px);
             z-index: 100;
+            width: auto;
         }
 
         /* Stop/Start button - responsive */
@@ -561,6 +564,7 @@
             box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4);
             transition: all 0.3s;
             min-width: clamp(150px, 20vw, 180px);
+            flex: 0 0 auto;
         }
 
         #stop-btn:hover {
@@ -589,6 +593,7 @@
             box-shadow: 0 4px 20px rgba(162, 155, 254, 0.4);
             transition: all 0.3s;
             min-width: clamp(150px, 20vw, 180px);
+            flex: 0 0 auto;
         }
 
         #exit-game-btn:hover {
