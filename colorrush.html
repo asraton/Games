@@ -224,90 +224,6 @@
             display: none;
         }
 
-        /* Qora (penalty) styles - alohida pozitsiya */
-        #qora-container {
-            position: fixed;
-            width: clamp(80px, 12vw, 100px);
-            height: clamp(80px, 12vw, 100px);
-            cursor: pointer;
-            z-index: 46;
-            display: none;
-            transition: transform 0.2s;
-        }
-
-        #qora-container.show {
-            display: block;
-            animation: qoraPop 0.4s ease-out;
-        }
-
-        #qora {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border-radius: 50%;
-            animation: qoraPulse 0.6s ease-in-out infinite;
-        }
-
-        /* Qora rangli pulsatsiya klasslari */
-        #qora-container.qora-red #qora { animation: qoraPulseRed 0.6s ease-in-out infinite; }
-        #qora-container.qora-purple #qora { animation: qoraPulsePurple 0.6s ease-in-out infinite; }
-        #qora-container.qora-blue #qora { animation: qoraPulseBlue 0.6s ease-in-out infinite; }
-        #qora-container.qora-green #qora { animation: qoraPulseGreen 0.6s ease-in-out infinite; }
-
-        @keyframes qoraPulseRed {
-            0%, 100% { filter: brightness(0.8) drop-shadow(0 0 15px rgba(255, 50, 50, 0.9)); }
-            50% { filter: brightness(1) drop-shadow(0 0 25px rgba(255, 80, 80, 1)); }
-        }
-
-        @keyframes qoraPulsePurple {
-            0%, 100% { filter: brightness(0.8) drop-shadow(0 0 15px rgba(200, 0, 255, 0.9)); }
-            50% { filter: brightness(1) drop-shadow(0 0 25px rgba(220, 50, 255, 1)); }
-        }
-
-        @keyframes qoraPulseBlue {
-            0%, 100% { filter: brightness(0.8) drop-shadow(0 0 15px rgba(50, 100, 255, 0.9)); }
-            50% { filter: brightness(1) drop-shadow(0 0 25px rgba(80, 130, 255, 1)); }
-        }
-
-        @keyframes qoraPulseGreen {
-            0%, 100% { filter: brightness(0.8) drop-shadow(0 0 15px rgba(0, 200, 100, 0.9)); }
-            50% { filter: brightness(1) drop-shadow(0 0 25px rgba(50, 220, 130, 1)); }
-        }
-
-        @keyframes qoraPulse {
-            0%, 100% { filter: brightness(0.8) drop-shadow(0 0 10px rgba(0, 0, 0, 0.9)); }
-            50% { filter: brightness(1) drop-shadow(0 0 20px rgba(50, 50, 50, 1)); }
-        }
-
-        @keyframes qoraPop {
-            0% { transform: scale(0); opacity: 0; }
-            70% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        #qora-container:active {
-            transform: scale(0.9);
-        }
-
-        #qora-container.qora-collected {
-            animation: qoraShrink 0.4s ease-out forwards !important;
-        }
-
-        @keyframes qoraShrink {
-            0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(0) rotate(180deg); opacity: 0; }
-            100% { transform: scale(0); opacity: 0; }
-        }
-        .bonus-collected {
-            animation: bonusCollected 0.4s ease-out forwards !important;
-        }
-
-        @keyframes bonusCollected {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.3) rotate(-180deg); }
-            100% { transform: scale(0) rotate(-360deg); opacity: 0; }
-        }
-
         /* Coin styles - responsive sizing */
         .game-coin,
         #coin, #coin2, #coin3 {
@@ -833,8 +749,7 @@
         </div>
     </div>
 
-    <!-- Coin, Qora, Bonus elements (har doim body ichida) -->
-    <!-- Asosiy tanga (1-2 ta random chiqadi) -->
+    <!-- Tangalar (1-3 ta random chiqadi) -->
     <div id="coin" class="game-coin">
         <img src="/assets/tanga.png" alt="TON Tanga">
     </div>
@@ -843,11 +758,6 @@
     </div>
     <div id="coin3" class="game-coin">
         <img src="/assets/tanga.png" alt="TON Tanga 3">
-    </div>
-
-    <!-- Qora - tasodifiy paydo bo'ladi, bosilmasa yo'qoladi -->
-    <div id="qora-container">
-        <img id="qora" src="/assets/qora.svg" alt="Qora">
     </div>
 
     <!-- Bonus TON - tasodifiy paydo bo'ladi -->
@@ -1015,8 +925,6 @@
 
         // Elements
         const coin = document.getElementById('coin');
-        const qoraContainer = document.getElementById('qora-container');
-        const qoraEl = document.getElementById('qora');
         const tonDisplayElement = document.getElementById('ton-value');
         const ntonDisplayElement = document.getElementById('nton-display');
         const totalClicksElement = document.getElementById('total-clicks');
@@ -1349,13 +1257,15 @@
         const coinTimeouts = [null, null, null];
         const coinVisible = [false, false, false];
 
-        // Get random position for coins - more distributed across screen
-        function getRandomPosition(coinSize) {
+        // Get random position for coins - prevents overlap with existing coins
+        function getRandomPosition(coinSize, excludeIndex) {
             const screen = {
                 width: window.innerWidth,
                 height: window.innerHeight
             };
             const margin = 60;
+            const minDistance = coinSize + 50; // Minimum distance between coins
+            
             // Divide screen into zones for better distribution
             const zones = [
                 { x: [margin, screen.width * 0.4], y: [margin, screen.height * 0.4] }, // Top-left
@@ -1364,10 +1274,46 @@
                 { x: [screen.width * 0.6, screen.width - margin - coinSize], y: [screen.height * 0.6, screen.height - margin - coinSize] }, // Bottom-right
                 { x: [screen.width * 0.3, screen.width * 0.7], y: [screen.height * 0.3, screen.height * 0.7] } // Center
             ];
-            const zone = zones[Math.floor(Math.random() * zones.length)];
-            const x = zone.x[0] + Math.random() * (zone.x[1] - zone.x[0]);
-            const y = zone.y[0] + Math.random() * (zone.y[1] - zone.y[0]);
-            return { x, y };
+            
+            // Get existing coin positions
+            const existingPositions = [];
+            coins.forEach((coinEl, idx) => {
+                if (idx !== excludeIndex && coinVisible[idx] && coinEl.style.display === 'block') {
+                    existingPositions.push({
+                        x: parseFloat(coinEl.style.left) || 0,
+                        y: parseFloat(coinEl.style.top) || 0
+                    });
+                }
+            });
+            
+            // Try to find a position that doesn't overlap
+            let attempts = 0;
+            let pos;
+            let isValid = false;
+            
+            while (!isValid && attempts < 50) {
+                const zone = zones[Math.floor(Math.random() * zones.length)];
+                pos = {
+                    x: zone.x[0] + Math.random() * (zone.x[1] - zone.x[0]),
+                    y: zone.y[0] + Math.random() * (zone.y[1] - zone.y[0])
+                };
+                
+                // Check distance from all existing coins
+                isValid = true;
+                for (const existing of existingPositions) {
+                    const distance = Math.sqrt(
+                        Math.pow(pos.x - existing.x, 2) + 
+                        Math.pow(pos.y - existing.y, 2)
+                    );
+                    if (distance < minDistance) {
+                        isValid = false;
+                        break;
+                    }
+                }
+                attempts++;
+            }
+            
+            return pos;
         }
 
         // Show coin at index
@@ -1383,9 +1329,9 @@
             const randomColor = pulseColors[Math.floor(Math.random() * pulseColors.length)];
             coinImg.classList.add(randomColor);
             
-            // Random position - har xil joylarda
+            // Random position - bir-birini ustida chiqmasin
             const coinSize = 180;
-            const pos = getRandomPosition(coinSize);
+            const pos = getRandomPosition(coinSize, index);
             
             coinEl.style.left = pos.x + 'px';
             coinEl.style.top = pos.y + 'px';
@@ -1481,11 +1427,6 @@
                 showBonus();
             }
 
-            // Check for qora (penalty) - tasodifiy 10% chance
-            if (Math.random() < 0.10) {
-                showQora();
-            }
-
             // Visual feedback
             const x = e.clientX || (e.touches && e.touches[0].clientX);
             const y = e.clientY || (e.touches && e.touches[0].clientY);
@@ -1500,76 +1441,6 @@
             if (coinIndex !== undefined) {
                 hideCoinAt(coinIndex);
             }
-        }
-
-        // Show qora (penalty) - alohida random joyda, FAQAT QIZIL RANGDA
-        let qoraTimeout = null;
-        const qoraColors = ['qora-red']; // Faqat qizil rang
-        function showQora() {
-            if (!qoraContainer || !gameActive || isPaused) return;
-            
-            // Faqat qizil rang
-            qoraColors.forEach(c => qoraContainer.classList.remove(c));
-            qoraContainer.classList.add('qora-red');
-
-            // Random position anywhere on screen (with margins)
-            const screen = {
-                width: window.innerWidth,
-                height: window.innerHeight
-            };
-            const margin = 80;
-            
-            const x = margin + Math.random() * (screen.width - margin * 2 - 100);
-            const y = margin + Math.random() * (screen.height - margin * 2 - 100);
-            
-            qoraContainer.style.left = x + 'px';
-            qoraContainer.style.top = y + 'px';
-            qoraContainer.classList.add('show');
-
-            // Auto-hide after 5 seconds if not clicked (bosish ixtiyoriy)
-            qoraTimeout = setTimeout(() => {
-                hideQora();
-            }, 5000);
-        }
-
-        // Catch qora (penalty) - ayiradi
-        function catchQora(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!gameActive || isPaused || !qoraContainer.classList.contains('show')) return;
-
-            // Subtract random penalty (100-1000 TON, 100 ga karrali)
-            const penaltyAmount = (Math.floor(Math.random() * 10) + 1) * 100; // 100, 200, 300... 1000
-            
-            // Subtract from score
-            const totalNano = tonCount * NANO_PER_TON + nanoScore;
-            let newTotal = totalNano - penaltyAmount;
-            if (newTotal < 0) newTotal = 0;
-            
-            tonCount = Math.floor(newTotal / NANO_PER_TON);
-            nanoScore = newTotal % NANO_PER_TON;
-
-            // Visual feedback
-            showFloatText(e.clientX || e.touches[0].clientX, (e.clientY || e.touches[0].clientY) - 50, `-${penaltyAmount} nTON!`, 'float-minus');
-
-            updateDisplay();
-
-            // Animation and hide
-            qoraContainer.classList.add('qora-collected');
-            clearTimeout(qoraTimeout);
-            
-            setTimeout(() => {
-                hideQora();
-            }, 400);
-        }
-
-        // Hide qora
-        function hideQora() {
-            if (!qoraContainer) return;
-            clearTimeout(qoraTimeout);
-            qoraColors.forEach(c => qoraContainer.classList.remove(c));
-            qoraContainer.classList.remove('show');
-            qoraContainer.classList.remove('qora-collected');
         }
 
         // Bonus uchun wallet SVG fayllari
@@ -1688,7 +1559,6 @@
             tonCount = 0;
             totalClicks = 0;
             currentSpeedLevel = 1;
-            hideQora();
             hideBonus();
             gameActive = true;
             isPaused = false;
@@ -1889,12 +1759,6 @@
                 coinEl.addEventListener('touchstart', (e) => catchCoin(e, index), { passive: false });
             }
         });
-
-        // Qora event listeners
-        if (qoraContainer) {
-            qoraContainer.addEventListener('click', catchQora);
-            qoraContainer.addEventListener('touchstart', catchQora, { passive: false });
-        }
 
         // Bonus TON event listeners
         const bonusEl = document.getElementById('bonus-ton');
