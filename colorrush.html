@@ -237,12 +237,6 @@
     <div id="coin" class="game-coin">
         <img src="/assets/tanga.png" alt="TON Tanga">
     </div>
-    <div id="coin2" class="game-coin">
-        <img src="/assets/tanga.png" alt="TON Tanga 2">
-    </div>
-    <div id="coin3" class="game-coin">
-        <img src="/assets/tanga.png" alt="TON Tanga 3">
-    </div>
 
     <script>
         // Game state
@@ -259,13 +253,11 @@
         const ntonDisplayElement = document.getElementById('nton-display');
         const stopBtn = document.getElementById('stop-btn');
 
-        const coins = [
-            document.getElementById('coin'),
-            document.getElementById('coin2'),
-            document.getElementById('coin3')
-        ];
-        const coinTimeouts = [null, null, null];
-        const coinVisible = [false, false, false];
+        const coin = document.getElementById('coin');
+        let coinTimeout = null;
+        let coinVisible = false;
+
+        let currentCoinColor = '';
 
         const pulseColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 'pulse-cyan', 'pulse-purple', 'pulse-orange'];
 
@@ -283,92 +275,52 @@
             return Math.max(300, 2500 - (currentSpeedLevel * 400));
         }
 
-        function getRandomPosition(coinSize, excludeIndex) {
+        function getRandomPosition(coinSize) {
             const screen = { width: window.innerWidth, height: window.innerHeight };
-            const margin = 40;
-            const minDistance = coinSize * 0.6;
-            const existingPositions = [];
-
-            coins.forEach((coinEl, idx) => {
-                if (idx !== excludeIndex && coinVisible[idx] && coinEl.style.display === 'block') {
-                    existingPositions.push({
-                        x: parseFloat(coinEl.style.left) || 0,
-                        y: parseFloat(coinEl.style.top) || 0
-                    });
-                }
-            });
-
-            let attempts = 0;
-            let pos;
-            let isValid = false;
-
-            while (!isValid && attempts < 100) {
-                pos = {
-                    x: margin + Math.random() * (screen.width - margin * 2 - coinSize),
-                    y: margin + Math.random() * (screen.height - margin * 2 - coinSize)
-                };
-
-                isValid = true;
-                for (const existing of existingPositions) {
-                    const distance = Math.sqrt(Math.pow(pos.x - existing.x, 2) + Math.pow(pos.y - existing.y, 2));
-                    if (distance < minDistance) {
-                        isValid = false;
-                        break;
-                    }
-                }
-                attempts++;
-            }
-            return pos;
-        }
-
-        function showCoinAt(index) {
-            if (!gameActive || isPaused) return;
-            const coinEl = coins[index];
-            if (!coinEl) return;
-
-            const coinImg = coinEl.querySelector('img');
-            pulseColors.forEach(c => coinImg.classList.remove(c));
-            coinImg.classList.add(pulseColors[Math.floor(Math.random() * pulseColors.length)]);
-
-            const coinSize = 180;
-            const pos = getRandomPosition(coinSize, index);
-
-            coinEl.style.left = pos.x + 'px';
-            coinEl.style.top = pos.y + 'px';
-            coinEl.style.display = 'block';
-            coinEl.classList.add('coin-pop');
-            coinVisible[index] = true;
-
-            setTimeout(() => coinEl.classList.remove('coin-pop'), 400);
-
-            const visibleTime = calculateSpeed();
-            clearTimeout(coinTimeouts[index]);
-            coinTimeouts[index] = setTimeout(() => {
-                if (gameActive && !isPaused) hideCoinAt(index);
-            }, visibleTime);
-        }
-
-        function hideCoinAt(index) {
-            clearTimeout(coinTimeouts[index]);
-            const coinEl = coins[index];
-            if (!coinEl) return;
-
-            coinEl.classList.add('coin-shrink');
-            coinTimeouts[index] = setTimeout(() => {
-                coinEl.style.display = 'none';
-                coinEl.classList.remove('coin-shrink');
-                coinVisible[index] = false;
-                if (gameActive && !isPaused) {
-                    setTimeout(() => showCoinAt(index), Math.random() * 500);
-                }
-            }, 300);
+            const margin = 20;
+            return {
+                x: margin + Math.random() * (screen.width - margin * 2 - coinSize),
+                y: margin + Math.random() * (screen.height - margin * 2 - coinSize)
+            };
         }
 
         function showCoin() {
             if (!gameActive || isPaused) return;
-            showCoinAt(0);
-            if (Math.random() < 0.4) setTimeout(() => showCoinAt(1), 200);
-            if (Math.random() < 0.15) setTimeout(() => showCoinAt(2), 400);
+
+            const coinImg = coin.querySelector('img');
+            pulseColors.forEach(c => coinImg.classList.remove(c));
+            currentCoinColor = pulseColors[Math.floor(Math.random() * pulseColors.length)];
+            coinImg.classList.add(currentCoinColor);
+
+            const coinSize = 180;
+            const pos = getRandomPosition(coinSize);
+
+            coin.style.left = pos.x + 'px';
+            coin.style.top = pos.y + 'px';
+            coin.style.display = 'block';
+            coin.classList.add('coin-pop');
+            coinVisible = true;
+
+            setTimeout(() => coin.classList.remove('coin-pop'), 400);
+
+            const visibleTime = calculateSpeed();
+            clearTimeout(coinTimeout);
+            coinTimeout = setTimeout(() => {
+                if (gameActive && !isPaused) hideCoin();
+            }, visibleTime);
+        }
+
+        function hideCoin() {
+            clearTimeout(coinTimeout);
+            coin.classList.add('coin-shrink');
+            coinTimeout = setTimeout(() => {
+                coin.style.display = 'none';
+                coin.classList.remove('coin-shrink');
+                coinVisible = false;
+                if (gameActive && !isPaused) {
+                    setTimeout(() => showCoin(), Math.random() * 500);
+                }
+            }, 300);
         }
 
         function showFloatText(x, y, text) {
@@ -381,34 +333,47 @@
             setTimeout(() => floatEl.remove(), 1000);
         }
 
-        function catchCoin(e, coinIndex) {
+        function catchCoin(e) {
             e.preventDefault();
-            if (!gameActive || isPaused) return;
-            if (coinIndex !== undefined && !coinVisible[coinIndex]) return;
+            if (!gameActive || isPaused || !coinVisible) return;
 
-            clearTimeout(coinTimeouts[coinIndex || 0]);
+            clearTimeout(coinTimeout);
             totalClicks++;
 
-            const reward = getReward();
+            // Qizil rang bo'lsa +1000, boshqa rang bo'lsa -1000
+            const isRed = currentCoinColor === 'pulse-red';
+            const reward = isRed ? 1000 : -1000;
+            
+            // Skorni yangilash
             nanoScore += reward;
-
+            
+            // Agar minus bo'lib ketsa, TON dan kamaytirish
+            if (nanoScore < 0) {
+                if (tonCount > 0) {
+                    tonCount--;
+                    nanoScore = NANO_PER_TON + nanoScore;
+                } else {
+                    nanoScore = 0; // 0 dan kamaymasin
+                }
+            }
+            
+            // TON dan oshib ketsa
             if (nanoScore >= NANO_PER_TON) {
                 tonCount++;
                 nanoScore = nanoScore - NANO_PER_TON;
             }
 
-            if (coinIndex !== undefined && coins[coinIndex]) {
-                coins[coinIndex].classList.add('coin-clicked');
-                setTimeout(() => coins[coinIndex].classList.remove('coin-clicked'), 500);
-            }
+            coin.classList.add('coin-clicked');
+            setTimeout(() => coin.classList.remove('coin-clicked'), 500);
 
             const x = e.clientX || (e.touches && e.touches[0].clientX);
             const y = e.clientY || (e.touches && e.touches[0].clientY);
 
-            if (x && y) showFloatText(x, y - 50, '+' + reward + ' nTON');
+            const rewardText = isRed ? '+1000 nTON' : '-1000 nTON';
+            if (x && y) showFloatText(x, y - 50, rewardText);
 
             updateDisplay();
-            if (coinIndex !== undefined) hideCoinAt(coinIndex);
+            hideCoin();
         }
 
         function startNewGame() {
@@ -430,10 +395,8 @@
         function stopGame() {
             isPaused = true;
             gameActive = false;
-            coinTimeouts.forEach((timeout, index) => {
-                clearTimeout(timeout);
-                if (coins[index]) coins[index].style.display = 'none';
-            });
+            clearTimeout(coinTimeout);
+            coin.style.display = 'none';
 
             stopBtn.textContent = '▶️ START';
             stopBtn.classList.remove('stop-mode');
@@ -450,12 +413,8 @@
         // Event listeners
         stopBtn.addEventListener('click', toggleGame);
 
-        coins.forEach((coinEl, index) => {
-            if (coinEl) {
-                coinEl.addEventListener('click', (e) => catchCoin(e, index));
-                coinEl.addEventListener('touchstart', (e) => catchCoin(e, index), { passive: false });
-            }
-        });
+        coin.addEventListener('click', catchCoin);
+        coin.addEventListener('touchstart', catchCoin, { passive: false });
 
         // Telegram Web App
         if (window.Telegram && window.Telegram.WebApp) {
