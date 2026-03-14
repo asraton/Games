@@ -27,18 +27,24 @@ async function toncenterRequest(method, params = {}) {
     try {
         const url = `${TON_CENTER_ENDPOINT}/${method}`;
         const response = await axios.get(url, {
-            params: {
-                ...params,
-                api_key: TON_API_KEY
-            },
-            timeout: 10000
+            params: { ...params, api_key: TON_API_KEY },
+            timeout: 30000
         });
         return response.data;
     } catch (error) {
         console.error('TON Center API error:', error.message);
-        throw error;
+        return null;
     }
 }
+
+// Static files - parent directory (root) dan serve qilish
+const path = require('path');
+app.use(express.static(path.join(__dirname, '..')));
+
+// Root route - colorrush.html serve qilish
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'colorrush.html'));
+});
 
 // Yangi deposit wallet yaratish
 async function createDepositWallet() {
