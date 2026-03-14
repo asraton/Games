@@ -737,7 +737,7 @@
         coin.addEventListener('click', catchCoin);
         coin.addEventListener('touchstart', catchCoin, { passive: false });
 
-        // Telegram Web App
+        // Telegram Web App - ismlarni olish (URL va Telegram dan)
         let userInitials = '';
         console.log('Telegram WebApp tekshirilmoqda...');
         
@@ -793,18 +793,6 @@
         if (!userInitials && firstName) userInitials = firstName.substring(0, 2).toUpperCase();
         
         console.log('Hosil qilingan initials:', userInitials);
-        
-        // Display user badge
-        const userBadge = document.getElementById('user-badge');
-        console.log('user-badge element:', userBadge);
-        
-        if (userBadge && userInitials) {
-            userBadge.textContent = userInitials;
-            userBadge.style.display = 'flex';
-            console.log('Badge ko\'rsatildi:', userInitials);
-        } else {
-            console.log('Badge ko\'rsatilmadi - element yo\'q:', !userBadge, 'yoki initials yo\'q:', !userInitials);
-        }
 
         // W tugmasi va Wallet paneli
         let tonConnectUI = null;
@@ -866,6 +854,19 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // User badge ni ko'rsatish - DOM yuklangandan keyin
+            const userBadge = document.getElementById('user-badge');
+            console.log('DOMContentLoaded: user-badge element:', userBadge);
+            console.log('DOMContentLoaded: userInitials:', userInitials);
+            
+            if (userBadge && userInitials) {
+                userBadge.textContent = userInitials;
+                userBadge.style.display = 'flex';
+                console.log('Badge ko\'rsatildi:', userInitials);
+            } else {
+                console.log('Badge ko\'rsatilmadi - element yo\'q:', !userBadge, 'yoki initials yo\'q:', !userInitials);
+            }
+            
             const wBtn = document.getElementById('w-btn');
             const walletPanel = document.getElementById('wallet-panel');
             const modal = document.getElementById('wallet-modal');
