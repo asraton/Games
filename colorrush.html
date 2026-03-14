@@ -340,27 +340,34 @@
             clearTimeout(coinTimeout);
             totalClicks++;
 
-            // Qizil rang bo'lsa +1000, boshqa rang bo'lsa -1000
             const isRed = currentCoinColor === 'pulse-red';
-            const reward = isRed ? 1000 : -1000;
+            let rewardText;
             
-            // Skorni yangilash
-            nanoScore += reward;
-            
-            // Agar minus bo'lib ketsa, TON dan kamaytirish
-            if (nanoScore < 0) {
-                if (tonCount > 0) {
-                    tonCount--;
-                    nanoScore = NANO_PER_TON + nanoScore;
-                } else {
-                    nanoScore = 0; // 0 dan kamaymasin
+            if (isRed) {
+                // Qizil bo'lsa minus 1000
+                nanoScore -= 1000;
+                rewardText = '-1000 nTON';
+                
+                // Agar minus bo'lib ketsa, TON dan kamaytirish
+                if (nanoScore < 0) {
+                    if (tonCount > 0) {
+                        tonCount--;
+                        nanoScore = NANO_PER_TON + nanoScore;
+                    } else {
+                        nanoScore = 0;
+                    }
                 }
-            }
-            
-            // TON dan oshib ketsa
-            if (nanoScore >= NANO_PER_TON) {
-                tonCount++;
-                nanoScore = nanoScore - NANO_PER_TON;
+            } else {
+                // Boshqa ranglar uchun random 1-100
+                const reward = Math.floor(Math.random() * 100) + 1;
+                nanoScore += reward;
+                rewardText = '+' + reward + ' nTON';
+                
+                // TON dan oshib ketsa
+                if (nanoScore >= NANO_PER_TON) {
+                    tonCount++;
+                    nanoScore = nanoScore - NANO_PER_TON;
+                }
             }
 
             coin.classList.add('coin-clicked');
@@ -369,7 +376,6 @@
             const x = e.clientX || (e.touches && e.touches[0].clientX);
             const y = e.clientY || (e.touches && e.touches[0].clientY);
 
-            const rewardText = isRed ? '+1000 nTON' : '-1000 nTON';
             if (x && y) showFloatText(x, y - 50, rewardText);
 
             updateDisplay();
