@@ -492,6 +492,10 @@
         // userId - Telegramdan (?userId=123)
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('userId') || urlParams.get('user_id') || '';
+        const urlFirstName = decodeURIComponent(urlParams.get('firstName') || '');
+        const urlLastName = decodeURIComponent(urlParams.get('lastName') || '');
+
+        console.log('URL dan olingan:', { userId, urlFirstName, urlLastName });
 
         // LocalStorage key - har bir user uchun alohida
         const STORAGE_KEY = userId ? `asra_game_${userId}` : 'asra_game_default';
@@ -733,6 +737,11 @@
         let userInitials = '';
         console.log('Telegram WebApp tekshirilmoqda...');
         
+        // Avval URL dan ism o'qiymiz (Telegram WebApp dan keladi)
+        let firstName = urlFirstName;
+        let lastName = urlLastName;
+        
+        // Agar URL da bo'lmasa, Telegram WebApp dan olingan ma'lumotdan olish
         if (window.Telegram && window.Telegram.WebApp) {
             console.log('Telegram.WebApp topildi');
             
@@ -747,35 +756,35 @@
                 console.log('tgUser:', tgUser);
                 
                 if (tgUser) {
-                    const firstName = tgUser.first_name || '';
-                    const lastName = tgUser.last_name || '';
-                    console.log('Ism:', firstName, 'Familiya:', lastName);
-                    
-                    userInitials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-                    if (!userInitials && firstName) userInitials = firstName.substring(0, 2).toUpperCase();
-                    if (!userInitials && tgUser.username) userInitials = tgUser.username.substring(0, 2).toUpperCase();
-                    
-                    console.log('Hosil qilingan initials:', userInitials);
-                    
-                    // Display user badge
-                    const userBadge = document.getElementById('user-badge');
-                    console.log('user-badge element:', userBadge);
-                    
-                    if (userBadge && userInitials) {
-                        userBadge.textContent = userInitials;
-                        userBadge.style.display = 'flex';
-                        console.log('Badge ko\'rsatildi:', userInitials);
-                    } else {
-                        console.log('Badge ko\'rsatilmadi - element yoki initials yo\'q');
-                    }
-                } else {
-                    console.log('tgUser mavjud emas');
+                    // Agar URL da ism bo'lmasa, Telegram dan olish
+                    if (!firstName) firstName = tgUser.first_name || '';
+                    if (!lastName) lastName = tgUser.last_name || '';
+                    console.log('Telegram dan ism:', firstName, 'familiya:', lastName);
                 }
             } catch (e) {
                 console.error('Telegram WebApp xato:', e);
             }
         } else {
             console.log('Telegram.WebApp topilmadi - brauzerda ochilgan');
+        }
+        
+        // Initials hosil qilish
+        console.log('Final ism:', firstName, 'familiya:', lastName);
+        userInitials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+        if (!userInitials && firstName) userInitials = firstName.substring(0, 2).toUpperCase();
+        
+        console.log('Hosil qilingan initials:', userInitials);
+        
+        // Display user badge
+        const userBadge = document.getElementById('user-badge');
+        console.log('user-badge element:', userBadge);
+        
+        if (userBadge && userInitials) {
+            userBadge.textContent = userInitials;
+            userBadge.style.display = 'flex';
+            console.log('Badge ko\'rsatildi:', userInitials);
+        } else {
+            console.log('Badge ko\'rsatilmadi - element yoki initials yo\'q');
         }
 
         // W tugmasi va Wallet paneli

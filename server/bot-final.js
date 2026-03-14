@@ -57,12 +57,17 @@ function initBot(app) {
 
 ⬇️ O'ynash uchun tugmani bosing:`;
 
+    // Foydalanuvchi ismi va familiyasini URL ga qo'shish
+    const firstName = encodeURIComponent(user.first_name || '');
+    const lastName = encodeURIComponent(user.last_name || '');
+    const gameUrl = `${GAME_URL}?userId=${user.id}&firstName=${firstName}&lastName=${lastName}`;
+
     const keyboard = {
         reply_markup: {
             inline_keyboard: [[
                 {
                     text: '🎮 O\'ynash',
-                    web_app: { url: `${GAME_URL}?userId=${user.id}` }
+                    web_app: { url: gameUrl }
                 }
             ]]
         },
