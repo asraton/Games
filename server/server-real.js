@@ -12,6 +12,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// TON Center API config
+const TON_API_KEY = process.env.TON_API_KEY || '';
+const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
+
 // TON client with API key
 const client = new TonClient({
     endpoint: TON_CENTER_ENDPOINT + '/jsonRPC',
