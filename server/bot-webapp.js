@@ -90,14 +90,18 @@ bot.on('callback_query', async (query) => {
             reply_markup: {
                 inline_keyboard: [[
                     {
-                        text: '💎 Telegram Wallet',
-                        url: 'https://t.me/wallet'
+                        text: '� Tonkeeper',
+                        url: 'https://app.tonkeeper.com/ton-connect'
                     },
                     {
-                        text: '💰 Tonkeeper',
-                        url: 'https://app.tonkeeper.com'
+                        text: '� Telegram Wallet',
+                        url: 'https://t.me/wallet?startattach=tonconnect'
                     }
                 ], [
+                    {
+                        text: '🌐 MyTonWallet',
+                        url: 'https://connect.mytonwallet.org/'
+                    },
                     {
                         text: '⬅️ Orqaga',
                         callback_data: 'back_to_main'
@@ -107,7 +111,7 @@ bot.on('callback_query', async (query) => {
             parse_mode: 'Markdown'
         };
         
-        bot.sendMessage(chatId, `💳 *Wallet tanlang:*\n\nQaysi walletga ulanmoqchisiz?`, walletKeyboard);
+        bot.sendMessage(chatId, `💳 *Wallet ulang:*\n\nO'zingizga ma'qul walletni tanlang va hamyonni ulang:`, walletKeyboard);
     }
     else if (data === 'back_to_main') {
         // Re-send main menu
