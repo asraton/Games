@@ -540,6 +540,10 @@
         const asraDisplayElement = document.getElementById('asra-display');
         const stopBtn = document.getElementById('stop-btn');
 
+        // Saqlangan hisobni ko'rsatish
+        updateDisplay();
+        console.log('Saqlangan hisob yuklandi:', { asraScore, tonCount });
+
         const coin = document.getElementById('coin');
         let coinTimeout = null;
         let coinVisible = false;
