@@ -5,29 +5,12 @@ const { TonClient, WalletContractV4, internal, fromNano, toNano } = require('@to
 const { mnemonicNew, mnemonicToWalletKey } = require('@ton/crypto');
 const axios = require('axios');
 
-// MongoDB connection and models
-const connectDB = require('./db');
-const User = require('./models/User');
-const ShopItem = require('./models/ShopItem');
-const Purchase = require('./models/Purchase');
+// JSON file database
+const { userDB, shopDB, purchaseDB } = require('./jsonDB');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-// Connect to MongoDB Atlas
-connectDB();
-
-// Helper function to check if MongoDB is connected
-function isMongoConnected() {
-    const mongoose = require('mongoose');
-    return mongoose.connection.readyState === 1;
-}
-
-// In-memory storage fallback (if MongoDB fails)
-const usersMemory = new Map();
-const shopItemsMemory = new Map();
-const purchasesMemory = [];
 
 // TON Center API config
 const TON_API_KEY = process.env.TON_API_KEY || '';
@@ -119,131 +102,69 @@ app.post('/api/user/register', async (req, res) => {
             return res.status(400).json({ error: 'userId va connectedWallet kerak' });
         }
         
-        let user;
+        let user = userDB.get(userId);
         
-        if (isMongoConnected()) {
-            // Use MongoDB
-            user = await User.findOne({ userId });
+        if (user) {
+            // Yangilangan balansni olish
+            const realBalance = await getRealTonBalance(user.depositWallet.address);
             
-            if (user) {
-                // Yangilangan balansni olish
-                const realBalance = await getRealTonBalance(user.depositWallet.address);
+            // Agar real balance ko'p bo'lsa, yangi deposit bor
+            if (realBalance > user.totalDeposited) {
+                const newDeposit = realBalance - user.totalDeposited;
+                user.totalDeposited = realBalance;
+                user.balance = user.totalDeposited - user.totalConverted;
+                user.lastDepositAt = new Date().toISOString();
+                userDB.set(userId, user);
                 
-                // Agar real balance ko'p bo'lsa, yangi deposit bor
-                if (realBalance > user.totalDeposited) {
-                    const newDeposit = realBalance - user.totalDeposited;
-                    user.totalDeposited = realBalance;
-                    user.balance = user.totalDeposited - user.totalConverted;
-                    user.lastDepositAt = new Date();
-                    await user.save();
-                    
-                    console.log(`✅ Yangi deposit: ${newDeposit.toFixed(4)} TON (User: ${userId})`);
-                }
-                
-                return res.json({
-                    success: true,
-                    user: {
-                        userId: user.userId,
-                        connectedWallet: user.connectedWallet,
-                        depositAddress: user.depositWallet.address,
-                        realBalance: realBalance,
-                        totalDeposited: user.totalDeposited,
-                        totalConverted: user.totalConverted,
-                        tonAvailable: user.balance,
-                        jettonBalance: user.jettonBalance,
-                        newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0
-                    }
-                });
+                console.log(`✅ Yangi deposit: ${newDeposit.toFixed(4)} TON (User: ${userId})`);
             }
             
-            // Yangi deposit wallet yaratish
-            const depositWallet = await createDepositWallet();
-            
-            // Yangi foydalanuvchi yaratish
-            user = new User({
-                userId,
-                connectedWallet,
-                depositWallet,
-                balance: 0,
-                jettonBalance: 0,
-                totalDeposited: 0,
-                totalConverted: 0,
-                purchasedItems: [],
-                lastDepositAt: null,
-                lastBalanceCheck: null,
-                globalStats: {
-                    totalClicksAllTime: 0,
-                    totalCoinsCollected: 0,
-                    totalTonEarned: 0,
-                    gamesPlayed: 0,
-                    firstPlayed: new Date().toISOString(),
-                    lastPlayed: null
+            return res.json({
+                success: true,
+                user: {
+                    userId: user.userId,
+                    connectedWallet: user.connectedWallet,
+                    depositAddress: user.depositWallet.address,
+                    realBalance: realBalance,
+                    totalDeposited: user.totalDeposited,
+                    totalConverted: user.totalConverted,
+                    tonAvailable: user.balance,
+                    jettonBalance: user.jettonBalance,
+                    newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0
                 }
             });
-            
-            await user.save();
-            
-        } else {
-            // Fallback to in-memory
-            user = usersMemory.get(userId);
-            
-            if (user) {
-                const realBalance = await getRealTonBalance(user.depositWallet.address);
-                
-                if (realBalance > user.totalDeposited) {
-                    const newDeposit = realBalance - user.totalDeposited;
-                    user.totalDeposited = realBalance;
-                    user.balance = user.totalDeposited - user.totalConverted;
-                    user.lastDepositAt = new Date();
-                    
-                    console.log(`✅ Yangi deposit: ${newDeposit.toFixed(4)} TON (User: ${userId})`);
-                }
-                
-                return res.json({
-                    success: true,
-                    user: {
-                        userId: user.userId,
-                        connectedWallet: user.connectedWallet,
-                        depositAddress: user.depositWallet.address,
-                        realBalance: realBalance,
-                        totalDeposited: user.totalDeposited,
-                        totalConverted: user.totalConverted,
-                        tonAvailable: user.balance,
-                        jettonBalance: user.jettonBalance,
-                        newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0
-                    }
-                });
-            }
-            
-            const depositWallet = await createDepositWallet();
-            
-            user = {
-                userId,
-                connectedWallet,
-                depositWallet,
-                balance: 0,
-                jettonBalance: 0,
-                totalDeposited: 0,
-                totalConverted: 0,
-                purchasedItems: [],
-                createdAt: new Date(),
-                lastDepositAt: null,
-                lastBalanceCheck: null,
-                globalStats: {
-                    totalClicksAllTime: 0,
-                    totalCoinsCollected: 0,
-                    totalTonEarned: 0,
-                    gamesPlayed: 0,
-                    firstPlayed: new Date().toISOString(),
-                    lastPlayed: null
-                }
-            };
-            
-            usersMemory.set(userId, user);
         }
         
+        // Yangi deposit wallet yaratish
+        const depositWallet = await createDepositWallet();
+        
+        // Yangi foydalanuvchi yaratish
+        user = {
+            userId,
+            connectedWallet,
+            depositWallet,
+            balance: 0,
+            jettonBalance: 0,
+            totalDeposited: 0,
+            totalConverted: 0,
+            purchasedItems: [],
+            createdAt: new Date().toISOString(),
+            lastDepositAt: null,
+            lastBalanceCheck: null,
+            globalStats: {
+                totalClicksAllTime: 0,
+                totalCoinsCollected: 0,
+                totalTonEarned: 0,
+                gamesPlayed: 0,
+                firstPlayed: new Date().toISOString(),
+                lastPlayed: null
+            }
+        };
+        
+        userDB.set(userId, user);
+        
         console.log(`✅ Yangi user yaratildi: ${userId}`);
-        console.log(`🏦 Deposit address: ${user.depositWallet.address}`);
+        console.log(`🏦 Deposit address: ${depositWallet.address}`);
         
         res.json({
             success: true,
@@ -269,13 +190,7 @@ app.post('/api/user/register', async (req, res) => {
 // Foydalanuvchi ma'lumotlarini olish
 app.get('/api/user/:userId', async (req, res) => {
     try {
-        let user;
-        
-        if (isMongoConnected()) {
-            user = await User.findOne({ userId: req.params.userId });
-        } else {
-            user = usersMemory.get(req.params.userId);
-        }
+        const user = userDB.get(req.params.userId);
         
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
@@ -309,13 +224,7 @@ app.get('/api/user/:userId', async (req, res) => {
 // REAL Deposit tekshirish
 app.post('/api/check-deposit/:userId', async (req, res) => {
     try {
-        let user;
-        
-        if (isMongoConnected()) {
-            user = await User.findOne({ userId: req.params.userId });
-        } else {
-            user = usersMemory.get(req.params.userId);
-        }
+        const user = userDB.get(req.params.userId);
         
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
@@ -334,11 +243,8 @@ app.post('/api/check-deposit/:userId', async (req, res) => {
             // totalDeposited ni yangilash
             user.totalDeposited = realBalance;
             user.balance = user.totalDeposited - user.totalConverted;
-            user.lastDepositAt = new Date();
-            
-            if (isMongoConnected()) {
-                await user.save();
-            }
+            user.lastDepositAt = new Date().toISOString();
+            userDB.set(req.params.userId, user);
             
             console.log(`✅ DEPOSIT: ${newDeposit.toFixed(4)} TON`);
             console.log(`   User: ${req.params.userId}`);
@@ -377,8 +283,9 @@ app.post('/api/check-deposit/:userId', async (req, res) => {
 app.post('/api/check-all-deposits', async (req, res) => {
     try {
         const results = [];
+        const users = userDB.getAll();
         
-        for (const [userId, user] of users) {
+        for (const [userId, user] of Object.entries(users)) {
             try {
                 const realBalance = await getRealTonBalance(user.depositWallet.address);
                 const previousDeposited = user.totalDeposited;
@@ -389,7 +296,8 @@ app.post('/api/check-all-deposits', async (req, res) => {
                     
                     user.totalDeposited = realBalance;
                     user.balance = user.totalDeposited - user.totalConverted;
-                    user.lastDepositAt = new Date();
+                    user.lastDepositAt = new Date().toISOString();
+                    userDB.set(userId, user);
                     
                     results.push({
                         userId: userId,
@@ -421,13 +329,7 @@ app.post('/api/check-all-deposits', async (req, res) => {
 // Do'kon itemlarini olish
 app.get('/api/shop/items', async (req, res) => {
     try {
-        let items;
-        
-        if (isMongoConnected()) {
-            items = await ShopItem.find({ isActive: true });
-        } else {
-            items = Array.from(shopItemsMemory.values()).filter(item => item.isActive);
-        }
+        const items = Object.values(shopDB.getAll()).filter(item => item.isActive);
         
         res.json({
             success: true,
@@ -448,15 +350,8 @@ app.post('/api/shop/purchase', async (req, res) => {
             return res.status(400).json({ error: 'userId va itemId kerak' });
         }
         
-        let user, item;
-        
-        if (isMongoConnected()) {
-            user = await User.findOne({ userId });
-            item = await ShopItem.findOne({ itemId, isActive: true });
-        } else {
-            user = usersMemory.get(userId);
-            item = shopItemsMemory.get(itemId);
-        }
+        const user = userDB.get(userId);
+        const item = shopDB.get(itemId);
         
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
@@ -480,23 +375,14 @@ app.post('/api/shop/purchase', async (req, res) => {
         
         user.jettonBalance -= item.price;
         user.purchasedItems.push(itemId);
+        userDB.set(userId, user);
         
-        if (isMongoConnected()) {
-            await user.save();
-            await Purchase.create({
-                userId,
-                itemId,
-                price: item.price,
-                purchasedAt: new Date()
-            });
-        } else {
-            purchasesMemory.push({
-                userId,
-                itemId,
-                price: item.price,
-                purchasedAt: new Date()
-            });
-        }
+        purchaseDB.add({
+            userId,
+            itemId,
+            price: item.price,
+            purchasedAt: new Date().toISOString()
+        });
         
         res.json({
             success: true,
@@ -525,13 +411,7 @@ app.post('/api/convert-ton', async (req, res) => {
             return res.status(400).json({ error: 'userId va tonAmount kerak' });
         }
         
-        let user;
-        
-        if (isMongoConnected()) {
-            user = await User.findOne({ userId });
-        } else {
-            user = usersMemory.get(userId);
-        }
+        const user = userDB.get(userId);
         
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
@@ -568,10 +448,7 @@ app.post('/api/convert-ton', async (req, res) => {
         user.totalConverted += tonAmount;
         user.jettonBalance += jettonAmount;
         user.balance = user.totalDeposited - user.totalConverted;
-        
-        if (isMongoConnected()) {
-            await user.save();
-        }
+        userDB.set(userId, user);
         
         res.json({
             success: true,
@@ -592,12 +469,12 @@ app.post('/api/convert-ton', async (req, res) => {
 // User ning sotib olingan itemlarini olish
 app.get('/api/user/:userId/items', async (req, res) => {
     try {
-        const user = users.get(req.params.userId);
+        const user = userDB.get(req.params.userId);
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
         
-        const items = Array.from(shopItems.values()).filter(item => 
+        const items = Object.values(shopDB.getAll()).filter(item => 
             user.purchasedItems.includes(item.itemId)
         );
         
@@ -623,13 +500,7 @@ app.post('/api/withdraw', async (req, res) => {
             });
         }
         
-        let user;
-        
-        if (isMongoConnected()) {
-            user = await User.findOne({ userId });
-        } else {
-            user = usersMemory.get(userId);
-        }
+        const user = userDB.get(userId);
         
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
@@ -691,10 +562,7 @@ app.post('/api/withdraw', async (req, res) => {
             // totalDeposited ni kamaytirish (withdraw qilingan TON)
             user.totalDeposited -= amount;
             user.balance = user.totalDeposited - user.totalConverted;
-            
-            if (isMongoConnected()) {
-                await user.save();
-            }
+            userDB.set(userId, user);
             
             console.log(`✅ WITHDRAW SUCCESS: ${amount} TON`);
             
@@ -727,13 +595,7 @@ app.post('/api/withdraw', async (req, res) => {
 // Wallet ma'lumotlarini ko'rish (debug)
 app.get('/api/debug/wallet/:userId', async (req, res) => {
     try {
-        let user;
-        
-        if (isMongoConnected()) {
-            user = await User.findOne({ userId: req.params.userId });
-        } else {
-            user = usersMemory.get(req.params.userId);
-        }
+        const user = userDB.get(req.params.userId);
         
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
@@ -777,13 +639,7 @@ app.post('/api/user/:userId/stats', async (req, res) => {
         const { userId } = req.params;
         const { totalClicksAllTime, totalCoinsCollected, totalTonEarned, gamesPlayed } = req.body;
         
-        let user;
-        
-        if (isMongoConnected()) {
-            user = await User.findOne({ userId });
-        } else {
-            user = usersMemory.get(userId);
-        }
+        const user = userDB.get(userId);
         
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
@@ -815,10 +671,7 @@ app.post('/api/user/:userId/stats', async (req, res) => {
         }
         
         user.globalStats.lastPlayed = new Date().toISOString();
-        
-        if (isMongoConnected()) {
-            await user.save();
-        }
+        userDB.set(userId, user);
         
         console.log(`📊 Global stats yangilandi: ${userId}`);
         console.log(`   Bosishlar: ${user.globalStats.totalClicksAllTime}`);
@@ -842,13 +695,7 @@ app.get('/api/user/:userId/stats', async (req, res) => {
     try {
         const { userId } = req.params;
         
-        let user;
-        
-        if (isMongoConnected()) {
-            user = await User.findOne({ userId });
-        } else {
-            user = usersMemory.get(userId);
-        }
+        const user = userDB.get(userId);
         
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
@@ -908,19 +755,10 @@ async function createDefaultShopItems() {
     ];
     
     for (const item of defaultItems) {
-        if (isMongoConnected()) {
-            // Check if item exists in MongoDB
-            const existingItem = await ShopItem.findOne({ itemId: item.itemId });
-            if (!existingItem) {
-                await ShopItem.create(item);
-                console.log(`Shop item yaratildi: ${item.name}`);
-            }
-        } else {
-            // Fallback to in-memory
-            if (!shopItemsMemory.has(item.itemId)) {
-                shopItemsMemory.set(item.itemId, item);
-                console.log(`Shop item yaratildi: ${item.name}`);
-            }
+        const existingItem = shopDB.get(item.itemId);
+        if (!existingItem) {
+            shopDB.set(item.itemId, item);
+            console.log(`Shop item yaratildi: ${item.name}`);
         }
     }
 }
@@ -949,7 +787,7 @@ app.listen(PORT, async () => {
     console.log('   ✅ Real deposit monitoring');
     console.log('   ✅ Real TON transfer (withdraw)');
     console.log('   ✅ Transaction history');
-    console.log('   ✅ MongoDB database (persistent storage)');
+    console.log('   ✅ JSON file database (persistent storage)');
     console.log('');
     console.log('📱 URLs:');
     console.log(`   Game: http://localhost:8080`);
