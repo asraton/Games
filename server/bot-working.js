@@ -68,7 +68,7 @@ try {
                     }
                 ], [
                     {
-                        text: '💸 Pul yechish',
+                        text: '💸 TON yechish',
                         callback_data: `withdraw_${user.id}`
                     },
 
@@ -132,7 +132,7 @@ try {
                         }
                     ], [
                         {
-                            text: '💸 Pul yechish',
+                            text: '💸 TON yechish',
                             callback_data: `withdraw_${userId}`
                         }
                     ]]
@@ -161,7 +161,7 @@ try {
             }
         }
         else if (data.startsWith('withdraw_')) {
-            bot.sendMessage(chatId, `💸 *Pul yechish*\n\nPul yechish uchun o'yinga kiring va "Wallet" bo'limidan "Pul yechish" ni tanlang.`, { parse_mode: 'Markdown' });
+            bot.sendMessage(chatId, `💸 *TON yechish*\n\nTON yechish uchun o'yinga kiring va "Wallet" bo'limidan "TON yechish" ni tanlang.`, { parse_mode: 'Markdown' });
         }
         
         bot.answerCallbackQuery(query.id);

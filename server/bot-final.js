@@ -77,7 +77,7 @@ bot.onText(/\/start/, (msg) => {
                     callback_data: 'balance'
                 },
                 {
-                    text: '💸 Ton yechish',
+                    text: '💸 TON yechish',
                     callback_data: 'withdraw'
                 }
             ]]
@@ -139,7 +139,7 @@ bot.on('callback_query', async (query) => {
                         callback_data: 'balance'
                     },
                     {
-                        text: '💸 Ton yechish',
+                        text: '💸 TON yechish',
                         callback_data: 'withdraw'
                     }
                 ]]
@@ -167,7 +167,7 @@ bot.on('callback_query', async (query) => {
         }
     }
     else if (data === 'withdraw') {
-        bot.sendMessage(chatId, `💸 Ton yechish uchun o'yinga kiring.`);
+        bot.sendMessage(chatId, `💸 TON yechish uchun o'yinga kiring.`);
     }
     
     bot.answerCallbackQuery(query.id);
