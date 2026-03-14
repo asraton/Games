@@ -827,6 +827,72 @@
                     modal.classList.add('open');
                     return;
                 }
+                
+                // To'lov holatini tekshirish
+                modalTitle.textContent = '💸 TON yechish';
+                let paymentStatus;
+                try {
+                    const res = await fetch(API_BASE + '/check-payment/' + userId);
+                    paymentStatus = await res.json();
+                } catch (e) {
+                    console.error('To\'lov holatini tekshirishda xato:', e);
+                }
+                
+                // Agar to'lov qilinmagan bo'lsa - Demo mode
+                if (!paymentStatus || !paymentStatus.hasPaid) {
+                    const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
+                    modalBody.innerHTML = `
+                        <div style="text-align:center;padding:16px;">
+                            <p style="color:#ff9500;font-size:16px;margin-bottom:12px;">⚠️ Demo versiya</p>
+                            <p style="color:#fff;font-size:13px;margin-bottom:16px;">
+                                Haqiqiy o'yin boshlash uchun 1 TON to'lang
+                            </p>
+                            <p style="color:#888;font-size:11px;margin-bottom:8px;word-break:break-all;">
+                                ${PAYMENT_ADDRESS}
+                            </p>
+                            <img src="/assets/payment-qr.png" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
+                            <p style="color:#00d2ff;font-size:12px;margin-top:12px;">
+                                Demo rejimda yig'ilgan nTONlar yechilmaydi!
+                            </p>
+                            <button class="wallet-panel-btn" id="check-payment-btn" style="margin-top:16px;background:linear-gradient(135deg, #2ed573, #1dd1a1);">
+                                ✅ To'lovni tekshirish
+                            </button>
+                        </div>
+                    `;
+                    modal.classList.add('open');
+                    
+                    document.getElementById('check-payment-btn').addEventListener('click', async () => {
+                        document.getElementById('check-payment-btn').textContent = '⏳ Tekshirilmoqda...';
+                        try {
+                            const res = await fetch(API_BASE + '/confirm-payment/' + userId, { method: 'POST' });
+                            const data = await res.json();
+                            if (data.hasPaid) {
+                                modalBody.innerHTML = `
+                                    <div style="text-align:center;padding:16px;">
+                                        <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ To'lov tasdiqlandi!</p>
+                                        <p style="color:#fff;font-size:13px;">Yangi o'yin boshlandi. Hamma hisoblar 0 ga tushirildi.</p>
+                                        <p style="color:#888;font-size:11px;margin-top:8px;">Sahifani yangilang</p>
+                                    </div>
+                                `;
+                                // O'yinni reset qilish
+                                nanoScore = 0;
+                                tonCount = 0;
+                                updateDisplay();
+                                stopGame();
+                            } else {
+                                document.getElementById('check-payment-btn').textContent = '❌ To\'lov topilmadi';
+                                setTimeout(() => {
+                                    document.getElementById('check-payment-btn').textContent = '✅ To\'lovni tekshirish';
+                                }, 2000);
+                            }
+                        } catch (e) {
+                            document.getElementById('check-payment-btn').textContent = '❌ Xatolik';
+                        }
+                    });
+                    return;
+                }
+                
+                // To'lov qilingan - normal withdrawal
                 modalTitle.textContent = '💸 TON yechish';
                 
                 // Balansni olish

@@ -131,6 +131,8 @@ app.post('/api/user/register', async (req, res) => {
                     totalConverted: user.totalConverted,
                     tonAvailable: user.balance,
                     jettonBalance: user.jettonBalance,
+                    hasPaid: user.hasPaid || false,
+                    paymentAddress: 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq',
                     newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0
                 }
             });
@@ -152,6 +154,9 @@ app.post('/api/user/register', async (req, res) => {
             createdAt: new Date().toISOString(),
             lastDepositAt: null,
             lastBalanceCheck: null,
+            hasPaid: false, // Demo mode - 1 TON to'lanmaguncha
+            demoNtonBalance: 0, // Demo rejimda yig'ilgan nTON
+            paymentAddress: 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq',
             globalStats: {
                 totalClicksAllTime: 0,
                 totalCoinsCollected: 0,
@@ -178,6 +183,8 @@ app.post('/api/user/register', async (req, res) => {
                 totalConverted: 0,
                 tonAvailable: 0,
                 jettonBalance: 0,
+                hasPaid: false,
+                paymentAddress: 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq',
                 newDeposit: 0
             }
         });
@@ -542,6 +549,17 @@ app.post('/api/withdraw', async (req, res) => {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
         
+        // To'lov qilinganmi tekshirish
+        if (!user.hasPaid) {
+            return res.status(403).json({ 
+                error: 'Demo versiya',
+                message: 'TON yechib olish uchun avval 1 TON to\'lashingiz kerak',
+                requiredPayment: 1,
+                paymentAddress: 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq',
+                demoMode: true
+            });
+        }
+        
         // Mavjud TON miqdorini hisoblash (deposited - converted)
         const availableTon = user.totalDeposited - user.totalConverted;
         
@@ -558,6 +576,18 @@ app.post('/api/withdraw', async (req, res) => {
         if (amount < 0.1) {
             return res.status(400).json({ 
                 error: 'Minimum withdraw miqdori 0.1 TON' 
+            });
+        }
+        
+        // 1 TON qoldirish sharti - 1 tondan oshganda 1 ton qolib ketadi
+        const minRequiredBalance = 1;
+        if (availableTon - amount < minRequiredBalance) {
+            return res.status(400).json({
+                error: '1 TON qoldirish sharti',
+                message: `Hisobingizda kamida ${minRequiredBalance} TON qolishi kerak. Maksimal yechish: ${(availableTon - minRequiredBalance).toFixed(4)} TON`,
+                maxWithdraw: Math.max(0, availableTon - minRequiredBalance),
+                available: availableTon,
+                minRequired: minRequiredBalance
             });
         }
         
@@ -669,7 +699,170 @@ app.get('/api/debug/wallet/:userId', async (req, res) => {
     }
 });
 
-// Global stats saqlash
+// To'lov holatini tekshirish
+app.get('/api/check-payment/:userId', async (req, res) => {
+    try {
+        const user = userDB.get(req.params.userId);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+        }
+        
+        const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
+        const REQUIRED_AMOUNT = 1; // 1 TON
+        
+        // Agar allaqachon to'lagan bo'lsa
+        if (user.hasPaid) {
+            return res.json({
+                success: true,
+                hasPaid: true,
+                message: 'To\'lov qilingan'
+            });
+        }
+        
+        // Transactionlarni tekshirish
+        try {
+            const transactions = await getTransactions(PAYMENT_ADDRESS, 20);
+            
+            // Oxirgi 20 transaction ichidan user deposit walletidan 1 TON yuborilganini tekshirish
+            const paymentTx = transactions.find(tx => {
+                const fromAddress = tx.in_msg?.source;
+                const value = tx.in_msg?.value;
+                if (!fromAddress || !value) return false;
+                
+                // value nanoton da keladi
+                const tonAmount = Number(BigInt(value)) / 1e9;
+                
+                // Userning deposit wallet manzilidan 1 TON yuborilganmi
+                return fromAddress === user.depositWallet.address && tonAmount >= REQUIRED_AMOUNT;
+            });
+            
+            if (paymentTx) {
+                // To'lov qilingan!
+                user.hasPaid = true;
+                user.paidAt = new Date().toISOString();
+                user.paidAmount = REQUIRED_AMOUNT;
+                
+                // Demo nTONlarni real balansga o'tkazish (yoki 0 ga tushirish)
+                // Bu yerda biz demo nTONlarni saqlab qolmaymiz, chunki ular yechilmaydi
+                user.demoNtonBalance = 0;
+                
+                userDB.set(req.params.userId, user);
+                
+                console.log(`✅ To'lov qilindi: ${req.params.userId}`);
+                console.log(`   Amount: 1 TON`);
+                console.log(`   Tx: ${paymentTx.transaction_id?.hash}`);
+                
+                return res.json({
+                    success: true,
+                    hasPaid: true,
+                    message: 'To\'lov qilindi! Endi haqiqiy o\'yni boshlashingiz mumkin.',
+                    resetRequired: true,
+                    txHash: paymentTx.transaction_id?.hash
+                });
+            }
+            
+            // To'lov qilinmagan
+            res.json({
+                success: true,
+                hasPaid: false,
+                message: 'To\'lov kutilmoqda',
+                requiredAmount: REQUIRED_AMOUNT,
+                paymentAddress: PAYMENT_ADDRESS,
+                demoNtonBalance: user.demoNtonBalance || 0
+            });
+            
+        } catch (txError) {
+            console.error('Transaction tekshirishda xato:', txError);
+            res.json({
+                success: true,
+                hasPaid: false,
+                message: 'To\'lov holatini tekshirishda xato',
+                requiredAmount: REQUIRED_AMOUNT,
+                paymentAddress: PAYMENT_ADDRESS,
+                demoNtonBalance: user.demoNtonBalance || 0
+            });
+        }
+        
+    } catch (error) {
+        console.error('Check payment error:', error);
+        res.status(500).json({ error: 'Server xatoligi' });
+    }
+});
+
+// To'lov qilinishi kerakligini belgilash (user o'zi to'lov qilganini tasdiqlash)
+app.post('/api/confirm-payment/:userId', async (req, res) => {
+    try {
+        const user = userDB.get(req.params.userId);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+        }
+        
+        const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
+        const REQUIRED_AMOUNT = 1;
+        
+        // Transactionlarni tekshirish
+        const transactions = await getTransactions(PAYMENT_ADDRESS, 30);
+        
+        const paymentTx = transactions.find(tx => {
+            const fromAddress = tx.in_msg?.source;
+            const value = tx.in_msg?.value;
+            if (!fromAddress || !value) return false;
+            
+            const tonAmount = Number(BigInt(value)) / 1e9;
+            return fromAddress === user.depositWallet.address && tonAmount >= REQUIRED_AMOUNT;
+        });
+        
+        if (paymentTx) {
+            // Yangi o'yin uchun statistikani reset qilish
+            user.hasPaid = true;
+            user.paidAt = new Date().toISOString();
+            user.paidAmount = REQUIRED_AMOUNT;
+            
+            // Barcha statistikani 0 ga tushirish (yangi o'yin)
+            user.totalDeposited = 0;
+            user.totalConverted = 0;
+            user.balance = 0;
+            user.jettonBalance = 0;
+            user.demoNtonBalance = 0;
+            user.purchasedItems = [];
+            
+            user.globalStats = {
+                totalClicksAllTime: 0,
+                totalCoinsCollected: 0,
+                totalTonEarned: 0,
+                gamesPlayed: 0,
+                firstPlayed: new Date().toISOString(),
+                lastPlayed: null
+            };
+            
+            userDB.set(req.params.userId, user);
+            
+            console.log(`✅ To'lov tasdiqlandi va o'yin reset qilindi: ${req.params.userId}`);
+            
+            res.json({
+                success: true,
+                hasPaid: true,
+                message: 'To\'lov tasdiqlandi! Yangi o\'yin boshlandi.',
+                reset: true,
+                txHash: paymentTx.transaction_id?.hash
+            });
+        } else {
+            res.json({
+                success: false,
+                hasPaid: false,
+                message: 'To\'lov topilmadi. Iltimos, 1 TON yuboring va qayta urinib ko\'ring.',
+                paymentAddress: PAYMENT_ADDRESS,
+                requiredAmount: REQUIRED_AMOUNT
+            });
+        }
+        
+    } catch (error) {
+        console.error('Confirm payment error:', error);
+        res.status(500).json({ error: 'Server xatoligi' });
+    }
+});
 app.post('/api/user/:userId/stats', async (req, res) => {
     try {
         const { userId } = req.params;
