@@ -421,7 +421,14 @@ app.post('/api/check-all-deposits', async (req, res) => {
 // Do'kon itemlarini olish
 app.get('/api/shop/items', async (req, res) => {
     try {
-        const items = Array.from(shopItems.values()).filter(item => item.isActive);
+        let items;
+        
+        if (isMongoConnected()) {
+            items = await ShopItem.find({ isActive: true });
+        } else {
+            items = Array.from(shopItemsMemory.values()).filter(item => item.isActive);
+        }
+        
         res.json({
             success: true,
             items: items
@@ -441,12 +448,20 @@ app.post('/api/shop/purchase', async (req, res) => {
             return res.status(400).json({ error: 'userId va itemId kerak' });
         }
         
-        const user = users.get(userId);
+        let user, item;
+        
+        if (isMongoConnected()) {
+            user = await User.findOne({ userId });
+            item = await ShopItem.findOne({ itemId, isActive: true });
+        } else {
+            user = usersMemory.get(userId);
+            item = shopItemsMemory.get(itemId);
+        }
+        
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
         
-        const item = shopItems.get(itemId);
         if (!item || !item.isActive) {
             return res.status(404).json({ error: 'Item topilmadi' });
         }
@@ -466,12 +481,22 @@ app.post('/api/shop/purchase', async (req, res) => {
         user.jettonBalance -= item.price;
         user.purchasedItems.push(itemId);
         
-        purchases.push({
-            userId,
-            itemId,
-            price: item.price,
-            purchasedAt: new Date()
-        });
+        if (isMongoConnected()) {
+            await user.save();
+            await Purchase.create({
+                userId,
+                itemId,
+                price: item.price,
+                purchasedAt: new Date()
+            });
+        } else {
+            purchasesMemory.push({
+                userId,
+                itemId,
+                price: item.price,
+                purchasedAt: new Date()
+            });
+        }
         
         res.json({
             success: true,
@@ -500,7 +525,14 @@ app.post('/api/convert-ton', async (req, res) => {
             return res.status(400).json({ error: 'userId va tonAmount kerak' });
         }
         
-        const user = users.get(userId);
+        let user;
+        
+        if (isMongoConnected()) {
+            user = await User.findOne({ userId });
+        } else {
+            user = usersMemory.get(userId);
+        }
+        
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
@@ -513,7 +545,6 @@ app.post('/api/convert-ton', async (req, res) => {
         
         // Agar real balance kamaygan bo'lsa (withdraw qilingan), yangilash kerak
         if (realBalance < availableTon) {
-            // Foydalanuvchi withdraw qilgan, totalDeposited ni yangilash
             const withdrawnAmount = availableTon - realBalance;
             user.totalDeposited = Math.max(0, user.totalDeposited - withdrawnAmount);
         }
@@ -536,9 +567,11 @@ app.post('/api/convert-ton', async (req, res) => {
         // totalConverted ni yangilash
         user.totalConverted += tonAmount;
         user.jettonBalance += jettonAmount;
-        
-        // balance ni yangilash (qolgan TON)
         user.balance = user.totalDeposited - user.totalConverted;
+        
+        if (isMongoConnected()) {
+            await user.save();
+        }
         
         res.json({
             success: true,
@@ -590,7 +623,14 @@ app.post('/api/withdraw', async (req, res) => {
             });
         }
         
-        const user = users.get(userId);
+        let user;
+        
+        if (isMongoConnected()) {
+            user = await User.findOne({ userId });
+        } else {
+            user = usersMemory.get(userId);
+        }
+        
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
@@ -652,6 +692,10 @@ app.post('/api/withdraw', async (req, res) => {
             user.totalDeposited -= amount;
             user.balance = user.totalDeposited - user.totalConverted;
             
+            if (isMongoConnected()) {
+                await user.save();
+            }
+            
             console.log(`✅ WITHDRAW SUCCESS: ${amount} TON`);
             
             res.json({
@@ -662,7 +706,7 @@ app.post('/api/withdraw', async (req, res) => {
                 tonConverted: user.totalConverted,
                 tonAvailable: user.balance,
                 isReal: true,
-                txHash: null // Transaction hash ni keyin tekshirish mumkin
+                txHash: null
             });
             
         } catch (txError) {
