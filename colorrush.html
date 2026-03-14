@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>🎮 Ton o'yini</title>
+    <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
     <style>
         * {
             -webkit-user-select: none;
@@ -193,6 +194,106 @@
         @keyframes pulseCyan { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 255, 255, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 255, 255, 1)); } }
         @keyframes pulsePurple { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(200, 0, 255, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(200, 0, 255, 1)); } }
         @keyframes pulseOrange { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 150, 0, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 150, 0, 1)); } }
+        .wallet-section {
+            position: fixed;
+            top: clamp(60px, 10vh, 80px);
+            right: clamp(10px, 2vw, 20px);
+            z-index: 95;
+        }
+
+        #wallet-btn {
+            background: linear-gradient(135deg, #0088cc, #00a8ff);
+            border: none;
+            color: white;
+            padding: clamp(8px, 1.5vh, 12px) clamp(15px, 3vw, 25px);
+            border-radius: clamp(15px, 2vw, 20px);
+            cursor: pointer;
+            font-size: clamp(12px, 1.5vw, 14px);
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.4);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #wallet-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 136, 204, 0.6);
+        }
+
+        #wallet-btn.connected {
+            background: linear-gradient(135deg, #2ed573, #1e90ff);
+        }
+
+        .wallet-address {
+            font-family: 'Courier New', monospace;
+            font-size: clamp(10px, 1.2vw, 12px);
+        }
+
+        #wallet-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .wallet-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: clamp(20px, 4vw, 40px);
+            border-radius: clamp(15px, 3vw, 25px);
+            text-align: center;
+            max-width: 90%;
+            width: clamp(300px, 80vw, 400px);
+            border: 2px solid rgba(0, 136, 204, 0.3);
+        }
+
+        .wallet-modal-content h3 {
+            color: #ffd700;
+            margin-bottom: 20px;
+            font-size: clamp(18px, 3vw, 24px);
+        }
+
+        .wallet-option {
+            background: linear-gradient(135deg, #0088cc, #00a8ff);
+            border: none;
+            color: white;
+            padding: clamp(12px, 2vh, 15px) clamp(20px, 4vw, 30px);
+            border-radius: clamp(12px, 2vw, 15px);
+            cursor: pointer;
+            font-size: clamp(14px, 2vw, 16px);
+            font-weight: bold;
+            margin: 10px;
+            width: 80%;
+            transition: all 0.3s ease;
+        }
+
+        .wallet-option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 136, 204, 0.5);
+        }
+
+        .close-modal {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #aaa;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: clamp(12px, 1.5vw, 14px);
+        }
+
+        .close-modal:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -208,8 +309,22 @@
             </div>
         </div>
 
+        <div class="wallet-section">
+            <button id="wallet-btn">💎 Wallet ulash</button>
+        </div>
+
         <div class="game-controls">
             <button id="stop-btn">▶️ START</button>
+        </div>
+    </div>
+
+    <div id="wallet-modal">
+        <div class="wallet-modal-content">
+            <h3>💳 Wallet tanlang</h3>
+            <button class="wallet-option" id="connect-telegram">💎 Telegram Wallet</button>
+            <button class="wallet-option" id="connect-tonkeeper">💰 Tonkeeper</button>
+            <button class="wallet-option" id="disconnect-wallet" style="display:none;background:linear-gradient(135deg,#ff4757,#ff6b6b);">❌ Walletni uzish</button>
+            <button class="close-modal">⬅️ Orqaga</button>
         </div>
     </div>
 
@@ -402,6 +517,171 @@
             Telegram.WebApp.ready();
             Telegram.WebApp.expand();
         }
+
+        // TON Connect Integration
+        const tonConnectUI = {
+            connector: null,
+            walletBtn: document.getElementById('wallet-btn'),
+            walletModal: document.getElementById('wallet-modal'),
+            connectTelegram: document.getElementById('connect-telegram'),
+            connectTonkeeper: document.getElementById('connect-tonkeeper'),
+            disconnectWallet: document.getElementById('disconnect-wallet'),
+            closeModal: document.querySelector('.close-modal'),
+            
+            init() {
+                // Check if TON Connect SDK is loaded
+                if (typeof TonConnect === 'undefined') {
+                    console.error('TON Connect SDK not loaded');
+                    return;
+                }
+                
+                // Initialize connector
+                this.connector = new TonConnect.TonConnect({
+                    manifestUrl: window.location.origin + '/tonconnect-manifest.json'
+                });
+                
+                // Restore connection if exists
+                this.restoreConnection();
+                
+                // Bind events
+                this.bindEvents();
+                
+                // Listen for connection changes
+                this.connector.onStatusChange((wallet) => {
+                    if (wallet) {
+                        this.onConnect(wallet);
+                    } else {
+                        this.onDisconnect();
+                    }
+                });
+            },
+            
+            bindEvents() {
+                this.walletBtn.addEventListener('click', () => {
+                    this.walletModal.style.display = 'flex';
+                });
+                
+                this.closeModal.addEventListener('click', () => {
+                    this.walletModal.style.display = 'none';
+                });
+                
+                this.connectTelegram.addEventListener('click', () => {
+                    this.connect('telegram-wallet');
+                });
+                
+                this.connectTonkeeper.addEventListener('click', () => {
+                    this.connect('tonkeeper');
+                });
+                
+                this.disconnectWallet.addEventListener('click', () => {
+                    this.disconnect();
+                });
+                
+                // Close modal on outside click
+                this.walletModal.addEventListener('click', (e) => {
+                    if (e.target === this.walletModal) {
+                        this.walletModal.style.display = 'none';
+                    }
+                });
+            },
+            
+            async restoreConnection() {
+                try {
+                    const connected = await this.connector.restoreConnection();
+                    if (connected) {
+                        console.log('Wallet connection restored');
+                    }
+                } catch (e) {
+                    console.error('Failed to restore connection:', e);
+                }
+            },
+            
+            async connect(walletApp) {
+                try {
+                    const walletConnectionSource = {
+                        jsBridgeKey: walletApp
+                    };
+                    
+                    await this.connector.connect(walletConnectionSource);
+                    this.walletModal.style.display = 'none';
+                } catch (e) {
+                    console.error('Connection failed:', e);
+                    alert('Walletga ulanishda xatolik: ' + e.message);
+                }
+            },
+            
+            async disconnect() {
+                try {
+                    await this.connector.disconnect();
+                } catch (e) {
+                    console.error('Disconnect failed:', e);
+                }
+            },
+            
+            onConnect(wallet) {
+                const address = wallet.account.address;
+                const shortAddress = address.slice(0, 6) + '...' + address.slice(-4);
+                
+                this.walletBtn.innerHTML = `💎 <span class="wallet-address">${shortAddress}</span>`;
+                this.walletBtn.classList.add('connected');
+                
+                this.connectTelegram.style.display = 'none';
+                this.connectTonkeeper.style.display = 'none';
+                this.disconnectWallet.style.display = 'block';
+                
+                // Save wallet info
+                localStorage.setItem('ton_wallet_address', address);
+                localStorage.setItem('ton_wallet_provider', wallet.provider);
+                
+                console.log('Wallet connected:', address);
+            },
+            
+            onDisconnect() {
+                this.walletBtn.innerHTML = '💎 Wallet ulash';
+                this.walletBtn.classList.remove('connected');
+                
+                this.connectTelegram.style.display = 'block';
+                this.connectTonkeeper.style.display = 'block';
+                this.disconnectWallet.style.display = 'none';
+                
+                // Clear saved wallet info
+                localStorage.removeItem('ton_wallet_address');
+                localStorage.removeItem('ton_wallet_provider');
+                
+                console.log('Wallet disconnected');
+            },
+            
+            // Send transaction method
+            async sendTransaction(amount, toAddress) {
+                if (!this.connector.connected) {
+                    alert('Avval wallet ulang!');
+                    return;
+                }
+                
+                try {
+                    const transaction = {
+                        validUntil: Math.floor(Date.now() / 1000) + 60,
+                        messages: [
+                            {
+                                address: toAddress,
+                                amount: amount.toString()
+                            }
+                        ]
+                    };
+                    
+                    const result = await this.connector.sendTransaction(transaction);
+                    return result;
+                } catch (e) {
+                    console.error('Transaction failed:', e);
+                    throw e;
+                }
+            }
+        };
+        
+        // Initialize TON Connect when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            tonConnectUI.init();
+        });
     </script>
 </body>
 </html>
