@@ -731,27 +731,51 @@
 
         // Telegram Web App
         let userInitials = '';
+        console.log('Telegram WebApp tekshirilmoqda...');
+        
         if (window.Telegram && window.Telegram.WebApp) {
-            Telegram.WebApp.ready();
-            Telegram.WebApp.expand();
+            console.log('Telegram.WebApp topildi');
             
-            // Get user initials from Telegram
-            const tgUser = Telegram.WebApp.initDataUnsafe?.user;
-            if (tgUser) {
-                const firstName = tgUser.first_name || '';
-                const lastName = tgUser.last_name || '';
-                userInitials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-                if (!userInitials && firstName) userInitials = firstName.substring(0, 2).toUpperCase();
-                if (!userInitials && tgUser.username) userInitials = tgUser.username.substring(0, 2).toUpperCase();
+            try {
+                Telegram.WebApp.ready();
+                Telegram.WebApp.expand();
+                console.log('WebApp ready() va expand() chaqirildi');
                 
-                // Display user badge
-                const userBadge = document.getElementById('user-badge');
-                if (userBadge && userInitials) {
-                    userBadge.textContent = userInitials;
-                    userBadge.style.display = 'flex';
+                // Get user initials from Telegram
+                console.log('initDataUnsafe:', Telegram.WebApp.initDataUnsafe);
+                const tgUser = Telegram.WebApp.initDataUnsafe?.user;
+                console.log('tgUser:', tgUser);
+                
+                if (tgUser) {
+                    const firstName = tgUser.first_name || '';
+                    const lastName = tgUser.last_name || '';
+                    console.log('Ism:', firstName, 'Familiya:', lastName);
+                    
+                    userInitials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+                    if (!userInitials && firstName) userInitials = firstName.substring(0, 2).toUpperCase();
+                    if (!userInitials && tgUser.username) userInitials = tgUser.username.substring(0, 2).toUpperCase();
+                    
+                    console.log('Hosil qilingan initials:', userInitials);
+                    
+                    // Display user badge
+                    const userBadge = document.getElementById('user-badge');
+                    console.log('user-badge element:', userBadge);
+                    
+                    if (userBadge && userInitials) {
+                        userBadge.textContent = userInitials;
+                        userBadge.style.display = 'flex';
+                        console.log('Badge ko\'rsatildi:', userInitials);
+                    } else {
+                        console.log('Badge ko\'rsatilmadi - element yoki initials yo\'q');
+                    }
+                } else {
+                    console.log('tgUser mavjud emas');
                 }
-                console.log('User initials:', userInitials);
+            } catch (e) {
+                console.error('Telegram WebApp xato:', e);
             }
+        } else {
+            console.log('Telegram.WebApp topilmadi - brauzerda ochilgan');
         }
 
         // W tugmasi va Wallet paneli
