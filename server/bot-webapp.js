@@ -183,14 +183,12 @@ bot.on('callback_query', async (query) => {
         const helpMessage = `❓ *Yordam*
 
 *Qanday o'ynayman?*
-1️⃣ O\'yinni oching
+1️⃣ O'yinni oching
 2️⃣ Tangalarni tez bosib TON yig'ing
-3️⃣ Bonuslarni qo'ldan qo'ymang
-4️⃣ Jetton sotib oling
 
 *Wallet qanday ulash?*
-📱 O\'yin ichidagi Wallet tugmasini bosing
-🔗 Tonkeeper/MyTonWallet tanlang
+📱 O'yin ichidagi Wallet tugmasini bosing
+🔗 Tonkeeper/Telegram Wallet tanlang
 ✅ Tasdiqlang
 
 *Pul qanday yechaman?*
