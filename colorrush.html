@@ -520,6 +520,8 @@
         const urlFirstName = decodeURIComponent(urlParams.get('firstName') || '');
         const urlLastName = decodeURIComponent(urlParams.get('lastName') || '');
 
+        console.log('URL dan olingan:', { userId, urlFirstName, urlLastName });
+
         // LocalStorage key - har bir user uchun alohida
         const STORAGE_KEY = userId ? `asra_game_${userId}` : 'asra_game_default';
 
@@ -535,6 +537,7 @@
                     };
                 }
             } catch (e) {
+                console.error('LocalStorage oqishda xato:', e);
             }
             return { asraScore: 0, tonCount: 0 };
         }
@@ -549,6 +552,7 @@
                 };
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             } catch (e) {
+                console.error('LocalStorage saqlashda xato:', e);
             }
         }
 
@@ -567,6 +571,7 @@
 
         // Saqlangan hisobni ko'rsatish
         updateDisplay();
+        console.log('Saqlangan hisob yuklandi:', { asraScore, tonCount });
 
         const coin = document.getElementById('coin');
         let coinTimeout = null;
@@ -770,6 +775,7 @@
 
         // Telegram Web App - ismlarni olish (URL va Telegram dan)
         let userInitials = '';
+        console.log('Telegram WebApp tekshirilmoqda...');
         
         // Avval URL dan ism o'qiymiz (Telegram WebApp dan keladi)
         let firstName = urlFirstName;
@@ -777,23 +783,30 @@
         
         // Agar URL da bo'lmasa, Telegram WebApp dan olingan ma'lumotdan olish
         if (window.Telegram && window.Telegram.WebApp) {
+            console.log('Telegram.WebApp topildi');
             
             try {
                 Telegram.WebApp.ready();
                 Telegram.WebApp.expand();
+                console.log('WebApp ready() va expand() chaqirildi');
                 
                 // Get user initials from Telegram
+                console.log('initDataUnsafe:', Telegram.WebApp.initDataUnsafe);
                 let tgUser = Telegram.WebApp.initDataUnsafe?.user;
+                console.log('tgUser (initDataUnsafe):', tgUser);
                 
                 // Agar initDataUnsafe bo'sh bo'lsa, initData dan parse qilish
                 if (!tgUser && Telegram.WebApp.initData) {
+                    console.log('initData dan parse qilinmoqda...');
                     try {
                         const params = new URLSearchParams(Telegram.WebApp.initData);
                         const userJson = params.get('user');
                         if (userJson) {
                             tgUser = JSON.parse(userJson);
+                            console.log('tgUser (initData):', tgUser);
                         }
                     } catch (e) {
+                        console.error('initData parse xato:', e);
                     }
                 }
                 
@@ -801,16 +814,21 @@
                     // Agar URL da ism bo'lmasa, Telegram dan olish
                     if (!firstName) firstName = tgUser.first_name || '';
                     if (!lastName) lastName = tgUser.last_name || '';
+                    console.log('Telegram dan ism:', firstName, 'familiya:', lastName);
                 }
             } catch (e) {
+                console.error('Telegram WebApp xato:', e);
             }
         } else {
+            console.log('Telegram.WebApp topilmadi - brauzerda ochilgan');
         }
         
         // Initials hosil qilish
+        console.log('Final ism:', firstName, 'familiya:', lastName);
         userInitials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
         if (!userInitials && firstName) userInitials = firstName.substring(0, 2).toUpperCase();
         
+        console.log('Hosil qilingan initials:', userInitials);
 
         // W tugmasi va Wallet paneli
         let tonConnectUI = null;
@@ -842,6 +860,7 @@
                 
                 return wallet.account.address || null;
             } catch (e) {
+                console.error('getUserFriendlyAddress xato:', e);
                 return wallet.account?.address || null;
             }
         }
@@ -873,11 +892,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             // User badge ni ko'rsatish - DOM yuklangandan keyin
             const userBadge = document.getElementById('user-badge');
+            console.log('DOMContentLoaded: user-badge element:', userBadge);
+            console.log('DOMContentLoaded: userInitials:', userInitials);
             
             if (userBadge && userInitials) {
                 userBadge.textContent = userInitials;
                 userBadge.style.display = 'flex';
+                console.log('Badge ko\'rsatildi:', userInitials);
             } else {
+                console.log('Badge ko\'rsatilmadi - element yo\'q:', !userBadge, 'yoki initials yo\'q:', !userInitials);
             }
             
             const wBtn = document.getElementById('w-btn');
@@ -905,22 +928,36 @@
             // TON Connect UI (Telegram Wallet, Tonkeeper va boshqalar)
             if (typeof TON_CONNECT_UI !== 'undefined') {
                 const manifestUrl = window.location.origin + '/tonconnect-manifest.json';
+                console.log('Manifest URL:', manifestUrl);
                 
                 tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
                     manifestUrl: manifestUrl,
                     walletsListSource: 'https://raw.githubusercontent.com/ton-blockchain/wallets-list/main/wallets.json'
                 });
                 
+                // Debug: wallet obyektini ko'ramiz
+                console.log('TON Connect UI yuklandi');
+                console.log('TON Connect UI object:', tonConnectUI);
+                
+                // Manifest yuklanishini tekshirish
+                fetch(manifestUrl)
+                    .then(r => r.json())
+                    .then(data => console.log('Manifest yuklandi:', data))
+                    .catch(e => console.error('Manifest yuklash xatosi:', e));
+                
                 // Wallet ulanishini kuzatish
                 tonConnectUI.onStatusChange((wallet) => {
+                    console.log('Hamyon holati o\'zgardi:', wallet);
+                    
                     connectedWalletAddress = getUserFriendlyAddress(wallet);
+                    console.log('Formatlangan manzil:', connectedWalletAddress);
                     
                     if (connectedWalletAddress && userId) {
                         fetch(API_BASE + '/user/register', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ userId, connectedWallet: connectedWalletAddress })
-                        }).catch(() => {});
+                        }).catch(err => console.error('Bazaga saqlashda xato:', err));
                     }
                     
                     updateWalletUI();
@@ -928,8 +965,10 @@
                 
                 // Avvalgi ulanishni tiklash
                 tonConnectUI.connectionRestored.then((restored) => {
+                    console.log('Connection restored:', restored);
                     if (restored && tonConnectUI.wallet) {
                         connectedWalletAddress = getUserFriendlyAddress(tonConnectUI.wallet);
+                        console.log('Restored wallet manzili:', connectedWalletAddress);
                         updateWalletUI();
                     }
                 });
@@ -994,20 +1033,23 @@
                 const payBtnPanel = document.getElementById('pay-wallet-btn-panel');
                 if (payBtnPanel) {
                     payBtnPanel.addEventListener('click', async () => {
+                        console.log('=== TO\'LOV BOSHLANDI ===');
+                        console.log('Foydalanuvchi wallet:', connectedWalletAddress);
+                        console.log('Qabul qiluvchi (ASRA):', PAYMENT_ADDRESS);
+                        console.log('Miqdor:', PAYMENT_NANO, 'nanoton');
                         
                         if (tonConnectUI && connectedWalletAddress) {
+                            console.log('Wallet ulangan - tranzaksiya yuborilmoqda...');
+                            console.log('Yonalish: User -> ASRA Coin');
                             try {
-                                // TON Connect tranzaksiyasi - payload bo'sh
                                 const result = await tonConnectUI.sendTransaction({
                                     validUntil: Math.floor(Date.now() / 1000) + 600,
-                                    messages: [
-                                        {
-                                            address: PAYMENT_ADDRESS,
-                                            amount: PAYMENT_NANO.toString(),
-                                            payload: ""
-                                        }
-                                    ]
+                                    messages: [{
+                                        address: PAYMENT_ADDRESS,
+                                        amount: PAYMENT_NANO.toString()
+                                    }]
                                 });
+                                console.log('Tranzaksiya natijasi:', result);
                                 Swal.fire({
                                     text: 'To\'lov yuborildi! Sahifani yangilang.',
                                     icon: 'success',
@@ -1017,6 +1059,7 @@
                                     position: 'center'
                                 });
                             } catch (e) {
+                                console.error('To\'lov xatosi:', e);
                                 Swal.fire({
                                     text: 'To\'lov xatosi: ' + e.message,
                                     icon: 'error',
@@ -1026,13 +1069,22 @@
                             }
                         } else if (tonConnectUI) {
                             // Wallet ulanmagan - uni ochish
+                            console.log('Wallet ulanmagan, modal ochilmoqda...');
+                            console.log('tonConnectUI:', tonConnectUI);
                             try {
+                                // TON Connect modal ni ochish
                                 tonConnectUI.openModal();
+                                console.log('Modal ochildi');
                             } catch (e) {
+                                console.error('Modal ochish xatosi:', e);
+                                console.log('Error details:', e.message, e.stack);
+                                // Agar ishlamasa, ton:// URL ga o'tish
+                                console.log('ton:// URL ga o\'tilmoqda:', TON_TRANSFER_URL);
                                 window.location.href = TON_TRANSFER_URL;
                             }
                         } else {
                             // TON Connect yo'q
+                            console.log('TON Connect yo\'q, ton:// URL ga o\'tilmoqda');
                             window.location.href = TON_TRANSFER_URL;
                         }
                     });
@@ -1068,6 +1120,7 @@
                     const res = await fetch(API_BASE + '/check-payment/' + userId);
                     paymentStatus = await res.json();
                 } catch (e) {
+                    console.error('To\'lov holatini tekshirishda xato:', e);
                 }
                 
                 // Agar to'lov qilinmagan bo'lsa - Demo mode
@@ -1123,6 +1176,7 @@
                                     stopGame();
                                 }
                             } catch (e) {
+                                console.log('Auto check error:', e);
                             }
                         }, 5000);
                     };
