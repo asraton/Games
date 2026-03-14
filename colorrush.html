@@ -597,6 +597,8 @@
             const walletAddressDisplay = document.getElementById('wallet-address-display');
             const wBtn = document.getElementById('w-btn');
             
+            console.log('updateWalletUI called, connectedWalletAddress:', connectedWalletAddress);
+            
             if (connectedWalletAddress) {
                 // Wallet ulangan - W tugmasi o'zgarmaydi, faqat rangi o'zgaradi
                 wBtn.classList.add('connected');
@@ -605,7 +607,10 @@
                 walletActionBtn.classList.add('disconnect');
                 
                 // To'liq adres panelda ko'rsatiladi
-                walletAddressDisplay.innerHTML = `<strong style="color:#00d2ff">Ulangan wallet:</strong><br>${connectedWalletAddress}`;
+                const displayAddr = connectedWalletAddress.startsWith('0:') 
+                    ? connectedWalletAddress.slice(0, 10) + '...' + connectedWalletAddress.slice(-8)
+                    : connectedWalletAddress;
+                walletAddressDisplay.innerHTML = `<strong style="color:#00d2ff">Ulangan wallet:</strong><br>${displayAddr}`;
                 walletAddressDisplay.style.display = 'block';
             } else {
                 // Wallet ulanmagan
@@ -651,16 +656,30 @@
                 console.log('TON Connect UI yuklandi');
                 
                 tonConnectUI.onStatusChange((wallet) => {
-                    console.log('StatusChange wallet:', wallet);
-                    console.log('Account fields:', wallet?.account);
+                    console.log('=== TON Connect Status Change ===');
+                    console.log('Full wallet object:', JSON.stringify(wallet, null, 2));
+                    
                     if (wallet && wallet.account) {
-                        // To'g'ri manzilni olish - userFriendlyAddress ni ustuvor qilamiz
-                        // userFriendlyAddress = UQ... yoki EQ... format
-                        // address = 0:... format (raw)
-                        connectedWalletAddress = wallet.account.userFriendlyAddress || wallet.account.address;
-                        console.log('Ulangan wallet manzili:', connectedWalletAddress);
-                        console.log('userFriendlyAddress:', wallet.account.userFriendlyAddress);
-                        console.log('address:', wallet.account.address);
+                        // TON Connect UI versiyasiga qarab turli field nomlari bo'lishi mumkin
+                        // Yangi versiya: userFriendlyAddress, eski versiya: address
+                        const rawAddress = wallet.account.address; // 0:... format
+                        const userFriendly = wallet.account.userFriendlyAddress; // UQ/EQ... format
+                        
+                        console.log('Raw address (0:...):', rawAddress);
+                        console.log('User-friendly address (UQ...):', userFriendly);
+                        console.log('All account fields:', Object.keys(wallet.account));
+                        
+                        // To'g'ri manzilni tanlash - userFriendlyAddress ustuvor
+                        // Agar userFriendlyAddress bo'lmasa, address dan convert qilish kerak
+                        if (userFriendly) {
+                            connectedWalletAddress = userFriendly;
+                        } else if (rawAddress) {
+                            // Agar faqat raw address bo'lsa, uni user-friendly formatga o'tkazish kerak
+                            // Yoki shunchaki raw address ni ko'rsatish (0:...)
+                            connectedWalletAddress = rawAddress;
+                        }
+                        
+                        console.log('Selected address:', connectedWalletAddress);
                         
                         if (connectedWalletAddress && userId) {
                             fetch(API_BASE + '/user/register', {
@@ -671,7 +690,7 @@
                         }
                     } else {
                         connectedWalletAddress = null;
-                        console.log('Wallet uzildi');
+                        console.log('Wallet disconnected');
                     }
                     updateWalletUI();
                 });
