@@ -310,10 +310,7 @@
             coin.style.left = pos.x + 'px';
             coin.style.top = pos.y + 'px';
             coin.style.display = 'block';
-            coin.classList.add('coin-pop');
             coinVisible = true;
-
-            setTimeout(() => coin.classList.remove('coin-pop'), 400);
 
             const visibleTime = calculateSpeed();
             clearTimeout(coinTimeout);
@@ -324,15 +321,11 @@
 
         function hideCoin() {
             clearTimeout(coinTimeout);
-            coin.classList.add('coin-shrink');
-            setTimeout(() => {
-                coin.style.display = 'none';
-                coin.classList.remove('coin-shrink');
-                coinVisible = false;
-                if (gameActive && !isPaused) {
-                    setTimeout(() => showCoin(), 50);
-                }
-            }, 200);
+            coin.style.display = 'none';
+            coinVisible = false;
+            if (gameActive && !isPaused) {
+                showCoin();
+            }
         }
 
         function showFloatText(x, y, text, isNegative) {
@@ -388,7 +381,7 @@
             // Tanga darhol yo'qoladi va yangisi chiqadi
             coin.style.display = 'none';
             coinVisible = false;
-            setTimeout(() => showCoin(), 50);
+            showCoin();
         }
 
         function startNewGame() {
