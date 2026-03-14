@@ -106,17 +106,8 @@ try {
                 reply_markup: {
                     inline_keyboard: [[
                         {
-                            text: '💰 Tonkeeper',
-                            url: `https://app.tonkeeper.com/ton-connect?clientId=${connectId}&manifestUrl=${encodeURIComponent(GAME_URL + '/tonconnect-manifest.json')}`
-                        }
-                    ], [
-                        {
-                            text: '💎 Telegram Wallet',
+                            text: ' Telegram Wallet',
                             url: `https://t.me/wallet?startattach=tonconnect_${userId}`
-                        },
-                        {
-                            text: '🌐 MyTonWallet',
-                            url: `https://connect.mytonwallet.org/?clientId=${connectId}&manifestUrl=${encodeURIComponent(GAME_URL + '/tonconnect-manifest.json')}`
                         }
                     ], [
                         {
@@ -128,7 +119,7 @@ try {
                 parse_mode: 'Markdown'
             };
             
-            bot.sendMessage(chatId, `💳 *Wallet ulash*\n\nWalletni tanlang va o'yinga ulang:\n\n✅ Wallet ochiladi\n✅ "Connect" tugmasini bosing\n✅ Wallet o'yinga ulanadi`, walletKeyboard);
+            bot.sendMessage(chatId, `💳 *Wallet ulash*\n\nTelegram Walletni tanlang va hamyonni ulang:`, walletKeyboard);
             
             // Clean up old pending connections after 5 minutes
             setTimeout(() => {
