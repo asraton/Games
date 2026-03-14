@@ -841,25 +841,74 @@
                 // Agar to'lov qilinmagan bo'lsa - Demo mode
                 if (!paymentStatus || !paymentStatus.hasPaid) {
                     const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
+                    const PAYMENT_AMOUNT = 1; // 1 TON
+                    const PAYMENT_NANO = 1000000000; // 1 TON in nanoton
+                    // TON Connect transfer URL - avtomatik hamyon ochish uchun
+                    const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=GamePayment_${userId}`;
+                    // QR code URL - dinamik yaratish
+                    const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
+                    
                     modalBody.innerHTML = `
                         <div style="text-align:center;padding:16px;">
                             <p style="color:#ff9500;font-size:16px;margin-bottom:12px;">⚠️ Demo versiya</p>
                             <p style="color:#fff;font-size:13px;margin-bottom:16px;">
-                                Haqiqiy o'yin boshlash uchun 1 TON to'lang
+                                Haqiqiy o'yin boshlash uchun <b>1 TON</b> to'lang
                             </p>
                             <p style="color:#888;font-size:11px;margin-bottom:8px;word-break:break-all;">
                                 ${PAYMENT_ADDRESS}
                             </p>
-                            <img src="/assets/payment-qr.png" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
-                            <p style="color:#00d2ff;font-size:12px;margin-top:12px;">
+                            
+                            <!-- QR Code - dinamik yaratilgan -->
+                            <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
+                            
+                            <!-- Avtomatik hamyon ochish tugmasi -->
+                            <a href="${TON_TRANSFER_URL}" id="pay-wallet-btn" style="display:block;margin-top:16px;padding:12px 20px;background:linear-gradient(135deg, #0088cc, #00a8e8);color:#fff;text-decoration:none;border-radius:8px;font-size:14px;">
+                                📱 Hamyondan to'lash
+                            </a>
+                            
+                            <p style="color:#00d2ff;font-size:12px;margin-top:16px;">
                                 Demo rejimda yig'ilgan nTONlar yechilmaydi!
                             </p>
-                            <button class="wallet-panel-btn" id="check-payment-btn" style="margin-top:16px;background:linear-gradient(135deg, #2ed573, #1dd1a1);">
+                            <button class="wallet-panel-btn" id="check-payment-btn" style="margin-top:12px;background:linear-gradient(135deg, #2ed573, #1dd1a1);">
                                 ✅ To'lovni tekshirish
                             </button>
                         </div>
                     `;
                     modal.classList.add('open');
+                    
+                    // Avtomatik tekshirish - har 5 sekundda
+                    let autoCheckInterval;
+                    const startAutoCheck = () => {
+                        autoCheckInterval = setInterval(async () => {
+                            try {
+                                const res = await fetch(API_BASE + '/check-payment/' + userId);
+                                const data = await res.json();
+                                if (data.hasPaid) {
+                                    clearInterval(autoCheckInterval);
+                                    modalBody.innerHTML = `
+                                        <div style="text-align:center;padding:16px;">
+                                            <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ To'lov tasdiqlandi!</p>
+                                            <p style="color:#fff;font-size:13px;">Yangi o'yin boshlandi. Hamma hisoblar 0 ga tushirildi.</p>
+                                            <p style="color:#888;font-size:11px;margin-top:8px;">Sahifani yangilang</p>
+                                        </div>
+                                    `;
+                                    nanoScore = 0;
+                                    tonCount = 0;
+                                    updateDisplay();
+                                    stopGame();
+                                }
+                            } catch (e) {
+                                console.log('Auto check error:', e);
+                            }
+                        }, 5000);
+                    };
+                    startAutoCheck();
+                    
+                    // Modal yopilganda interval to'xtasin
+                    const stopAutoCheck = () => {
+                        if (autoCheckInterval) clearInterval(autoCheckInterval);
+                        modal.removeEventListener('transitionend', stopAutoCheck);
+                    };
                     
                     document.getElementById('check-payment-btn').addEventListener('click', async () => {
                         document.getElementById('check-payment-btn').textContent = '⏳ Tekshirilmoqda...';
@@ -867,6 +916,7 @@
                             const res = await fetch(API_BASE + '/confirm-payment/' + userId, { method: 'POST' });
                             const data = await res.json();
                             if (data.hasPaid) {
+                                clearInterval(autoCheckInterval);
                                 modalBody.innerHTML = `
                                     <div style="text-align:center;padding:16px;">
                                         <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ To'lov tasdiqlandi!</p>
@@ -874,7 +924,6 @@
                                         <p style="color:#888;font-size:11px;margin-top:8px;">Sahifani yangilang</p>
                                     </div>
                                 `;
-                                // O'yinni reset qilish
                                 nanoScore = 0;
                                 tonCount = 0;
                                 updateDisplay();
