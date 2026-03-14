@@ -602,14 +602,10 @@
                 walletActionBtn.textContent = '❌ Wallet uzish';
                 walletActionBtn.classList.add('disconnect');
                 
-                // Manzilni chiroyli qisqartirish (masalan: EQa1...b2c3)
-                const start = connectedWalletAddress.slice(0, 4);
-                const end = connectedWalletAddress.slice(-4);
-                const shortAddr = `${start}...${end}`;
-                
+                // TO'LIQ manzil ko'rsatiladi (qisqartirilmaydi)
                 walletAddressDisplay.innerHTML = `
-                    <strong style="color:#00d2ff">Ulangan:</strong><br>
-                    <span style="font-size:11px; color:#eee;">${shortAddr}</span>
+                    <strong style="color:#00d2ff">Ulangan wallet:</strong><br>
+                    <span style="font-size:10px; color:#eee; word-break:break-all;">${connectedWalletAddress}</span>
                 `;
                 walletAddressDisplay.style.display = 'block';
             } else {
