@@ -457,7 +457,6 @@
         <div class="wallet-modal-content" id="modal-content">
             <h3 id="modal-title"></h3>
             <div id="modal-body"></div>
-            <button class="close-modal" style="margin-top:12px;width:100%;padding:10px;background:linear-gradient(135deg, #0088cc, #00a8ff);color:#fff;border:none;border-radius:8px;cursor:pointer;">⬅️ Orqaga</button>
         </div>
     </div>
 
@@ -743,7 +742,7 @@
             const modal = document.getElementById('wallet-modal');
             const modalBody = document.getElementById('modal-body');
             const modalTitle = document.getElementById('modal-title');
-            const closeModal = document.querySelector('.close-modal');
+            const closeModal = modal.querySelector('.close-modal');
 
             // W bosilganda panel ochiladi/yopiladi
             wBtn.addEventListener('click', (e) => {
@@ -753,10 +752,6 @@
             document.addEventListener('click', () => walletPanel.classList.remove('open'));
             walletPanel.addEventListener('click', (e) => e.stopPropagation());
 
-            closeModal.addEventListener('click', () => {
-                modal.classList.remove('open');
-            });
-            
             // Delegation for dynamically created close buttons
             modal.addEventListener('click', (e) => {
                 if (e.target.classList.contains('close-modal')) {
