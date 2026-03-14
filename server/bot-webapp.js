@@ -34,7 +34,7 @@ bot.onText(/\/start/, (msg) => {
     
     const welcomeMessage = `👋 Salom, ${user.first_name}!
 
-🎮 *TON Coin Rush* - TON Coin yig'ish o'yini!
+🎮 *TON Coin o'yini xush kelibsiz!*
 
 💰 Tangalarni bosib TON yig'ing
 💸 Haqiqiy TON yechib olish
