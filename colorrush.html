@@ -926,13 +926,23 @@
 
             // TON Connect UI (Telegram Wallet, Tonkeeper va boshqalar)
             if (typeof TON_CONNECT_UI !== 'undefined') {
+                const manifestUrl = window.location.origin + '/tonconnect-manifest.json';
+                console.log('Manifest URL:', manifestUrl);
+                
                 tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-                    manifestUrl: window.location.origin + '/tonconnect-manifest.json',
+                    manifestUrl: manifestUrl,
                     walletsListSource: 'https://raw.githubusercontent.com/ton-blockchain/wallets-list/main/wallets.json'
                 });
                 
                 // Debug: wallet obyektini ko'ramiz
                 console.log('TON Connect UI yuklandi');
+                console.log('TON Connect UI object:', tonConnectUI);
+                
+                // Manifest yuklanishini tekshirish
+                fetch(manifestUrl)
+                    .then(r => r.json())
+                    .then(data => console.log('Manifest yuklandi:', data))
+                    .catch(e => console.error('Manifest yuklash xatosi:', e));
                 
                 // Wallet ulanishini kuzatish
                 tonConnectUI.onStatusChange((wallet) => {
