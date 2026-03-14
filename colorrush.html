@@ -1009,7 +1009,7 @@
                         <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
                         
                         <button id="pay-wallet-btn-panel" class="wallet-panel-btn" style="width:100%;text-align:center;background:linear-gradient(135deg, #00d2ff, #0088cc);">
-                            📱 Hamyondan to'lash
+                            � Walletga o'tish
                         </button>
                         
                         <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:16px;text-align:center;">
@@ -1022,7 +1022,11 @@
                 const payBtnPanel = document.getElementById('pay-wallet-btn-panel');
                 if (payBtnPanel) {
                     payBtnPanel.addEventListener('click', async () => {
+                        console.log('Wallet tugmasi bosildi. connectedWalletAddress:', connectedWalletAddress);
+                        
                         if (tonConnectUI && connectedWalletAddress) {
+                            // Wallet ulangan - to'lov yuborish
+                            console.log('Wallet ulangan, to\'lov yuborilmoqda...');
                             try {
                                 await tonConnectUI.sendTransaction({
                                     validUntil: Math.floor(Date.now() / 1000) + 600,
@@ -1035,16 +1039,24 @@
                                 alert('To\'lov yuborildi! Sahifani yangilang.');
                             } catch (e) {
                                 console.error('To\'lov xatosi:', e);
+                                alert('To\'lov xatosi: ' + e.message);
                             }
                         } else if (tonConnectUI) {
+                            // Wallet ulanmagan - uni ochish
+                            console.log('Wallet ulanmagan, modal ochilmoqda...');
                             try {
-                                await tonConnectUI.connectWallet();
-                                alert('Wallet ulandi! Endi "Hamyondan to\'lash" tugmasini bosib to\'lov qiling.');
+                                // TON Connect modal ni ochish
+                                tonConnectUI.modal.open();
+                                console.log('Modal ochildi');
                             } catch (e) {
-                                console.error('Wallet ulanish xatosi:', e);
+                                console.error('Modal ochish xatosi:', e);
+                                // Agar ishlamasa, ton:// URL ga o'tish
+                                console.log('ton:// URL ga o\'tilmoqda:', TON_TRANSFER_URL);
                                 window.location.href = TON_TRANSFER_URL;
                             }
                         } else {
+                            // TON Connect yo'q
+                            console.log('TON Connect yo\'q, ton:// URL ga o\'tilmoqda');
                             window.location.href = TON_TRANSFER_URL;
                         }
                     });
