@@ -723,7 +723,7 @@ function createDefaultShopItems() {
 // Serverni ishga tushirish
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log('🔥 REAL TON COIN RUSH SERVER 🔥');
+    console.log('🔥 REAL TON COIN SERVER 🔥');
     console.log(`✅ Server ${PORT} portda ishga tushdi`);
     console.log('');
     console.log('🔗 TON Center API:');

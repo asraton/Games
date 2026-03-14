@@ -1,7 +1,7 @@
 {
   "name": "tongame",
   "version": "1.0.0",
-  "description": "TON Coin Rush Game with Real TON Blockchain",
+  "description": "TON Coin Game with Real TON Blockchain",
   "main": "server/server-real.js",
   "scripts": {
     "start": "node server/server-real.js",
