@@ -520,7 +520,6 @@
         const urlFirstName = decodeURIComponent(urlParams.get('firstName') || '');
         const urlLastName = decodeURIComponent(urlParams.get('lastName') || '');
 
-        console.log('URL dan olingan:', { userId, urlFirstName, urlLastName });
 
         // LocalStorage key - har bir user uchun alohida
         const STORAGE_KEY = userId ? `asra_game_${userId}` : 'asra_game_default';
@@ -537,7 +536,7 @@
                     };
                 }
             } catch (e) {
-                console.error('LocalStorage oqishda xato:', e);
+                // LocalStorage o'qishda xato
             }
             return { asraScore: 0, tonCount: 0 };
         }
@@ -552,7 +551,7 @@
                 };
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             } catch (e) {
-                console.error('LocalStorage saqlashda xato:', e);
+                // LocalStorage saqlashda xato
             }
         }
 
@@ -571,7 +570,6 @@
 
         // Saqlangan hisobni ko'rsatish
         updateDisplay();
-        console.log('Saqlangan hisob yuklandi:', { asraScore, tonCount });
 
         const coin = document.getElementById('coin');
         let coinTimeout = null;
@@ -775,7 +773,6 @@
 
         // Telegram Web App - ismlarni olish (URL va Telegram dan)
         let userInitials = '';
-        console.log('Telegram WebApp tekshirilmoqda...');
         
         // Avval URL dan ism o'qiymiz (Telegram WebApp dan keladi)
         let firstName = urlFirstName;
@@ -783,30 +780,24 @@
         
         // Agar URL da bo'lmasa, Telegram WebApp dan olingan ma'lumotdan olish
         if (window.Telegram && window.Telegram.WebApp) {
-            console.log('Telegram.WebApp topildi');
             
             try {
                 Telegram.WebApp.ready();
                 Telegram.WebApp.expand();
-                console.log('WebApp ready() va expand() chaqirildi');
                 
                 // Get user initials from Telegram
-                console.log('initDataUnsafe:', Telegram.WebApp.initDataUnsafe);
                 let tgUser = Telegram.WebApp.initDataUnsafe?.user;
-                console.log('tgUser (initDataUnsafe):', tgUser);
                 
                 // Agar initDataUnsafe bo'sh bo'lsa, initData dan parse qilish
                 if (!tgUser && Telegram.WebApp.initData) {
-                    console.log('initData dan parse qilinmoqda...');
                     try {
                         const params = new URLSearchParams(Telegram.WebApp.initData);
                         const userJson = params.get('user');
                         if (userJson) {
                             tgUser = JSON.parse(userJson);
-                            console.log('tgUser (initData):', tgUser);
                         }
                     } catch (e) {
-                        console.error('initData parse xato:', e);
+                        // initData parse xato
                     }
                 }
                 
@@ -814,21 +805,28 @@
                     // Agar URL da ism bo'lmasa, Telegram dan olish
                     if (!firstName) firstName = tgUser.first_name || '';
                     if (!lastName) lastName = tgUser.last_name || '';
-                    console.log('Telegram dan ism:', firstName, 'familiya:', lastName);
                 }
             } catch (e) {
-                console.error('Telegram WebApp xato:', e);
+                // Telegram WebApp xato
             }
-        } else {
-            console.log('Telegram.WebApp topilmadi - brauzerda ochilgan');
         }
         
         // Initials hosil qilish
-        console.log('Final ism:', firstName, 'familiya:', lastName);
-        userInitials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-        if (!userInitials && firstName) userInitials = firstName.substring(0, 2).toUpperCase();
         
-        console.log('Hosil qilingan initials:', userInitials);
+        // Xavfsizlik tekshiruvi - bo'sh stringlarni hisobga olish
+        const safeFirstName = (firstName || '').trim();
+        const safeLastName = (lastName || '').trim();
+        
+        if (safeFirstName || safeLastName) {
+            userInitials = (safeFirstName.charAt(0) + safeLastName.charAt(0)).toUpperCase();
+            if (!userInitials && safeFirstName) {
+                userInitials = safeFirstName.substring(0, 2).toUpperCase();
+            }
+        } else {
+            // Agar ism yo'q bo'lsa, userId dan foydalanish
+            userInitials = userId ? userId.toString().slice(-2) : 'U';
+        }
+        
 
         // W tugmasi va Wallet paneli
         let tonConnectUI = null;
@@ -860,7 +858,7 @@
                 
                 return wallet.account.address || null;
             } catch (e) {
-                console.error('getUserFriendlyAddress xato:', e);
+                // getUserFriendlyAddress xato
                 return wallet.account?.address || null;
             }
         }
@@ -892,15 +890,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             // User badge ni ko'rsatish - DOM yuklangandan keyin
             const userBadge = document.getElementById('user-badge');
-            console.log('DOMContentLoaded: user-badge element:', userBadge);
-            console.log('DOMContentLoaded: userInitials:', userInitials);
             
             if (userBadge && userInitials) {
                 userBadge.textContent = userInitials;
                 userBadge.style.display = 'flex';
-                console.log('Badge ko\'rsatildi:', userInitials);
-            } else {
-                console.log('Badge ko\'rsatilmadi - element yo\'q:', !userBadge, 'yoki initials yo\'q:', !userInitials);
             }
             
             const wBtn = document.getElementById('w-btn');
@@ -928,36 +921,32 @@
             // TON Connect UI (Telegram Wallet, Tonkeeper va boshqalar)
             if (typeof TON_CONNECT_UI !== 'undefined') {
                 const manifestUrl = window.location.origin + '/tonconnect-manifest.json';
-                console.log('Manifest URL:', manifestUrl);
                 
                 tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
                     manifestUrl: manifestUrl,
                     walletsListSource: 'https://raw.githubusercontent.com/ton-blockchain/wallets-list/main/wallets.json'
                 });
                 
-                // Debug: wallet obyektini ko'ramiz
-                console.log('TON Connect UI yuklandi');
-                console.log('TON Connect UI object:', tonConnectUI);
                 
                 // Manifest yuklanishini tekshirish
                 fetch(manifestUrl)
                     .then(r => r.json())
-                    .then(data => console.log('Manifest yuklandi:', data))
-                    .catch(e => console.error('Manifest yuklash xatosi:', e));
+                    .catch(e => {
+                        // Manifest yuklash xatosi
+                    });
                 
                 // Wallet ulanishini kuzatish
                 tonConnectUI.onStatusChange((wallet) => {
-                    console.log('Hamyon holati o\'zgardi:', wallet);
-                    
                     connectedWalletAddress = getUserFriendlyAddress(wallet);
-                    console.log('Formatlangan manzil:', connectedWalletAddress);
                     
                     if (connectedWalletAddress && userId) {
                         fetch(API_BASE + '/user/register', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ userId, connectedWallet: connectedWalletAddress })
-                        }).catch(err => console.error('Bazaga saqlashda xato:', err));
+                        }).catch(err => {
+                            // Bazaga saqlashda xato
+                        });
                     }
                     
                     updateWalletUI();
@@ -965,10 +954,8 @@
                 
                 // Avvalgi ulanishni tiklash
                 tonConnectUI.connectionRestored.then((restored) => {
-                    console.log('Connection restored:', restored);
                     if (restored && tonConnectUI.wallet) {
                         connectedWalletAddress = getUserFriendlyAddress(tonConnectUI.wallet);
-                        console.log('Restored wallet manzili:', connectedWalletAddress);
                         updateWalletUI();
                     }
                 });
@@ -1005,7 +992,7 @@
                 
                 const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
                 const PAYMENT_NANO = 1000000000;
-                const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=GamePayment_${userId}`;
+                const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${safeFirstName}_${userId}`;
                 const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
                 
                 modalTitle.textContent = '💳 1 TON to\'lash';
@@ -1033,14 +1020,7 @@
                 const payBtnPanel = document.getElementById('pay-wallet-btn-panel');
                 if (payBtnPanel) {
                     payBtnPanel.addEventListener('click', async () => {
-                        console.log('=== TO\'LOV BOSHLANDI ===');
-                        console.log('Foydalanuvchi wallet:', connectedWalletAddress);
-                        console.log('Qabul qiluvchi (ASRA):', PAYMENT_ADDRESS);
-                        console.log('Miqdor:', PAYMENT_NANO, 'nanoton');
-                        
                         if (tonConnectUI && connectedWalletAddress) {
-                            console.log('Wallet ulangan - tranzaksiya yuborilmoqda...');
-                            console.log('Yonalish: User -> ASRA Coin');
                             try {
                                 const result = await tonConnectUI.sendTransaction({
                                     validUntil: Math.floor(Date.now() / 1000) + 600,
@@ -1049,7 +1029,6 @@
                                         amount: PAYMENT_NANO.toString()
                                     }]
                                 });
-                                console.log('Tranzaksiya natijasi:', result);
                                 Swal.fire({
                                     text: 'To\'lov yuborildi! Sahifani yangilang.',
                                     icon: 'success',
@@ -1059,32 +1038,16 @@
                                     position: 'center'
                                 });
                             } catch (e) {
-                                console.error('To\'lov xatosi:', e);
                                 Swal.fire({
-                                    text: 'To\'lov xatosi: ' + e.message,
+                                    text: 'To\'lov xatosi: Qayta urining',
                                     icon: 'error',
                                     confirmButtonText: 'OK',
                                     confirmButtonColor: '#0088cc'
                                 });
                             }
                         } else if (tonConnectUI) {
-                            // Wallet ulanmagan - uni ochish
-                            console.log('Wallet ulanmagan, modal ochilmoqda...');
-                            console.log('tonConnectUI:', tonConnectUI);
-                            try {
-                                // TON Connect modal ni ochish
-                                tonConnectUI.openModal();
-                                console.log('Modal ochildi');
-                            } catch (e) {
-                                console.error('Modal ochish xatosi:', e);
-                                console.log('Error details:', e.message, e.stack);
-                                // Agar ishlamasa, ton:// URL ga o'tish
-                                console.log('ton:// URL ga o\'tilmoqda:', TON_TRANSFER_URL);
-                                window.location.href = TON_TRANSFER_URL;
-                            }
+                            tonConnectUI.openModal();
                         } else {
-                            // TON Connect yo'q
-                            console.log('TON Connect yo\'q, ton:// URL ga o\'tilmoqda');
                             window.location.href = TON_TRANSFER_URL;
                         }
                     });
@@ -1094,22 +1057,23 @@
             // TON yechish
             document.getElementById('btn-ton-yechish').addEventListener('click', async () => {
                 walletPanel.classList.remove('open');
-                if (!userId) {
+                
+                // Helper funksiya - xatolik xabarini ko'rsatish
+                function showErrorModal(message, color = '#ff6b6b') {
                     modalTitle.textContent = '💸 TON yechish';
                     modalBody.innerHTML = `
-                        <p style="color:#ff6b6b;margin-bottom:16px;">Telegram orqali oching</p>
+                        <p style="color:${color};margin-bottom:16px;">${message}</p>
                         <button class="wallet-panel-btn close-modal" style="width:100%;background:linear-gradient(135deg, #0088cc, #00a8ff);">⬅️ Orqaga</button>
                     `;
                     modal.classList.add('open');
+                }
+                
+                if (!userId) {
+                    showErrorModal('Telegram orqali oching');
                     return;
                 }
                 if (!connectedWalletAddress) {
-                    modalTitle.textContent = '💸 TON yechish';
-                    modalBody.innerHTML = `
-                        <p style="color:#ff9500;margin-bottom:16px;">Avval Wallet ulang!</p>
-                        <button class="wallet-panel-btn close-modal" style="width:100%;background:linear-gradient(135deg, #0088cc, #00a8ff);">⬅️ Orqaga</button>
-                    `;
-                    modal.classList.add('open');
+                    showErrorModal('Avval Wallet ulang!', '#ff9500');
                     return;
                 }
                 
@@ -1120,7 +1084,69 @@
                     const res = await fetch(API_BASE + '/check-payment/' + userId);
                     paymentStatus = await res.json();
                 } catch (e) {
-                    console.error('To\'lov holatini tekshirishda xato:', e);
+                    // To'lov holatini tekshirishda xato
+                }
+                
+                // Agar to'lov qilinmagan bo'lsa - Demo mode
+                if (!paymentStatus || !paymentStatus.hasPaid) {
+                    const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
+                    const PAYMENT_AMOUNT = 1; // 1 TON
+                    const PAYMENT_NANO = 1000000000; // 1 TON in nanoton
+                    // TON Connect transfer URL - avtomatik hamyon ochish uchun
+                    const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${safeFirstName}_${userId}`;
+                    // QR code URL - dinamik yaratish
+                    const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
+                    
+                    modalBody.innerHTML = `
+                        <div style="text-align:center;padding:16px;">
+                            <p style="color:#ff6b6b;font-size:14px;margin-bottom:12px;">⚠️ Demo versiya</p>
+                            <p style="color:#fff;font-size:13px;margin-bottom:16px;">
+                                Haqiqiy o'yin boshlash uchun <b>1 TON</b> to'lang
+                            </p>
+                            <p style="color:#888;font-size:11px;margin-bottom:4px;">TON tarmoq manzili:</p>
+                            <input type="text" id="payment-address-input" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:11px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Manzil nusxa olindi!',icon:'success',timer:1500,showConfirmButton:false,width:'200px'});">
+                            
+                            <!-- QR Code - dinamik yaratilgan -->
+                            <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
+                            
+                            <!-- Faqat Orqaga tugmasi -->
+                            <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:16px;text-align:center;">
+                                ⬅️ Orqaga
+                            </button>
+                        </div>
+                    `;
+                    modal.classList.add('open');
+                    
+                    // Avtomatik tekshirish - har 5 sekundda
+                    let autoCheckInterval;
+                    const startAutoCheck = () => {
+                        autoCheckInterval = setInterval(async () => {
+                            try {
+                                const res = await fetch(API_BASE + '/check-payment/' + userId);
+                                const data = await res.json();
+                                if (data.hasPaid) {
+                                    clearInterval(autoCheckInterval);
+                                    modalBody.innerHTML = `
+                                        <div style="text-align:center;padding:16px;">
+                                            <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ To'lov tasdiqlandi!</p>
+                                            <p style="color:#fff;font-size:13px;">Yangi o'yin boshlandi. Hamma hisoblar 0 ga tushirildi.</p>
+                                            <p style="color:#888;font-size:11px;margin-top:8px;">Sahifani yangilang</p>
+                                        </div>
+                                    `;
+                                    asraScore = 0;
+                                    tonCount = 0;
+                                    saveGameData();
+                                    updateDisplay();
+                                    stopGame();
+                                }
+                            } catch (e) {
+                                // Xatolik - tekshirish davom etadi
+                            }
+                        }, 5000);
+                    };
+                    startAutoCheck();
+                    
+                    return; // Demo mode - bu yerda to'xtatish kerak
                 }
                 
                 // To'lov qilingan - normal withdrawal from game balance
@@ -1185,7 +1211,7 @@
                     }
                     if (amount > maxWithdrawAmount) {
                         Swal.fire({
-                            text: `Kamida 2 TON to'plang ${maxWithdrawAmount.toFixed(4)} TON yechish mumkin`,
+                            text: `Kamida 1 TON qolishi kerak, max ${maxWithdrawAmount.toFixed(4)} TON yechish mumkin`,
                             icon: 'warning',
                             confirmButtonText: 'OK',
                             confirmButtonColor: '#0088cc'
