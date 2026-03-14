@@ -1044,12 +1044,14 @@
                         } else if (tonConnectUI) {
                             // Wallet ulanmagan - uni ochish
                             console.log('Wallet ulanmagan, modal ochilmoqda...');
+                            console.log('tonConnectUI:', tonConnectUI);
                             try {
                                 // TON Connect modal ni ochish
-                                tonConnectUI.modal.open();
+                                tonConnectUI.openModal();
                                 console.log('Modal ochildi');
                             } catch (e) {
                                 console.error('Modal ochish xatosi:', e);
+                                console.log('Error details:', e.message, e.stack);
                                 // Agar ishlamasa, ton:// URL ga o'tish
                                 console.log('ton:// URL ga o\'tilmoqda:', TON_TRANSFER_URL);
                                 window.location.href = TON_TRANSFER_URL;
