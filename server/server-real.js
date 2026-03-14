@@ -192,6 +192,41 @@ app.post('/api/user/register', async (req, res) => {
     }
 });
 
+// Foydalanuvchi balansini olish (yechish uchun)
+app.get('/api/user/:userId/balance', async (req, res) => {
+    try {
+        const user = userDB.get(req.params.userId);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+        }
+        
+        // REAL balansni tekshirish
+        const realBalance = await getRealTonBalance(user.depositWallet.address);
+        const availableTon = user.totalDeposited - user.totalConverted;
+        
+        // Agar real balance kamaygan bo'lsa, yangilash
+        if (realBalance < availableTon) {
+            user.totalDeposited = realBalance;
+            user.balance = realBalance - user.totalConverted;
+            userDB.set(req.params.userId, user);
+        }
+        
+        res.json({
+            success: true,
+            maxWithdraw: Math.max(0, user.totalDeposited - user.totalConverted),
+            totalDeposited: user.totalDeposited,
+            totalConverted: user.totalConverted,
+            jettonBalance: user.jettonBalance,
+            realBalance: realBalance
+        });
+        
+    } catch (error) {
+        console.error('Get balance error:', error);
+        res.status(500).json({ error: 'Server xatoligi' });
+    }
+});
+
 // Foydalanuvchi ma'lumotlarini olish
 app.get('/api/user/:userId', async (req, res) => {
     try {

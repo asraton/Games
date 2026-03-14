@@ -374,6 +374,30 @@
             color: white;
             font-size: 16px;
             box-sizing: border-box;
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+        
+        #withdraw-amount::-webkit-outer-spin-button,
+        #withdraw-amount::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        #max-btn {
+            background: linear-gradient(135deg, #0088cc, #00a8ff);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        
+        #max-btn:hover {
+            background: linear-gradient(135deg, #00a8ff, #0088cc);
         }
 
         #withdraw-submit {
@@ -780,7 +804,7 @@
             });
 
             // TON yechish
-            document.getElementById('btn-ton-yechish').addEventListener('click', () => {
+            document.getElementById('btn-ton-yechish').addEventListener('click', async () => {
                 walletPanel.classList.remove('open');
                 if (!userId) {
                     modalTitle.textContent = '💸 TON yechish';
@@ -795,12 +819,34 @@
                     return;
                 }
                 modalTitle.textContent = '💸 TON yechish';
+                
+                // Balansni olish
+                let maxAmount = 0;
+                try {
+                    const res = await fetch(API_BASE + '/user/' + userId + '/balance');
+                    const data = await res.json();
+                    if (data.success) {
+                        maxAmount = data.maxWithdraw;
+                    }
+                } catch (e) {
+                    console.error('Balansni olishda xato:', e);
+                }
+                
                 modalBody.innerHTML = `
                     <p style="font-size:11px;color:#888;margin-bottom:8px;word-break:break-all;">Adres: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>
-                    <input type="number" id="withdraw-amount" placeholder="Miqdor (TON)" min="0.1" step="0.1" style="width:100%;box-sizing:border-box;">
+                    <p style="font-size:14px;color:#00d2ff;margin-bottom:8px;">Max: ${maxAmount.toFixed(4)} TON</p>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="number" id="withdraw-amount" placeholder="Miqdor (TON)" min="0.1" step="0.1" style="flex:1;box-sizing:border-box;">
+                        <button id="max-btn">MAX</button>
+                    </div>
                     <button class="wallet-panel-btn withdraw" id="withdraw-submit" style="margin-top:12px;width:100%;">Yuborish</button>
                 `;
                 modal.classList.add('open');
+                
+                // Max tugmasi ishlashi
+                document.getElementById('max-btn').addEventListener('click', () => {
+                    document.getElementById('withdraw-amount').value = maxAmount.toFixed(4);
+                });
                 document.getElementById('withdraw-submit').addEventListener('click', async () => {
                     const amount = parseFloat(document.getElementById('withdraw-amount').value);
                     if (!amount || amount < 0.1) {
