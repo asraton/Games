@@ -7,6 +7,7 @@
     <meta name="api-base" content="">
     <title>🎮 Ton o'yini</title>
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         * {
             -webkit-user-select: none;
@@ -1049,10 +1050,22 @@
                                     }]
                                 });
                                 console.log('Tranzaksiya natijasi:', result);
-                                alert('To\'lov yuborildi! Sahifani yangilang.');
+                                Swal.fire({
+                                    text: 'To\'lov yuborildi! Sahifani yangilang.',
+                                    icon: 'success',
+                                    timer: 2000,
+                                    showConfirmButton: false,
+                                    width: '250px',
+                                    position: 'center'
+                                });
                             } catch (e) {
                                 console.error('To\'lov xatosi:', e);
-                                alert('To\'lov xatosi: ' + e.message);
+                                Swal.fire({
+                                    text: 'To\'lov xatosi: ' + e.message,
+                                    icon: 'error',
+                                    confirmButtonText: 'OK',
+                                    confirmButtonColor: '#0088cc'
+                                });
                             }
                         } else if (tonConnectUI) {
                             // Wallet ulanmagan - uni ochish
@@ -1127,7 +1140,7 @@
                                 Haqiqiy o'yin boshlash uchun <b>1 TON</b> to'lang
                             </p>
                             <p style="color:#888;font-size:11px;margin-bottom:4px;">TON tarmoq manzili:</p>
-                            <input type="text" id="payment-address-input" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:11px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');alert('Manzil nusxa olindi!');">
+                            <input type="text" id="payment-address-input" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:11px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Manzil nusxa olindi!',icon:'success',timer:1500,showConfirmButton:false,width:'200px'});">
                             
                             <!-- QR Code - dinamik yaratilgan -->
                             <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
@@ -1223,11 +1236,21 @@
                 document.getElementById('withdraw-submit').addEventListener('click', async () => {
                     const amount = parseFloat(document.getElementById('withdraw-amount').value);
                     if (!amount || amount < 0.1) {
-                        alert('Minimum 0.1 TON yechish mumkin');
+                        Swal.fire({
+                            text: 'Minimum 0.1 TON yechish mumkin',
+                            icon: 'warning',
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#0088cc'
+                        });
                         return;
                     }
                     if (amount > maxWithdrawAmount) {
-                        alert(`Kamida 2 TON to'plang ${maxWithdrawAmount.toFixed(4)} TON yechish mumkin`);
+                        Swal.fire({
+                            text: `Kamida 2 TON to'plang ${maxWithdrawAmount.toFixed(4)} TON yechish mumkin`,
+                            icon: 'warning',
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#0088cc'
+                        });
                         return;
                     }
                     
