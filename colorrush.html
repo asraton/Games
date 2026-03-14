@@ -120,8 +120,8 @@
 
         .game-coin {
             position: absolute;
-            width: clamp(120px, 20vw, 220px);
-            height: clamp(120px, 20vw, 220px);
+            width: clamp(180px, 28vw, 320px);
+            height: clamp(180px, 28vw, 320px);
             cursor: pointer;
             z-index: 50;
             display: none;
@@ -525,7 +525,7 @@
             currentCoinColor = pulseColors[Math.floor(Math.random() * pulseColors.length)];
             coinImg.classList.add(currentCoinColor);
 
-            const coinSize = 180;
+            const coinSize = 260;
             const pos = getRandomPosition(coinSize);
 
             coin.style.left = pos.x + 'px';
