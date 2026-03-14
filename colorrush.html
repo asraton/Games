@@ -324,12 +324,15 @@
 
         .wallet-modal-content {
             background: linear-gradient(135deg, #1a1a2e, #16213e);
-            padding: clamp(20px, 4vw, 30px);
+            padding: clamp(16px, 4vw, 24px);
             border-radius: 16px;
             text-align: center;
-            max-width: 90%;
-            width: 320px;
+            max-width: 90vw;
+            width: min(300px, 90vw);
+            max-height: 80vh;
+            overflow-y: auto;
             border: 2px solid rgba(0, 136, 204, 0.4);
+            box-sizing: border-box;
         }
 
         .wallet-modal-content h3 {
@@ -362,13 +365,15 @@
 
         #withdraw-amount {
             width: 100%;
-            padding: 12px;
+            max-width: 100%;
+            padding: 10px 12px;
             margin: 10px 0;
             border-radius: 8px;
             border: 2px solid rgba(0,136,204,0.5);
             background: rgba(0,0,0,0.3);
             color: white;
             font-size: 16px;
+            box-sizing: border-box;
         }
 
         #withdraw-submit {
@@ -791,9 +796,9 @@
                 }
                 modalTitle.textContent = '💸 TON yechish';
                 modalBody.innerHTML = `
-                    <p style="font-size:12px;color:#888">Adres: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>
-                    <input type="number" id="withdraw-amount" placeholder="Miqdor (TON)" min="0.1" step="0.1">
-                    <br><button class="wallet-panel-btn withdraw" id="withdraw-submit">Yuborish</button>
+                    <p style="font-size:11px;color:#888;margin-bottom:8px;word-break:break-all;">Adres: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>
+                    <input type="number" id="withdraw-amount" placeholder="Miqdor (TON)" min="0.1" step="0.1" style="width:100%;box-sizing:border-box;">
+                    <button class="wallet-panel-btn withdraw" id="withdraw-submit" style="margin-top:12px;width:100%;">Yuborish</button>
                 `;
                 modal.classList.add('open');
                 document.getElementById('withdraw-submit').addEventListener('click', async () => {
