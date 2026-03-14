@@ -669,6 +669,10 @@
 
             updateDisplay();
             
+            // BARCHA animatsiya klasslarini olib tashlash
+            const coinImg = coin.querySelector('img');
+            pulseColors.forEach(c => coinImg.classList.remove(c));
+            
             // Tanga efekt bilan yo'qoladi va yangisi chiqadi
             coin.classList.add('coin-shrink');
             setTimeout(() => {
