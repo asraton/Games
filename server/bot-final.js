@@ -1,5 +1,4 @@
 const TelegramBot = require('node-telegram-bot-api');
-const axios = require('axios');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 // GAME_URL - Vercel frontend URL
@@ -65,87 +64,12 @@ function initBot(app) {
                     text: '🎮 O\'ynash',
                     web_app: { url: `${GAME_URL}?userId=${user.id}` }
                 }
-            ], [
-                {
-                    text: '💰 Wallet ulash',
-                    web_app: { url: `${GAME_URL}?userId=${user.id}` }
-                },
-                {
-                    text: '📊 Balans',
-                    callback_data: 'balance'
-                },
-                {
-                    text: '💸 TON yechish',
-                    callback_data: 'withdraw'
-                }
             ]]
         },
         parse_mode: 'Markdown'
     };
 
     bot.sendMessage(chatId, welcomeMessage, keyboard);
-});
-
-// Callback queries
-bot.on('callback_query', async (query) => {
-    const chatId = query.message.chat.id;
-    const data = query.data;
-    const userId = query.from.id;
-
-    console.log('Callback:', data);
-
-    // Wallet now uses direct URL button - no callback needed
-    if (data === 'back_to_main') {
-        // Re-send main menu
-        const mainKeyboard = {
-            reply_markup: {
-                inline_keyboard: [[
-                    {
-                        text: '🎮 O\'ynash',
-                        web_app: { url: `${GAME_URL}?userId=${userId}` }
-                    }
-                ], [
-                    {
-                        text: '💰 Wallet ulash',
-                        web_app: { url: `${GAME_URL}?userId=${userId}` }
-                    },
-                    {
-                        text: '📊 Balans',
-                        callback_data: 'balance'
-                    },
-                    {
-                        text: '💸 TON yechish',
-                        callback_data: 'withdraw'
-                    }
-                ]]
-            },
-            parse_mode: 'Markdown'
-        };
-        bot.sendMessage(chatId, `👋 *Asosiy menyu*`, mainKeyboard);
-    }
-    else if (data === 'balance') {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/user/${userId}`);
-            const userData = response.data;
-            
-            if (userData.success) {
-                const message = `📊 *Balans*
-
-💰 TON: ${userData.user.balance.toFixed(4)} TON
-💎 Jetton: ${userData.user.jettonBalance.toLocaleString()} 💎`;
-                bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-            } else {
-                bot.sendMessage(chatId, '⚠️ Avval wallet ulang!');
-            }
-        } catch (e) {
-            bot.sendMessage(chatId, '⚠️ Avval wallet ulang!');
-        }
-    }
-    else if (data === 'withdraw') {
-        bot.sendMessage(chatId, `💸 TON yechish uchun o'yinga kiring.`);
-    }
-    
-    bot.answerCallbackQuery(query.id);
 });
 
 // Error handling

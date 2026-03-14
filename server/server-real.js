@@ -120,12 +120,11 @@ app.post('/api/user/register', async (req, res) => {
             // Yangilangan balansni olish
             const realBalance = await getRealTonBalance(user.depositWallet.address);
             
-            // Yangi deposit borligini tekshirish
-            const newDeposit = Math.max(0, realBalance - user.balance);
-            
-            if (newDeposit > 0.001) { // Minimum 0.001 TON
-                user.balance = realBalance;
-                user.totalDeposited += newDeposit;
+            // Agar real balance ko'p bo'lsa, yangi deposit bor
+            if (realBalance > user.totalDeposited) {
+                const newDeposit = realBalance - user.totalDeposited;
+                user.totalDeposited = realBalance;
+                user.balance = user.totalDeposited - user.totalConverted;
                 user.lastDepositAt = new Date();
                 
                 console.log(`✅ Yangi deposit: ${newDeposit.toFixed(4)} TON (User: ${userId})`);
@@ -137,9 +136,12 @@ app.post('/api/user/register', async (req, res) => {
                     userId: user.userId,
                     connectedWallet: user.connectedWallet,
                     depositAddress: user.depositWallet.address,
-                    balance: user.balance,
+                    realBalance: realBalance,
+                    totalDeposited: user.totalDeposited,
+                    totalConverted: user.totalConverted,
+                    tonAvailable: user.balance,
                     jettonBalance: user.jettonBalance,
-                    newDeposit: newDeposit > 0.001 ? newDeposit : 0
+                    newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0
                 }
             });
         }
@@ -155,6 +157,7 @@ app.post('/api/user/register', async (req, res) => {
             balance: 0,
             jettonBalance: 0,
             totalDeposited: 0,
+            totalConverted: 0, // TON -> jetton ga aylangan miqdor
             purchasedItems: [],
             createdAt: new Date(),
             lastDepositAt: null,
@@ -181,8 +184,11 @@ app.post('/api/user/register', async (req, res) => {
                 userId: user.userId,
                 connectedWallet: user.connectedWallet,
                 depositAddress: user.depositWallet.address,
-                balance: user.balance,
-                jettonBalance: user.jettonBalance,
+                realBalance: 0,
+                totalDeposited: 0,
+                totalConverted: 0,
+                tonAvailable: 0,
+                jettonBalance: 0,
                 newDeposit: 0
             }
         });
@@ -202,7 +208,7 @@ app.get('/api/user/:userId', async (req, res) => {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
         
-        // REAL balansni tekshirish
+        // REAL balansni tekshirish (blockchain da)
         const realBalance = await getRealTonBalance(user.depositWallet.address);
         
         res.json({
@@ -211,10 +217,11 @@ app.get('/api/user/:userId', async (req, res) => {
                 userId: user.userId,
                 connectedWallet: user.connectedWallet,
                 depositAddress: user.depositWallet.address,
-                balance: realBalance, // REAL blockchain balans
-                storedBalance: user.balance, // Saqlangan balans
-                jettonBalance: user.jettonBalance,
+                realBalance: realBalance, // REAL blockchain balans
                 totalDeposited: user.totalDeposited,
+                totalConverted: user.totalConverted,
+                tonAvailable: user.totalDeposited - user.totalConverted, // Withdraw qilish mumkin
+                jettonBalance: user.jettonBalance,
                 createdAt: user.createdAt,
                 lastDepositAt: user.lastDepositAt
             }
@@ -238,12 +245,16 @@ app.post('/api/check-deposit/:userId', async (req, res) => {
         // REAL TON balansini olish
         const realBalance = await getRealTonBalance(user.depositWallet.address);
         
-        // Yangi depositni hisoblash
-        const newDeposit = Math.max(0, realBalance - user.balance);
+        // Avvalgi deposit bilan solishtirish
+        const previousDeposited = user.totalDeposited;
         
-        if (newDeposit > 0.001) { // Minimum 0.001 TON
-            user.balance = realBalance;
-            user.totalDeposited += newDeposit;
+        // Agar real balance avvalgidan ko'p bo'lsa, yangi deposit bor
+        if (realBalance > previousDeposited) {
+            const newDeposit = realBalance - previousDeposited;
+            
+            // totalDeposited ni yangilash
+            user.totalDeposited = realBalance;
+            user.balance = user.totalDeposited - user.totalConverted;
             user.lastDepositAt = new Date();
             
             console.log(`✅ DEPOSIT: ${newDeposit.toFixed(4)} TON`);
@@ -253,8 +264,10 @@ app.post('/api/check-deposit/:userId', async (req, res) => {
             return res.json({
                 success: true,
                 newDeposit: newDeposit,
-                totalBalance: user.balance,
                 totalDeposited: user.totalDeposited,
+                totalConverted: user.totalConverted,
+                tonAvailable: user.balance,
+                jettonBalance: user.jettonBalance,
                 message: `Yangi deposit: ${newDeposit.toFixed(4)} TON`,
                 isReal: true
             });
@@ -263,8 +276,10 @@ app.post('/api/check-deposit/:userId', async (req, res) => {
         res.json({
             success: true,
             newDeposit: 0,
-            totalBalance: realBalance,
             totalDeposited: user.totalDeposited,
+            totalConverted: user.totalConverted,
+            tonAvailable: user.balance,
+            jettonBalance: user.jettonBalance,
             message: 'Yangi deposit yo\'q',
             isReal: true
         });
@@ -283,17 +298,21 @@ app.post('/api/check-all-deposits', async (req, res) => {
         for (const [userId, user] of users) {
             try {
                 const realBalance = await getRealTonBalance(user.depositWallet.address);
-                const newDeposit = Math.max(0, realBalance - user.balance);
+                const previousDeposited = user.totalDeposited;
                 
-                if (newDeposit > 0.001) {
-                    user.balance = realBalance;
-                    user.totalDeposited += newDeposit;
+                // Yangi deposit tekshirish
+                if (realBalance > previousDeposited) {
+                    const newDeposit = realBalance - previousDeposited;
+                    
+                    user.totalDeposited = realBalance;
+                    user.balance = user.totalDeposited - user.totalConverted;
                     user.lastDepositAt = new Date();
                     
                     results.push({
                         userId: userId,
                         newDeposit: newDeposit,
-                        totalBalance: user.balance
+                        totalDeposited: user.totalDeposited,
+                        tonAvailable: user.balance
                     });
                     
                     console.log(`✅ Auto deposit: ${newDeposit.toFixed(4)} TON (${userId})`);
@@ -406,25 +425,44 @@ app.post('/api/convert-ton', async (req, res) => {
         // REAL balansni tekshirish
         const realBalance = await getRealTonBalance(user.depositWallet.address);
         
-        if (realBalance < tonAmount) {
+        // Mavjud TON miqdori (deposited - converted)
+        const availableTon = user.totalDeposited - user.totalConverted;
+        
+        // Agar real balance kamaygan bo'lsa (withdraw qilingan), yangilash kerak
+        if (realBalance < availableTon) {
+            // Foydalanuvchi withdraw qilgan, totalDeposited ni yangilash
+            const withdrawnAmount = availableTon - realBalance;
+            user.totalDeposited = Math.max(0, user.totalDeposited - withdrawnAmount);
+        }
+        
+        // Yangilangan available TON
+        const updatedAvailableTon = user.totalDeposited - user.totalConverted;
+        
+        if (tonAmount > updatedAvailableTon) {
             return res.status(400).json({ 
                 error: 'Yetarli TON yo\'q',
                 required: tonAmount,
-                current: realBalance,
+                available: updatedAvailableTon,
+                realBalance: realBalance,
                 isReal: true
             });
         }
         
         const jettonAmount = Math.floor(tonAmount * 1000);
         
-        // Balansni yangilash (real blockchain da emas, o'yin ichida)
-        user.balance = realBalance;
+        // totalConverted ni yangilash
+        user.totalConverted += tonAmount;
         user.jettonBalance += jettonAmount;
+        
+        // balance ni yangilash (qolgan TON)
+        user.balance = user.totalDeposited - user.totalConverted;
         
         res.json({
             success: true,
             message: `${tonAmount} TON -> ${jettonAmount} Jetton konvertatsiya qilindi`,
-            tonBalance: user.balance,
+            tonDeposited: user.totalDeposited,
+            tonConverted: user.totalConverted,
+            tonAvailable: user.balance,
             jettonBalance: user.jettonBalance,
             isReal: true
         });
@@ -474,14 +512,15 @@ app.post('/api/withdraw', async (req, res) => {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
         
-        // REAL balansni tekshirish
-        const realBalance = await getRealTonBalance(user.depositWallet.address);
+        // Mavjud TON miqdorini hisoblash (deposited - converted)
+        const availableTon = user.totalDeposited - user.totalConverted;
         
-        if (realBalance < amount) {
+        if (availableTon < amount) {
             return res.status(400).json({ 
                 error: 'Yetarli TON yo\'q',
                 required: amount,
-                current: realBalance,
+                available: availableTon,
+                message: 'Convert qilingan TONlarni withdraw qila olmaysiz',
                 isReal: true
             });
         }
@@ -526,9 +565,9 @@ app.post('/api/withdraw', async (req, res) => {
                 ]
             });
             
-            // Balansni yangilash
-            const newBalance = await getRealTonBalance(user.depositWallet.address);
-            user.balance = newBalance;
+            // totalDeposited ni kamaytirish (withdraw qilingan TON)
+            user.totalDeposited -= amount;
+            user.balance = user.totalDeposited - user.totalConverted;
             
             console.log(`✅ WITHDRAW SUCCESS: ${amount} TON`);
             
@@ -536,7 +575,9 @@ app.post('/api/withdraw', async (req, res) => {
                 success: true,
                 message: `${amount} TON yechib olindi`,
                 toAddress: toAddress,
-                remainingBalance: user.balance,
+                tonDeposited: user.totalDeposited,
+                tonConverted: user.totalConverted,
+                tonAvailable: user.balance,
                 isReal: true,
                 txHash: null // Transaction hash ni keyin tekshirish mumkin
             });
@@ -575,7 +616,10 @@ app.get('/api/debug/wallet/:userId', async (req, res) => {
             debug: true,
             depositAddress: user.depositWallet.address,
             realBalance: realBalance,
-            storedBalance: user.balance,
+            totalDeposited: user.totalDeposited,
+            totalConverted: user.totalConverted,
+            tonAvailable: user.totalDeposited - user.totalConverted,
+            jettonBalance: user.jettonBalance,
             globalStats: user.globalStats || null,
             recentTransactions: transactions.map(tx => ({
                 hash: tx.transaction_id?.hash,
