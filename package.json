@@ -9,7 +9,7 @@
     "dev": "nodemon server/server-real.js"
   },
   "engines": {
-    "node": "24.x"
+    "node": "20.x"
   },
   "dependencies": {
     "@ton/crypto": "^3.2.0",
