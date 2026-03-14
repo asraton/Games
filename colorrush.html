@@ -592,6 +592,37 @@
         let tonConnectUI = null;
         let connectedWalletAddress = null;
 
+        // Yordamchi funksiya - manzilni EQ/UQ formatiga o'tkazish
+        function getUserFriendlyAddress(wallet) {
+            if (!wallet || !wallet.account) return null;
+            
+            try {
+                // 1. Direct userFriendlyAddress ni olamiz (eng yaxshi variant)
+                if (wallet.account.userFriendlyAddress) {
+                    return wallet.account.userFriendlyAddress;
+                }
+                
+                // 2. Agar address bo'lsa va u allaqachon EQ/UQ formatda bo'lsa
+                if (wallet.account.address && 
+                    (wallet.account.address.startsWith('EQ') || wallet.account.address.startsWith('UQ'))) {
+                    return wallet.account.address;
+                }
+                
+                // 3. Raw address (0:...) ni EQ/UQ formatiga o'tkazish
+                if (wallet.account.address && wallet.account.address.includes(':')) {
+                    // TON Connect UI kutubxonasidan foydalanish
+                    if (typeof TON_CONNECT_UI !== 'undefined' && TON_CONNECT_UI.toUserFriendlyAddress) {
+                        return TON_CONNECT_UI.toUserFriendlyAddress(wallet.account.address);
+                    }
+                }
+                
+                return wallet.account.address || null;
+            } catch (e) {
+                console.error('getUserFriendlyAddress xato:', e);
+                return wallet.account?.address || null;
+            }
+        }
+
         function updateWalletUI() {
             const walletActionBtn = document.getElementById('btn-wallet-action');
             const walletAddressDisplay = document.getElementById('wallet-address-display');
@@ -651,33 +682,24 @@
                 tonConnectUI.onStatusChange((wallet) => {
                     console.log('Hamyon holati o\'zgardi:', wallet);
                     
-                    if (wallet && wallet.account) {
-                        // MUHIM: userFriendlyAddress - bu aynan EQ... yoki UQ... formatidir
-                        connectedWalletAddress = wallet.account.userFriendlyAddress || wallet.account.address;
-                        
-                        console.log('Olingan manzil:', connectedWalletAddress);
-
-                        // Bazaga yuborish
-                        if (connectedWalletAddress && userId) {
-                            fetch(API_BASE + '/user/register', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ userId, connectedWallet: connectedWalletAddress })
-                            }).catch(err => console.error('Bazaga saqlashda xato:', err));
-                        }
-                    } else {
-                        connectedWalletAddress = null;
-                        console.log('Hamyon uzildi');
+                    connectedWalletAddress = getUserFriendlyAddress(wallet);
+                    console.log('Formatlangan manzil:', connectedWalletAddress);
+                    
+                    if (connectedWalletAddress && userId) {
+                        fetch(API_BASE + '/user/register', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId, connectedWallet: connectedWalletAddress })
+                        }).catch(err => console.error('Bazaga saqlashda xato:', err));
                     }
                     
-                    // UI-ni darhol yangilash
                     updateWalletUI();
                 });
                 
                 tonConnectUI.connectionRestored.then((restored) => {
-                    console.log('Connection restored:', restored, 'Wallet:', tonConnectUI.wallet);
-                    if (restored && tonConnectUI.wallet && tonConnectUI.wallet.account) {
-                        connectedWalletAddress = tonConnectUI.wallet.account.userFriendlyAddress || tonConnectUI.wallet.account.address;
+                    console.log('Connection restored:', restored);
+                    if (restored && tonConnectUI.wallet) {
+                        connectedWalletAddress = getUserFriendlyAddress(tonConnectUI.wallet);
                         console.log('Restored wallet manzili:', connectedWalletAddress);
                         updateWalletUI();
                     }
