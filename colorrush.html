@@ -1082,6 +1082,27 @@
         // Deposit wallet state
         let depositWalletAddress = null;
         let userId = null;
+        
+        // Lokal fayl ochilganini tekshirish - faqat serverda ishlashi kerak
+        if (window.location.protocol === 'file:') {
+            document.body.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #00122e; color: white; font-family: sans-serif; text-align: center; padding: 20px;">
+                    <h1 style="color: #ff4757; margin-bottom: 20px;">⚠️ Xatolik</h1>
+                    <p style="font-size: 18px; margin-bottom: 30px;">Bu o'yin faqat server orqali ochilishi mumkin.</p>
+                    <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; max-width: 500px;">
+                        <p style="margin-bottom: 15px;">Iltimos, quyidagi URL orqali kiring:</p>
+                        <code style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; display: block; word-break: break-all;">
+                            https://your-railway-url.railway.app
+                        </code>
+                    </div>
+                    <p style="margin-top: 30px; color: #888; font-size: 14px;">
+                        GitHub: <a href="https://github.com/automatetosequence/nTonGames" style="color: #00d2ff;">nTonGames</a>
+                    </p>
+                </div>
+            `;
+            throw new Error('File protocol not allowed');
+        }
+        
         const API_BASE_URL = `${window.location.origin}/api`; // Avtomatik URL
 
         // Elements

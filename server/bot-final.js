@@ -58,7 +58,7 @@ bot.onText(/\/start/, (msg) => {
                 }
             ], [
                 {
-                    text: '💸 Pul yechish',
+                    text: '💸 Ton yechish',
                     callback_data: 'withdraw'
                 }
             ]]
@@ -99,7 +99,7 @@ bot.on('callback_query', async (query) => {
         bot.sendMessage(chatId, `💳 Wallet ulash uchun o'yinga kiring va wallet tugmasini bosing.`);
     }
     else if (data === 'withdraw') {
-        bot.sendMessage(chatId, `💸 Pul yechish uchun o'yinga kiring.`);
+        bot.sendMessage(chatId, `💸 Ton yechish uchun o'yinga kiring.`);
     }
     
     bot.answerCallbackQuery(query.id);

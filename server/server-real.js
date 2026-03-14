@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+require('dotenv').config();
 const { TonClient, WalletContractV4, internal, fromNano, toNano } = require('@ton/ton');
 const { mnemonicNew, mnemonicToWalletKey } = require('@ton/crypto');
 const axios = require('axios');
@@ -14,7 +15,7 @@ const shopItems = new Map();
 const purchases = [];
 
 // TON Center API config
-const TON_API_KEY = process.env.TON_API_KEY || '5ba7895066f2f1d949132be194057a0fa11d38763285909d8aff84f69f258c4e';
+const TON_API_KEY = process.env.TON_API_KEY || '';
 const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
 
 // TON client with API key
@@ -148,7 +149,16 @@ app.post('/api/user/register', async (req, res) => {
             purchasedItems: [],
             createdAt: new Date(),
             lastDepositAt: null,
-            lastBalanceCheck: null
+            lastBalanceCheck: null,
+            // Global stats - restart bo'lganda ham saqlanadi
+            globalStats: {
+                totalClicksAllTime: 0,
+                totalCoinsCollected: 0,
+                totalTonEarned: 0,
+                gamesPlayed: 0,
+                firstPlayed: new Date().toISOString(),
+                lastPlayed: null
+            }
         };
         
         users.set(userId, user);
@@ -557,6 +567,7 @@ app.get('/api/debug/wallet/:userId', async (req, res) => {
             depositAddress: user.depositWallet.address,
             realBalance: realBalance,
             storedBalance: user.balance,
+            globalStats: user.globalStats || null,
             recentTransactions: transactions.map(tx => ({
                 hash: tx.transaction_id?.hash,
                 lt: tx.transaction_id?.lt,
@@ -573,6 +584,90 @@ app.get('/api/debug/wallet/:userId', async (req, res) => {
     }
 });
 
+// Global stats saqlash
+app.post('/api/user/:userId/stats', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { totalClicksAllTime, totalCoinsCollected, totalTonEarned, gamesPlayed } = req.body;
+        
+        const user = users.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+        }
+        
+        // Global stats ni yangilash
+        if (!user.globalStats) {
+            user.globalStats = {
+                totalClicksAllTime: 0,
+                totalCoinsCollected: 0,
+                totalTonEarned: 0,
+                gamesPlayed: 0,
+                firstPlayed: new Date().toISOString(),
+                lastPlayed: null
+            };
+        }
+        
+        // Yangi qiymatlarni qo'shish (incremental)
+        if (totalClicksAllTime !== undefined) {
+            user.globalStats.totalClicksAllTime = totalClicksAllTime;
+        }
+        if (totalCoinsCollected !== undefined) {
+            user.globalStats.totalCoinsCollected = totalCoinsCollected;
+        }
+        if (totalTonEarned !== undefined) {
+            user.globalStats.totalTonEarned = totalTonEarned;
+        }
+        if (gamesPlayed !== undefined) {
+            user.globalStats.gamesPlayed = gamesPlayed;
+        }
+        
+        user.globalStats.lastPlayed = new Date().toISOString();
+        
+        console.log(`📊 Global stats yangilandi: ${userId}`);
+        console.log(`   Bosishlar: ${user.globalStats.totalClicksAllTime}`);
+        console.log(`   Tangalar: ${user.globalStats.totalCoinsCollected}`);
+        console.log(`   TON: ${user.globalStats.totalTonEarned}`);
+        console.log(`   O'yinlar: ${user.globalStats.gamesPlayed}`);
+        
+        res.json({
+            success: true,
+            globalStats: user.globalStats
+        });
+        
+    } catch (error) {
+        console.error('Save global stats error:', error);
+        res.status(500).json({ error: 'Server xatoligi' });
+    }
+});
+
+// Global stats olish
+app.get('/api/user/:userId/stats', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        const user = users.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+        }
+        
+        res.json({
+            success: true,
+            globalStats: user.globalStats || {
+                totalClicksAllTime: 0,
+                totalCoinsCollected: 0,
+                totalTonEarned: 0,
+                gamesPlayed: 0,
+                firstPlayed: null,
+                lastPlayed: null
+            }
+        });
+        
+    } catch (error) {
+        console.error('Get global stats error:', error);
+        res.status(500).json({ error: 'Server xatoligi' });
+    }
+});
+
 // Default shop items yaratish
 function createDefaultShopItems() {
     const defaultItems = [
@@ -584,16 +679,6 @@ function createDefaultShopItems() {
             icon: 'assets/speed.png',
             effect: 'speed_boost',
             effectValue: 20,
-            isActive: true
-        },
-        {
-            itemId: 'extra_life',
-            name: '❤️ Qo\'shimcha jon',
-            description: 'Qora bosilganda 1 marta himoya',
-            price: 1000,
-            icon: 'assets/life.png',
-            effect: 'extra_life',
-            effectValue: 1,
             isActive: true
         },
         {
