@@ -1009,7 +1009,7 @@
                         <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
                         
                         <button id="pay-wallet-btn-panel" class="wallet-panel-btn" style="width:100%;text-align:center;background:linear-gradient(135deg, #00d2ff, #0088cc);">
-                            � Walletga o'tish
+                            💳 Walletga o'tish
                         </button>
                         
                         <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:16px;text-align:center;">
@@ -1119,11 +1119,6 @@
                             <!-- QR Code - dinamik yaratilgan -->
                             <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
                             
-                            <!-- Avtomatik hamyon ochish tugmasi -->
-                            <button id="pay-wallet-btn" class="wallet-panel-btn" style="width:100%;text-align:center;">
-                                📱 Hamyondan to'lash
-                            </button>
-                            
                             <!-- Faqat Orqaga tugmasi -->
                             <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:16px;text-align:center;">
                                 ⬅️ Orqaga
@@ -1160,45 +1155,6 @@
                         }, 5000);
                     };
                     startAutoCheck();
-                    
-                    // Hamyondan to'lash tugmasi - TON Connect orqali to'lov yuborish
-                    const payBtn = document.getElementById('pay-wallet-btn');
-                    if (payBtn) {
-                        payBtn.addEventListener('click', async () => {
-                            if (tonConnectUI && connectedWalletAddress) {
-                                // Agar wallet ulangan bo'lsa, to'lovni yuborish
-                                try {
-                                    await tonConnectUI.sendTransaction({
-                                        validUntil: Math.floor(Date.now() / 1000) + 600, // 10 daqiqa
-                                        messages: [{
-                                            address: PAYMENT_ADDRESS,
-                                            amount: PAYMENT_NANO.toString(),
-                                            payload: null
-                                        }]
-                                    });
-                                    alert('To\'lov yuborildi! Sahifani yangilang.');
-                                } catch (e) {
-                                    console.error('To\'lov xatosi:', e);
-                                }
-                            } else if (tonConnectUI) {
-                                // Agar wallet ulanmagan bo'lsa, TON Connect orqali ulash
-                                console.log('Wallet ulanmagan, TON Connect orqali ulanish...');
-                                
-                                // Faqat wallet ulanishini ochish, avto to'lov yo'q
-                                try {
-                                    await tonConnectUI.connectWallet();
-                                    alert('Wallet ulandi! Endi "Hamyondan to\'lash" tugmasini bosib to\'lov qiling.');
-                                } catch (e) {
-                                    console.error('Wallet ulanish xatosi:', e);
-                                    // Agar ishlamasa, ton:// URL ga o'tish
-                                    window.location.href = TON_TRANSFER_URL;
-                                }
-                            } else {
-                                // Agar TON Connect yo'q bo'lsa, ton:// URL ga o'tish
-                                window.location.href = TON_TRANSFER_URL;
-                            }
-                        });
-                    }
                     
                 }
                 
