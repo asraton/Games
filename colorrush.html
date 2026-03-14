@@ -1102,36 +1102,10 @@
                                 // Agar wallet ulanmagan bo'lsa, TON Connect orqali ulash
                                 console.log('Wallet ulanmagan, TON Connect orqali ulanish...');
                                 
-                                // Wallet ulanishini kutish
-                                const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
-                                    if (wallet && wallet.account) {
-                                        console.log('Wallet ulandi:', wallet);
-                                        connectedWalletAddress = getUserFriendlyAddress(wallet);
-                                        updateWalletUI();
-                                        
-                                        // Avtomatik to'lov yuborish
-                                        try {
-                                            await tonConnectUI.sendTransaction({
-                                                validUntil: Math.floor(Date.now() / 1000) + 600,
-                                                messages: [{
-                                                    address: PAYMENT_ADDRESS,
-                                                    amount: PAYMENT_NANO.toString(),
-                                                    payload: null
-                                                }]
-                                            });
-                                            alert('To\'lov yuborildi! Sahifani yangilang.');
-                                        } catch (e) {
-                                            console.error('To\'lov xatosi:', e);
-                                        }
-                                        
-                                        // Obuna o'chirish
-                                        unsubscribe();
-                                    }
-                                });
-                                
-                                // Modal ochish - boshqa usul
+                                // Faqat wallet ulanishini ochish, avto to'lov yo'q
                                 try {
                                     await tonConnectUI.connectWallet();
+                                    alert('Wallet ulandi! Endi "Hamyondan to\'lash" tugmasini bosib to\'lov qiling.');
                                 } catch (e) {
                                     console.error('Wallet ulanish xatosi:', e);
                                     // Agar ishlamasa, ton:// URL ga o'tish
