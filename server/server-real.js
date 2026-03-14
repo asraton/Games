@@ -743,6 +743,14 @@ app.listen(PORT, () => {
     console.log('');
     
     createDefaultShopItems();
+    
+    // Telegram bot ishga tushirish (agar token mavjud bo'lsa)
+    if (process.env.TELEGRAM_BOT_TOKEN) {
+        console.log('🤖 Telegram bot ishga tushmoqda...');
+        require('./bot-final.js');
+    } else {
+        console.log('⚠️ TELEGRAM_BOT_TOKEN yo\'q - bot ishlamaydi');
+    }
 });
 
 module.exports = app;

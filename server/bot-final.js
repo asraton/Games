@@ -1,9 +1,14 @@
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
-const TOKEN = '8206421731:AAEjI_gcmJpJwidDVip86oYQlPcKBlfTQE4';
-const GAME_URL = 'https://n-ton-games.vercel.app';
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000/api';
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const GAME_URL = process.env.GAME_URL || 'https://your-railway-url.railway.app';
+const API_BASE_URL = process.env.API_BASE_URL || `${GAME_URL}/api`;
+
+if (!TOKEN) {
+    console.error('❌ TELEGRAM_BOT_TOKEN topilmadi! Railway variables ga qo\'shing');
+    process.exit(1);
+}
 
 console.log('========================================');
 console.log('🤖 nTonGame Bot - Ishga tushmoqda...');
