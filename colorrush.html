@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>TON Coin Rush</title>
     <style>
-        /* Global - no text selection for all elements */
         * {
             -webkit-user-select: none;
             -moz-user-select: none;
@@ -16,70 +15,22 @@
             outline: none;
         }
 
-        button, .btn, #start-btn, #exit-start-btn, #continue-btn, #new-game-btn {
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            border: none;
-        }
-
-        button:focus, .btn:focus {
-            outline: none;
-        }
-
-        button:active, .btn:active {
-            outline: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #00122e;
             height: 100vh;
             overflow: hidden;
             position: relative;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
+            margin: 0;
         }
 
-        /* Game border frame - responsive for all devices */
-        #game-frame {
-            position: fixed;
-            top: 1vh;
-            left: 1vw;
-            right: 1vw;
-            bottom: 1vh;
-            border: clamp(2px, 0.3vw, 3px) solid #00d2ff;
-            border-radius: clamp(15px, 2vw, 20px);
-            pointer-events: none;
-            z-index: 90;
-            box-shadow: 0 0 20px rgba(0, 210, 255, 0.5),
-                        inset 0 0 20px rgba(0, 210, 255, 0.2);
-        }
-
-        #game-frame::before {
-            content: '';
-            position: absolute;
-            top: 0.5vh;
-            left: 0.5vw;
-            right: 0.5vw;
-            bottom: 0.5vh;
-            border: 1px solid rgba(0, 210, 255, 0.5);
-            border-radius: clamp(12px, 1.5vw, 15px);
-        }
-
-        /* Game container - no text selection */
         #game-container {
             position: relative;
             width: 100%;
             height: 100vh;
             overflow: hidden;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
         }
 
-        /* Score display - top of screen */
         #score-display {
             position: fixed;
             top: clamp(10px, 3vh, 20px);
@@ -96,9 +47,6 @@
             gap: clamp(10px, 2vw, 15px);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(10px);
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
         }
 
         .score-box {
@@ -124,7 +72,6 @@
             color: #00d2ff;
             text-shadow: 0 0 10px rgba(0, 210, 255, 0.8);
             font-family: 'Courier New', monospace;
-            white-space: nowrap;
         }
 
         #ton-value {
@@ -132,148 +79,43 @@
             text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
         }
 
-        /* Stats - yanada pastda */
-        #stats-display {
+        .game-controls {
             position: fixed;
-            bottom: clamp(60px, 10vh, 80px);
+            bottom: clamp(20px, 3vh, 30px);
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(10px);
-            padding: clamp(6px, 1vh, 8px) clamp(12px, 1.5vw, 15px);
-            border-radius: clamp(10px, 1.5vw, 12px);
+            z-index: 100;
+        }
+
+        #stop-btn {
+            background: linear-gradient(135deg, #2ed573, #1e90ff);
+            border: none;
             color: white;
-            font-size: clamp(10px, 1.2vw, 12px);
-            z-index: 90;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        /* Wallet button with PNG - chap yuqori burchakda kattaroq */
-        #wallet-btn {
-            position: fixed;
-            top: clamp(15px, 2vh, 25px);
-            right: clamp(60px, 8vw, 100px);
-            background: rgba(0, 0, 0, 0.4);
-            border: 2px solid rgba(0, 210, 255, 0.5);
-            border-radius: 50%;
+            padding: clamp(12px, 2vh, 15px) clamp(35px, 4vw, 50px);
+            border-radius: clamp(25px, 3vw, 30px);
             cursor: pointer;
-            z-index: 55;
-            padding: clamp(10px, 2vw, 15px);
-            width: clamp(55px, 9vw, 70px);
-            height: clamp(55px, 9vw, 70px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
+            font-size: clamp(16px, 2vw, 18px);
+            font-weight: bold;
+            box-shadow: 0 4px 20px rgba(46, 213, 115, 0.4), 0 0 30px rgba(46, 213, 115, 0.2);
+            transition: all 0.3s ease;
+            min-width: clamp(150px, 20vw, 180px);
         }
 
-        #wallet-btn:hover {
-            transform: scale(1.1);
-            border-color: rgba(0, 210, 255, 0.8);
+        #stop-btn:hover {
+            box-shadow: 0 6px 25px rgba(46, 213, 115, 0.6), 0 0 40px rgba(46, 213, 115, 0.3);
+            transform: translateY(-2px);
         }
 
-        #wallet-btn:active {
-            transform: scale(0.95);
+        #stop-btn.stop-mode {
+            background: linear-gradient(135deg, #ff4757, #ff6b6b);
+            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4), 0 0 30px rgba(255, 71, 87, 0.2);
         }
 
-        #wallet-btn img {
-            width: 80%;
-            height: 80%;
-            object-fit: contain;
+        #stop-btn.stop-mode:hover {
+            box-shadow: 0 6px 25px rgba(255, 71, 87, 0.6), 0 0 40px rgba(255, 71, 87, 0.3);
         }
 
-        #wallet-btn.connected {
-            border-color: rgba(0, 255, 100, 0.7);
-            background: rgba(0, 255, 100, 0.2);
-        }
-
-        #wallet-btn.connected img {
-            filter: none;
-        }
-
-        /* Bonus TON - pastki qismda random joyda */
-        #bonus-ton {
-            position: fixed;
-            width: clamp(80px, 12vw, 100px);
-            height: clamp(80px, 12vw, 100px);
-            cursor: pointer;
-            z-index: 45;
-            display: none;
-            transition: transform 0.2s;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
-        }
-
-        #bonus-ton.show {
-            display: flex;
-            animation: bonusPop 0.5s ease-out forwards;
-        }
-
-        #bonus-ton img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border-radius: 50%;
-            animation: bonusPulse 0.6s ease-in-out infinite;
-        }
-
-        /* Bonus rangli pulsatsiya klasslari */
-        #bonus-ton.bonus-yellow img { animation: bonusPulseYellow 0.6s ease-in-out infinite; }
-        #bonus-ton.bonus-green img { animation: bonusPulseGreen 0.6s ease-in-out infinite; }
-        #bonus-ton.bonus-cyan img { animation: bonusPulseCyan 0.6s ease-in-out infinite; }
-        #bonus-ton.bonus-orange img { animation: bonusPulseOrange 0.6s ease-in-out infinite; }
-
-        @keyframes bonusPulseYellow {
-            0%, 100% { filter: brightness(1.2) drop-shadow(0 0 15px rgba(255, 215, 0, 0.9)); }
-            50% { filter: brightness(1.5) drop-shadow(0 0 30px rgba(255, 215, 0, 1)); }
-        }
-
-        @keyframes bonusPulseGreen {
-            0%, 100% { filter: brightness(1.2) drop-shadow(0 0 15px rgba(0, 255, 100, 0.9)); }
-            50% { filter: brightness(1.5) drop-shadow(0 0 30px rgba(0, 255, 100, 1)); }
-        }
-
-        @keyframes bonusPulseCyan {
-            0%, 100% { filter: brightness(1.2) drop-shadow(0 0 15px rgba(0, 210, 255, 0.9)); }
-            50% { filter: brightness(1.5) drop-shadow(0 0 30px rgba(0, 210, 255, 1)); }
-        }
-
-        @keyframes bonusPulseOrange {
-            0%, 100% { filter: brightness(1.2) drop-shadow(0 0 15px rgba(255, 150, 0, 0.9)); }
-            50% { filter: brightness(1.5) drop-shadow(0 0 30px rgba(255, 150, 0, 1)); }
-        }
-
-        @keyframes bonusPulse {
-            0%, 100% { filter: brightness(1.2) drop-shadow(0 0 15px rgba(0, 210, 255, 0.9)); }
-            50% { filter: brightness(1.5) drop-shadow(0 0 30px rgba(0, 210, 255, 1)); }
-        }
-
-        #bonus-ton .bonus-text {
-            display: none;
-        }
-
-        /* Coin styles - responsive sizing */
-        /* Coin red glow effect when clicked */
-        .game-coin.coin-clicked,
-        #coin.coin-clicked, #coin2.coin-clicked, #coin3.coin-clicked {
-            background: radial-gradient(circle, rgba(255, 50, 50, 0.8) 0%, rgba(255, 50, 50, 0.4) 40%, transparent 70%);
-            border-radius: 50%;
-            box-shadow: 0 0 30px rgba(255, 50, 50, 0.8), 0 0 60px rgba(255, 50, 50, 0.5);
-            animation: redPulse 0.5s ease-out;
-        }
-
-        @keyframes redPulse {
-            0% { transform: scale(1); box-shadow: 0 0 30px rgba(255, 50, 50, 0.8); }
-            50% { transform: scale(1.1); box-shadow: 0 0 50px rgba(255, 50, 50, 1); }
-            100% { transform: scale(0.9); box-shadow: 0 0 30px rgba(255, 50, 50, 0.8); }
-        }
-
-        .game-coin,
-        #coin, #coin2, #coin3 {
+        .game-coin {
             position: absolute;
             width: clamp(120px, 20vw, 220px);
             height: clamp(120px, 20vw, 220px);
@@ -281,75 +123,20 @@
             z-index: 50;
             display: none;
             transition: transform 0.1s;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
         }
 
-        .game-coin:active,
-        #coin:active, #coin2:active, #coin3:active {
+        .game-coin:active {
             transform: scale(0.9);
         }
 
-        .game-coin img,
-        #coin img, #coin2 img, #coin3 img {
+        .game-coin img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             pointer-events: none;
             -webkit-user-drag: none;
-            -webkit-user-select: none;
-            user-select: none;
         }
 
-        @keyframes goldPulse {
-            0%, 100% { 
-                filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 215, 0, 0.9)); 
-            }
-            50% { 
-                filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 215, 0, 1)); 
-            }
-        }
-
-        /* 7 ta rangli pulsatsiya klasslari - barcha tangalar uchun */
-        #coin img.pulse-yellow, #coin2 img.pulse-yellow, #coin3 img.pulse-yellow { animation: pulseYellow 0.6s ease-in-out infinite; }
-        #coin img.pulse-red, #coin2 img.pulse-red, #coin3 img.pulse-red { animation: pulseRed 0.6s ease-in-out infinite; }
-        #coin img.pulse-green, #coin2 img.pulse-green, #coin3 img.pulse-green { animation: pulseGreen 0.6s ease-in-out infinite; }
-        #coin img.pulse-blue, #coin2 img.pulse-blue, #coin3 img.pulse-blue { animation: pulseBlue 0.6s ease-in-out infinite; }
-        #coin img.pulse-cyan, #coin2 img.pulse-cyan, #coin3 img.pulse-cyan { animation: pulseCyan 0.6s ease-in-out infinite; }
-        #coin img.pulse-purple, #coin2 img.pulse-purple, #coin3 img.pulse-purple { animation: pulsePurple 0.6s ease-in-out infinite; }
-        #coin img.pulse-orange, #coin2 img.pulse-orange, #coin3 img.pulse-orange { animation: pulseOrange 0.6s ease-in-out infinite; }
-
-        @keyframes pulseYellow {
-            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 215, 0, 0.9)); }
-            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 215, 0, 1)); }
-        }
-        @keyframes pulseRed {
-            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 50, 50, 0.9)); }
-            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 50, 50, 1)); }
-        }
-        @keyframes pulseGreen {
-            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 255, 100, 0.9)); }
-            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 255, 100, 1)); }
-        }
-        @keyframes pulseBlue {
-            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 150, 255, 0.9)); }
-            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 150, 255, 1)); }
-        }
-        @keyframes pulseCyan {
-            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 255, 255, 0.9)); }
-            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 255, 255, 1)); }
-        }
-        @keyframes pulsePurple {
-            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(200, 0, 255, 0.9)); }
-            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(200, 0, 255, 1)); }
-        }
-        @keyframes pulseOrange {
-            0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 150, 0, 0.9)); }
-            50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 150, 0, 1)); }
-        }
-
-        /* Pop up animation */
         @keyframes popUp {
             0% { transform: scale(0) rotate(-180deg); opacity: 0; }
             60% { transform: scale(1.1) rotate(10deg); }
@@ -369,7 +156,19 @@
             animation: shrinkOut 0.3s ease-in forwards;
         }
 
-        /* Floating text - responsive */
+        .coin-clicked {
+            background: radial-gradient(circle, rgba(255, 50, 50, 0.8) 0%, rgba(255, 50, 50, 0.4) 40%, transparent 70%);
+            border-radius: 50%;
+            box-shadow: 0 0 30px rgba(255, 50, 50, 0.8), 0 0 60px rgba(255, 50, 50, 0.5);
+            animation: redPulse 0.5s ease-out;
+        }
+
+        @keyframes redPulse {
+            0% { transform: scale(1); box-shadow: 0 0 30px rgba(255, 50, 50, 0.8); }
+            50% { transform: scale(1.1); box-shadow: 0 0 50px rgba(255, 50, 50, 1); }
+            100% { transform: scale(0.9); box-shadow: 0 0 30px rgba(255, 50, 50, 0.8); }
+        }
+
         .float-text {
             position: absolute;
             font-size: clamp(16px, 2.5vw, 22px);
@@ -378,9 +177,8 @@
             animation: floatUp 1s ease-out forwards;
             z-index: 60;
             text-shadow: 0 0 15px currentColor;
+            color: #ffd700;
         }
-
-        .float-plus { color: #ffd700; }
 
         @keyframes floatUp {
             0% { transform: translateY(0) scale(1); opacity: 1; }
@@ -388,404 +186,40 @@
             100% { transform: translateY(clamp(-35px, -6vh, -50px)) scale(0.8); opacity: 0; }
         }
 
-        /* Screens */
-        #start-screen, #menu-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 200;
-        }
+        #coin img.pulse-yellow { animation: pulseYellow 0.6s ease-in-out infinite; }
+        #coin img.pulse-red { animation: pulseRed 0.6s ease-in-out infinite; }
+        #coin img.pulse-green { animation: pulseGreen 0.6s ease-in-out infinite; }
+        #coin img.pulse-blue { animation: pulseBlue 0.6s ease-in-out infinite; }
+        #coin img.pulse-cyan { animation: pulseCyan 0.6s ease-in-out infinite; }
+        #coin img.pulse-purple { animation: pulsePurple 0.6s ease-in-out infinite; }
+        #coin img.pulse-orange { animation: pulseOrange 0.6s ease-in-out infinite; }
 
-        #start-screen.hidden, #menu-screen {
-            display: none;
-        }
+        #coin2 img.pulse-yellow { animation: pulseYellow 0.6s ease-in-out infinite; }
+        #coin2 img.pulse-red { animation: pulseRed 0.6s ease-in-out infinite; }
+        #coin2 img.pulse-green { animation: pulseGreen 0.6s ease-in-out infinite; }
+        #coin2 img.pulse-blue { animation: pulseBlue 0.6s ease-in-out infinite; }
+        #coin2 img.pulse-cyan { animation: pulseCyan 0.6s ease-in-out infinite; }
+        #coin2 img.pulse-purple { animation: pulsePurple 0.6s ease-in-out infinite; }
+        #coin2 img.pulse-orange { animation: pulseOrange 0.6s ease-in-out infinite; }
 
-        #menu-screen.show {
-            display: flex;
-        }
+        #coin3 img.pulse-yellow { animation: pulseYellow 0.6s ease-in-out infinite; }
+        #coin3 img.pulse-red { animation: pulseRed 0.6s ease-in-out infinite; }
+        #coin3 img.pulse-green { animation: pulseGreen 0.6s ease-in-out infinite; }
+        #coin3 img.pulse-blue { animation: pulseBlue 0.6s ease-in-out infinite; }
+        #coin3 img.pulse-cyan { animation: pulseCyan 0.6s ease-in-out infinite; }
+        #coin3 img.pulse-purple { animation: pulsePurple 0.6s ease-in-out infinite; }
+        #coin3 img.pulse-orange { animation: pulseOrange 0.6s ease-in-out infinite; }
 
-        .btn {
-            border: none;
-            padding: clamp(14px, 2.5vh, 18px) clamp(30px, 4vw, 45px);
-            font-size: clamp(18px, 2.5vw, 22px);
-            font-weight: bold;
-            border-radius: clamp(25px, 3vw, 30px);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: clamp(8px, 1.5vh, 10px);
-            min-width: clamp(220px, 35vw, 280px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            position: relative;
-            overflow: hidden;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
-        }
-
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.5s;
-        }
-
-        .btn:hover::before {
-            left: 100%;
-        }
-
-        .btn:active {
-            transform: scale(0.95);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-        }
-
-        #start-btn, #resume-menu-btn {
-            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
-            color: white;
-            box-shadow: 0 4px 20px rgba(0, 210, 255, 0.4);
-            pointer-events: auto;
-        }
-
-        #new-game-section {
-            display: block;
-            margin: 20px 0;
-        }
-
-        #exit-start-btn {
-            background: linear-gradient(135deg, #ff4757, #ff6b6b);
-            color: white;
-            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4);
-            margin-top: 20px;
-            pointer-events: auto;
-        }
-
-        #continue-btn {
-            background: linear-gradient(135deg, #2ed573, #26d0ce);
-            color: white;
-            box-shadow: 0 4px 20px rgba(46, 213, 115, 0.4);
-            pointer-events: auto;
-        }
-
-        #new-game-btn, #new-game-menu-btn {
-            background: linear-gradient(135deg, #ffd700, #ff6b6b);
-            color: #1a1a2e;
-            box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4);
-            pointer-events: auto;
-        }
-
-        #exit-btn {
-            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
-            color: white;
-            box-shadow: 0 4px 20px rgba(162, 155, 254, 0.4);
-        }
-
-        #exit-start-btn {
-            background: linear-gradient(135deg, #ff4757, #ff6b6b);
-            color: white;
-            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4);
-            margin-top: 20px;
-        }
-
-        #title {
-            color: #00d2ff;
-            font-size: clamp(28px, 5vw, 42px);
-            margin-bottom: clamp(8px, 1.5vh, 10px);
-            text-align: center;
-            text-shadow: 0 0 30px rgba(0, 210, 255, 0.8);
-            animation: titleGlow 2s ease-in-out infinite;
-        }
-
-        @keyframes titleGlow {
-            0%, 100% { text-shadow: 0 0 30px rgba(0, 210, 255, 0.8); }
-            50% { text-shadow: 0 0 50px rgba(0, 210, 255, 1), 0 0 80px rgba(0, 210, 255, 0.6); }
-        }
-
-        #subtitle {
-            color: #aaa;
-            font-size: clamp(14px, 2vw, 16px);
-            margin-bottom: clamp(25px, 5vh, 40px);
-            text-align: center;
-        }
-
-        .saved-stats {
-            background: rgba(255, 255, 255, 0.1);
-            padding: clamp(15px, 3vh, 20px) clamp(30px, 5vw, 40px);
-            border-radius: clamp(15px, 2vw, 20px);
-            margin-bottom: clamp(20px, 4vh, 30px);
-            text-align: center;
-            border: 2px solid rgba(0, 210, 255, 0.3);
-        }
-
-        .saved-stats h3 {
-            color: #ffd700;
-            font-size: clamp(20px, 3vw, 24px);
-            margin-bottom: clamp(8px, 1.5vh, 10px);
-        }
-
-        .saved-stats p {
-            color: white;
-            font-size: clamp(14px, 2vw, 16px);
-            margin: clamp(4px, 1vh, 5px) 0;
-        }
-
-        .instructions {
-            color: #888;
-            font-size: clamp(12px, 1.8vw, 14px);
-            margin-top: clamp(20px, 4vh, 30px);
-            text-align: center;
-            padding: 0 clamp(20px, 5vw, 30px);
-            max-width: min(500px, 80vw);
-            line-height: 1.6;
-        }
-
-        /* Game controls container */
-        .game-controls {
-            position: fixed;
-            bottom: clamp(20px, 3vh, 30px);
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: clamp(10px, 2vw, 20px);
-            z-index: 100;
-            width: auto;
-            pointer-events: auto;
-        }
-
-        /* Game controls buttons - fix for mobile */
-        .game-controls button, #stop-btn, #exit-game-btn {
-            pointer-events: auto;
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: rgba(255, 71, 87, 0.3);
-        }
-
-        /* Stop/Start button - Telegram style with glow */
-        #stop-btn {
-            background: linear-gradient(135deg, #ff4757, #ff6b6b);
-            border: none;
-            color: white;
-            padding: clamp(12px, 2vh, 15px) clamp(35px, 4vw, 50px);
-            border-radius: clamp(25px, 3vw, 30px);
-            cursor: pointer;
-            font-size: clamp(16px, 2vw, 18px);
-            font-weight: bold;
-            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4), 0 0 30px rgba(255, 71, 87, 0.2);
-            transition: all 0.3s ease;
-            min-width: clamp(150px, 20vw, 180px);
-            flex: 0 0 auto;
-            position: relative;
-            overflow: hidden;
-        }
-
-        #stop-btn::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        #stop-btn:active::after {
-            width: 300px;
-            height: 300px;
-        }
-
-        #stop-btn:hover {
-            box-shadow: 0 6px 25px rgba(255, 71, 87, 0.6), 0 0 40px rgba(255, 71, 87, 0.3);
-            transform: translateY(-2px);
-        }
-
-        #stop-btn.start-mode {
-            background: linear-gradient(135deg, #2ed573, #1e90ff);
-            box-shadow: 0 4px 20px rgba(46, 213, 115, 0.4), 0 0 30px rgba(46, 213, 115, 0.2);
-        }
-
-        #exit-game-btn:hover {
-            box-shadow: 0 6px 25px rgba(162, 155, 254, 0.6), 0 0 40px rgba(162, 155, 254, 0.3);
-            transform: translateY(-2px);
-        }
-
-        /* Wallet modal - backdrop to hide buttons behind */
-        #wallet-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 300;
-            display: none;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        #wallet-modal.show {
-            display: flex;
-        }
-
-        #wallet-connect-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            max-width: min(400px, 90vw);
-        }
-
-        .wallet-list {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: clamp(10px, 2vh, 15px);
-            max-width: min(400px, 90vw);
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        .wallet-item {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(0, 210, 255, 0.3);
-            padding: clamp(12px, 2vh, 15px) clamp(20px, 3vw, 25px);
-            border-radius: clamp(12px, 2vw, 15px);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: clamp(10px, 2vw, 15px);
-            transition: all 0.3s;
-            width: 80%;
-            max-width: 300px;
-            margin: 0 auto;
-            padding-left: clamp(30px, 5vw, 50px);
-        }
-
-        .wallet-item img {
-            width: clamp(32px, 5vw, 40px);
-            height: clamp(32px, 5vw, 40px);
-            border-radius: 10px;
-        }
-
-        .wallet-item span {
-            color: white;
-            font-size: clamp(16px, 2.5vw, 18px);
-            font-weight: bold;
-        }
-
-        #close-wallet-modal {
-            margin-top: clamp(20px, 4vh, 30px);
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: clamp(10px, 2vh, 12px) clamp(25px, 3vw, 30px);
-            border-radius: clamp(15px, 2vw, 20px);
-            cursor: pointer;
-            font-size: clamp(14px, 2vw, 16px);
-        }
-
-        #close-wallet-modal:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Media queries for different screen sizes */
-        @media (max-width: 480px) {
-            /* Small phones */
-            #score-display {
-                gap: clamp(6px, 1.5vw, 8px);
-                padding: clamp(6px, 2vw, 8px) clamp(12px, 4vw, 15px);
-            }
-            .score-box {
-                padding: clamp(5px, 1.5vw, 6px) clamp(10px, 3vw, 12px);
-                min-width: clamp(60px, 15vw, 70px);
-            }
-            #stats-display {
-                display: none;
-            }
-            #wallet-btn {
-                font-size: clamp(10px, 2.5vw, 11px);
-                padding: clamp(6px, 1.5vw, 8px) clamp(12px, 3vw, 15px);
-            }
-            /* Saved game buttons - vertical stack on mobile */
-            #saved-game-section {
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: center !important;
-                gap: 12px !important;
-                width: 100% !important;
-                margin-bottom: 12px !important;
-            }
-            #saved-game-section .btn,
-            #continue-btn,
-            #new-game-btn {
-                display: block !important;
-                width: 90% !important;
-                max-width: 300px !important;
-                margin: 0 auto !important;
-            }
-            #exit-start-btn {
-                display: block !important;
-                width: 90% !important;
-                max-width: 300px !important;
-                margin: 0 auto !important;
-            }
-        }
-
-        @media (min-width: 481px) and (max-width: 768px) {
-            /* Tablets and large phones */
-            #coin {
-                width: clamp(140px, 18vw, 180px);
-                height: clamp(140px, 18vw, 180px);
-            }
-        }
-
-        @media (min-width: 1200px) {
-            /* Large desktops */
-            #coin {
-                width: clamp(220px, 15vw, 260px);
-                height: clamp(220px, 15vw, 260px);
-            }
-            .btn {
-                min-width: clamp(280px, 25vw, 320px);
-            }
-        }
-
-        @media (max-height: 600px) {
-            /* Short screens (landscape phones) */
-            #score-display {
-                top: 1vh;
-            }
-            #stop-btn {
-                bottom: clamp(10px, 2vh, 15px);
-            }
-            .saved-stats {
-                margin-bottom: clamp(10px, 2vh, 15px);
-                padding: clamp(12px, 2vh, 15px) clamp(25px, 4vw, 30px);
-            }
-        }
+        @keyframes pulseYellow { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 215, 0, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 215, 0, 1)); } }
+        @keyframes pulseRed { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 50, 50, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 50, 50, 1)); } }
+        @keyframes pulseGreen { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 255, 100, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 255, 100, 1)); } }
+        @keyframes pulseBlue { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 150, 255, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 150, 255, 1)); } }
+        @keyframes pulseCyan { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 255, 255, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 255, 255, 1)); } }
+        @keyframes pulsePurple { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(200, 0, 255, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(200, 0, 255, 1)); } }
+        @keyframes pulseOrange { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 150, 0, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 150, 0, 1)); } }
     </style>
 </head>
 <body>
-    <!-- Fixed Wallet Button - removed -->
-    
     <div id="game-container">
         <div id="score-display">
             <div class="score-box">
@@ -799,12 +233,10 @@
         </div>
 
         <div class="game-controls">
-            <button id="stop-btn">⏹️ STOP</button>
-            <button id="exit-game-btn">🚪 CHIQISH</button>
+            <button id="stop-btn">▶️ START</button>
         </div>
     </div>
 
-    <!-- Tangalar (1-3 ta random chiqadi) -->
     <div id="coin" class="game-coin">
         <img src="/assets/tanga.png" alt="TON Tanga">
     </div>
@@ -815,128 +247,21 @@
         <img src="/assets/tanga.png" alt="TON Tanga 3">
     </div>
 
-    <!-- Bonus TON - removed -->
-
-    <!-- Start Screen -->
-    <div id="start-screen">
-        <button class="btn" id="start-btn">🎮 O'yinni Boshlash</button>
-        <button class="btn" id="exit-start-btn">🚪 Chiqish</button>
-    </div>
-
-    <!-- Wallet Modal - removed -->
-
     <script>
         // Game state
-        let nanoScore = 0; // Current nTON (0-999,999,999)
-        let tonCount = 0; // Full TON count
+        let nanoScore = 0;
+        let tonCount = 0;
         const NANO_PER_TON = 1000000000;
         let gameActive = false;
         let isPaused = false;
-        let coinTimeout = null;
         let totalClicks = 0;
         let currentSpeedLevel = 1;
 
-        // Wallet state - removed
-        let tonConnect = null;
-        let connectedWallet = null;
-
-        // Deposit wallet state - removed
-        let depositWalletAddress = null;
-        let userId = null;
-        
-        // Lokal fayl ochilganini tekshirish - faqat serverda ishlashi kerak
-        if (window.location.protocol === 'file:') {
-            document.body.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #00122e; color: white; font-family: sans-serif; text-align: center; padding: 20px;">
-                    <h1 style="color: #ff4757; margin-bottom: 20px;">⚠️ Xatolik</h1>
-                    <p style="font-size: 18px; margin-bottom: 30px;">Bu o'yin faqat server orqali ochilishi mumkin.</p>
-                    <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; max-width: 500px;">
-                        <p style="margin-bottom: 15px;">Iltimos, quyidagi URL orqali kiring:</p>
-                        <code style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; display: block; word-break: break-all;">
-                            https://your-railway-url.railway.app
-                        </code>
-                    </div>
-                    <p style="margin-top: 30px; color: #888; font-size: 14px;">
-                        GitHub: <a href="https://github.com/automatetosequence/nTonGames" style="color: #00d2ff;">nTonGames</a>
-                    </p>
-                </div>
-            `;
-            throw new Error('File protocol not allowed');
-        }
-        
-        const API_BASE_URL = `${window.location.origin}/api`; // Avtomatik URL
-
         // Elements
-        const coin = document.getElementById('coin');
         const tonDisplayElement = document.getElementById('ton-value');
         const ntonDisplayElement = document.getElementById('nton-display');
-        const startScreen = document.getElementById('start-screen');
         const stopBtn = document.getElementById('stop-btn');
-        const exitGameBtn = document.getElementById('exit-game-btn');
 
-        // Start new game
-        function startNewGame() {
-            nanoScore = 0;
-            tonCount = 0;
-            totalClicks = 0;
-            currentSpeedLevel = 1;
-            gameActive = true;
-            isPaused = false;
-            
-            updateDisplay();
-            startScreen.classList.add('hidden');
-            
-            stopBtn.textContent = '⏹️ STOP';
-            stopBtn.classList.remove('start-mode');
-            
-            showCoin();
-        }
-
-        // Save game
-        function saveGame() {
-            const totalNano = tonCount * NANO_PER_TON + nanoScore;
-            const saveData = {
-                nanoScore: totalNano,
-                totalClicks: totalClicks,
-                timestamp: new Date().toISOString()
-            };
-            localStorage.setItem('tonCoinRushSave', JSON.stringify(saveData));
-        }
-
-        // Load game
-        function loadGame() {
-            const saved = localStorage.getItem('tonCoinRushSave');
-            if (saved) {
-                const data = JSON.parse(saved);
-                const totalNano = data.nanoScore || 0;
-                tonCount = Math.floor(totalNano / NANO_PER_TON);
-                nanoScore = totalNano % NANO_PER_TON;
-                totalClicks = data.totalClicks || 0;
-                updateDisplay();
-            }
-        }
-
-        // Calculate speed based on TON amount (1 TON = 2x, 2 TON = 3x, etc.)
-        function calculateSpeed() {
-            // Faqat to'liq TON hisobiga qarab tezlik oshadi
-            currentSpeedLevel = Math.max(1, tonCount + 1);
-            
-            // Base delay decreases as speed increases
-            // Speed 1 = 2000ms, Speed 2 = 1500ms, Speed 3 = 1200ms, etc.
-            const baseDelay = Math.max(300, 2500 - (currentSpeedLevel * 400));
-            
-            return baseDelay;
-        }
-
-        // Get reward - simple random 1-100
-        function getReward() {
-            return Math.floor(Math.random() * 100) + 1; // 1 to 100
-        }
-
-        // Tanga ranglari
-        const pulseColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 'pulse-cyan', 'pulse-purple', 'pulse-orange'];
-
-        // Multiple coins array
         const coins = [
             document.getElementById('coin'),
             document.getElementById('coin2'),
@@ -945,17 +270,28 @@
         const coinTimeouts = [null, null, null];
         const coinVisible = [false, false, false];
 
-        // Get random position for coins - prevents overlap with existing coins
+        const pulseColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 'pulse-cyan', 'pulse-purple', 'pulse-orange'];
+
+        function updateDisplay() {
+            tonDisplayElement.textContent = tonCount;
+            ntonDisplayElement.textContent = nanoScore.toString().padStart(9, '0');
+        }
+
+        function getReward() {
+            return Math.floor(Math.random() * 100) + 1;
+        }
+
+        function calculateSpeed() {
+            currentSpeedLevel = Math.max(1, tonCount + 1);
+            return Math.max(300, 2500 - (currentSpeedLevel * 400));
+        }
+
         function getRandomPosition(coinSize, excludeIndex) {
-            const screen = {
-                width: window.innerWidth,
-                height: window.innerHeight
-            };
-            const margin = 40; // Reduced margin for smaller screens
-            const minDistance = coinSize * 0.6; // Reduced distance - coins can be closer
-            
-            // Get existing coin positions
+            const screen = { width: window.innerWidth, height: window.innerHeight };
+            const margin = 40;
+            const minDistance = coinSize * 0.6;
             const existingPositions = [];
+
             coins.forEach((coinEl, idx) => {
                 if (idx !== excludeIndex && coinVisible[idx] && coinEl.style.display === 'block') {
                     existingPositions.push({
@@ -964,26 +300,20 @@
                     });
                 }
             });
-            
-            // Try to find a position that doesn't overlap - more attempts for better distribution
+
             let attempts = 0;
             let pos;
             let isValid = false;
-            
+
             while (!isValid && attempts < 100) {
-                // Random position anywhere on screen (with margins) - no zones
                 pos = {
                     x: margin + Math.random() * (screen.width - margin * 2 - coinSize),
                     y: margin + Math.random() * (screen.height - margin * 2 - coinSize)
                 };
-                
-                // Check distance from all existing coins
+
                 isValid = true;
                 for (const existing of existingPositions) {
-                    const distance = Math.sqrt(
-                        Math.pow(pos.x - existing.x, 2) + 
-                        Math.pow(pos.y - existing.y, 2)
-                    );
+                    const distance = Math.sqrt(Math.pow(pos.x - existing.x, 2) + Math.pow(pos.y - existing.y, 2));
                     if (distance < minDistance) {
                         isValid = false;
                         break;
@@ -991,102 +321,72 @@
                 }
                 attempts++;
             }
-            
             return pos;
         }
 
-        // Show coin at index
         function showCoinAt(index) {
             if (!gameActive || isPaused) return;
-            
             const coinEl = coins[index];
             if (!coinEl) return;
-            
-            // Random rang tanlash
+
             const coinImg = coinEl.querySelector('img');
             pulseColors.forEach(c => coinImg.classList.remove(c));
-            const randomColor = pulseColors[Math.floor(Math.random() * pulseColors.length)];
-            coinImg.classList.add(randomColor);
-            
-            // Random position - bir-birini ustida chiqmasin
+            coinImg.classList.add(pulseColors[Math.floor(Math.random() * pulseColors.length)]);
+
             const coinSize = 180;
             const pos = getRandomPosition(coinSize, index);
-            
+
             coinEl.style.left = pos.x + 'px';
             coinEl.style.top = pos.y + 'px';
             coinEl.style.display = 'block';
             coinEl.classList.add('coin-pop');
             coinVisible[index] = true;
-            
-            setTimeout(() => {
-                coinEl.classList.remove('coin-pop');
-            }, 400);
 
-            // Auto-hide after calculated time based on TON speed
+            setTimeout(() => coinEl.classList.remove('coin-pop'), 400);
+
             const visibleTime = calculateSpeed();
-            
             clearTimeout(coinTimeouts[index]);
             coinTimeouts[index] = setTimeout(() => {
-                if (gameActive && !isPaused) {
-                    hideCoinAt(index);
-                }
+                if (gameActive && !isPaused) hideCoinAt(index);
             }, visibleTime);
         }
 
-        // Hide coin at index
         function hideCoinAt(index) {
             clearTimeout(coinTimeouts[index]);
             const coinEl = coins[index];
             if (!coinEl) return;
-            
+
             coinEl.classList.add('coin-shrink');
             coinTimeouts[index] = setTimeout(() => {
                 coinEl.style.display = 'none';
                 coinEl.classList.remove('coin-shrink');
                 coinVisible[index] = false;
                 if (gameActive && !isPaused) {
-                    // Random delay before showing again
                     setTimeout(() => showCoinAt(index), Math.random() * 500);
                 }
             }, 300);
         }
 
-        // Show coins - random 1-2 ta tanga chiqadi
         function showCoin() {
             if (!gameActive || isPaused) return;
-            
-            // Random 1 yoki 2 ta tanga chiqadi
-            const numCoins = Math.random() < 0.6 ? 1 : 2;
-            
-            // Birinchi tangani har doim ko'rsatish
             showCoinAt(0);
-            
-            // Ikkinchi tangani 40% ehtimollik bilan ko'rsatish
-            if (numCoins === 2) {
-                setTimeout(() => showCoinAt(1), 200);
-            }
-            
-            // Uchinchi tangani kamroq ehtimollik bilan (faqat ba'zan)
-            if (Math.random() < 0.15) {
-                setTimeout(() => showCoinAt(2), 400);
-            }
+            if (Math.random() < 0.4) setTimeout(() => showCoinAt(1), 200);
+            if (Math.random() < 0.15) setTimeout(() => showCoinAt(2), 400);
         }
 
-        // Hide all coins
-        function hideCoin() {
-            coins.forEach((coinEl, index) => {
-                if (coinEl && coinVisible[index]) {
-                    hideCoinAt(index);
-                }
-            });
+        function showFloatText(x, y, text) {
+            const floatEl = document.createElement('div');
+            floatEl.className = 'float-text';
+            floatEl.textContent = text;
+            floatEl.style.left = (x - 40) + 'px';
+            floatEl.style.top = y + 'px';
+            document.body.appendChild(floatEl);
+            setTimeout(() => floatEl.remove(), 1000);
         }
 
-        // Catch coin - handle any coin click
         function catchCoin(e, coinIndex) {
             e.preventDefault();
             if (!gameActive || isPaused) return;
-            
-            // Check if this coin is visible
             if (coinIndex !== undefined && !coinVisible[coinIndex]) return;
 
             clearTimeout(coinTimeouts[coinIndex || 0]);
@@ -1095,153 +395,68 @@
             const reward = getReward();
             nanoScore += reward;
 
-            // Check if reached 1 TON
             if (nanoScore >= NANO_PER_TON) {
                 tonCount++;
                 nanoScore = nanoScore - NANO_PER_TON;
             }
 
-            // Visual feedback - red glow effect
             if (coinIndex !== undefined && coins[coinIndex]) {
                 coins[coinIndex].classList.add('coin-clicked');
-                setTimeout(() => {
-                    coins[coinIndex].classList.remove('coin-clicked');
-                }, 500);
+                setTimeout(() => coins[coinIndex].classList.remove('coin-clicked'), 500);
             }
 
-            // Visual feedback - floating text
             const x = e.clientX || (e.touches && e.touches[0].clientX);
             const y = e.clientY || (e.touches && e.touches[0].clientY);
-            
-            if (x && y) {
-                showFloatText(x, y - 50, `+${reward} nTON`, 'float-plus');
-            }
+
+            if (x && y) showFloatText(x, y - 50, '+' + reward + ' nTON');
+
+            updateDisplay();
+            if (coinIndex !== undefined) hideCoinAt(coinIndex);
+        }
+
+        function startNewGame() {
+            nanoScore = 0;
+            tonCount = 0;
+            totalClicks = 0;
+            currentSpeedLevel = 1;
+            gameActive = true;
+            isPaused = false;
 
             updateDisplay();
 
-            // Hide the clicked coin and show new one
-            if (coinIndex !== undefined) {
-                hideCoinAt(coinIndex);
-            }
-        }
-
-        function showFloatText(x, y, text, className) {
-            const floatEl = document.createElement('div');
-            floatEl.className = `float-text ${className}`;
-            floatEl.textContent = text;
-            floatEl.style.left = (x - 40) + 'px';
-            floatEl.style.top = y + 'px';
-            document.body.appendChild(floatEl);
-            setTimeout(() => floatEl.remove(), 1000);
-        }
-
-        function updateDisplay() {
-            tonDisplayElement.textContent = tonCount;
-            ntonDisplayElement.textContent = nanoScore.toString().padStart(9, '0');
-        }
-
-        // Toggle stop/start
-        function toggleStop() {
-            if (gameActive) {
-                // Stop the game
-                isPaused = true;
-                gameActive = false;
-                coinTimeouts.forEach((timeout, index) => {
-                    clearTimeout(timeout);
-                    if (coins[index]) coins[index].style.display = 'none';
-                });
-                
-                saveGame();
-                
-                stopBtn.textContent = '▶️ START';
-                stopBtn.classList.add('start-mode');
-            } else {
-                // Resume from stopped state
-                isPaused = false;
-                gameActive = true;
-                
-                stopBtn.textContent = '⏹️ STOP';
-                stopBtn.classList.remove('start-mode');
-                
-                showCoin();
-            }
-        }
-
-        // Resume from stopped state
-        function resumeFromMenu() {
-            isPaused = false;
-            gameActive = true;
-            
             stopBtn.textContent = '⏹️ STOP';
-            stopBtn.classList.remove('start-mode');
-            
+            stopBtn.classList.add('stop-mode');
+
             showCoin();
         }
 
-        // Exit to main menu
-        function exitToMenu() {
-            saveGame();
+        function stopGame() {
+            isPaused = true;
             gameActive = false;
-            isPaused = false;
             coinTimeouts.forEach((timeout, index) => {
                 clearTimeout(timeout);
                 if (coins[index]) coins[index].style.display = 'none';
             });
-            startScreen.classList.remove('hidden');
-            
-            stopBtn.textContent = '⏹️ STOP';
-            stopBtn.classList.remove('start-mode');
+
+            stopBtn.textContent = '▶️ START';
+            stopBtn.classList.remove('stop-mode');
         }
 
-        // Event listeners - DOM tayyor bo'lganda qo'shish
-        document.addEventListener('DOMContentLoaded', function() {
-            const startBtn = document.getElementById('start-btn');
-            const exitStartBtn = document.getElementById('exit-start-btn');
-            
-            if (startBtn) {
-                startBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Start button clicked');
-                    startNewGame();
-                });
+        function toggleGame() {
+            if (gameActive) {
+                stopGame();
+            } else {
+                startNewGame();
             }
-            
-            if (exitStartBtn) {
-                exitStartBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Exit button clicked');
-                    // Telegram Web App ni yopish
-                    if (window.Telegram && window.Telegram.WebApp) {
-                        Telegram.WebApp.close();
-                    }
-                });
-            }
-        });
-        exitGameBtn.addEventListener('click', exitToMenu);
-        stopBtn.addEventListener('click', toggleStop);
+        }
 
-        // Event listeners for all coins
+        // Event listeners
+        stopBtn.addEventListener('click', toggleGame);
+
         coins.forEach((coinEl, index) => {
             if (coinEl) {
                 coinEl.addEventListener('click', (e) => catchCoin(e, index));
                 coinEl.addEventListener('touchstart', (e) => catchCoin(e, index), { passive: false });
-            }
-        });
-
-        // Auto-save when page hidden
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && gameActive && !isPaused) {
-                saveGame();
-                isPaused = true;
-                coinTimeouts.forEach((timeout, index) => {
-                    clearTimeout(timeout);
-                    if (coins[index]) coins[index].style.display = 'none';
-                });
-                
-                stopBtn.textContent = '▶️ START';
-                stopBtn.classList.add('start-mode');
             }
         });
 
