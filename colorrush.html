@@ -137,13 +137,6 @@
             -webkit-user-drag: none;
         }
 
-        @keyframes popUp {
-            0% { transform: scale(0) rotate(-180deg); opacity: 0; filter: blur(10px); }
-            60% { transform: scale(1.2) rotate(15deg); opacity: 1; filter: blur(0px); }
-            80% { transform: scale(0.9) rotate(-5deg); }
-            100% { transform: scale(1) rotate(0deg); opacity: 1; }
-        }
-
         @keyframes shrinkOut {
             0% { transform: scale(1); opacity: 1; filter: brightness(1); }
             50% { transform: scale(1.2); opacity: 0.8; filter: brightness(1.5); }
@@ -164,16 +157,6 @@
 
         .coin-shrink {
             animation: shrinkOut 0.2s ease-in forwards;
-        }
-
-        .coin-clicked {
-            animation: redPulse 0.5s ease-out;
-        }
-
-        @keyframes redPulse {
-            0% { transform: scale(1); filter: brightness(1); }
-            50% { transform: scale(1.1); filter: brightness(1.5); }
-            100% { transform: scale(0.9); filter: brightness(1); }
         }
 
         .float-text {
@@ -202,22 +185,6 @@
         #coin img.pulse-cyan { animation: pulseCyan 0.6s ease-in-out infinite; }
         #coin img.pulse-purple { animation: pulsePurple 0.6s ease-in-out infinite; }
         #coin img.pulse-orange { animation: pulseOrange 0.6s ease-in-out infinite; }
-
-        #coin2 img.pulse-yellow { animation: pulseYellow 0.6s ease-in-out infinite; }
-        #coin2 img.pulse-red { animation: pulseRed 0.6s ease-in-out infinite; }
-        #coin2 img.pulse-green { animation: pulseGreen 0.6s ease-in-out infinite; }
-        #coin2 img.pulse-blue { animation: pulseBlue 0.6s ease-in-out infinite; }
-        #coin2 img.pulse-cyan { animation: pulseCyan 0.6s ease-in-out infinite; }
-        #coin2 img.pulse-purple { animation: pulsePurple 0.6s ease-in-out infinite; }
-        #coin2 img.pulse-orange { animation: pulseOrange 0.6s ease-in-out infinite; }
-
-        #coin3 img.pulse-yellow { animation: pulseYellow 0.6s ease-in-out infinite; }
-        #coin3 img.pulse-red { animation: pulseRed 0.6s ease-in-out infinite; }
-        #coin3 img.pulse-green { animation: pulseGreen 0.6s ease-in-out infinite; }
-        #coin3 img.pulse-blue { animation: pulseBlue 0.6s ease-in-out infinite; }
-        #coin3 img.pulse-cyan { animation: pulseCyan 0.6s ease-in-out infinite; }
-        #coin3 img.pulse-purple { animation: pulsePurple 0.6s ease-in-out infinite; }
-        #coin3 img.pulse-orange { animation: pulseOrange 0.6s ease-in-out infinite; }
 
         @keyframes pulseYellow { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 215, 0, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 215, 0, 1)); } }
         @keyframes pulseRed { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 50, 50, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 50, 50, 1)); } }
@@ -257,8 +224,6 @@
         const NANO_PER_TON = 1000000000;
         let gameActive = false;
         let isPaused = false;
-        let totalClicks = 0;
-        let currentSpeedLevel = 1;
 
         // Elements
         const tonDisplayElement = document.getElementById('ton-value');
@@ -268,7 +233,6 @@
         const coin = document.getElementById('coin');
         let coinTimeout = null;
         let coinVisible = false;
-
         let currentCoinColor = '';
 
         const pulseColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 'pulse-cyan', 'pulse-purple', 'pulse-orange'];
@@ -278,13 +242,8 @@
             ntonDisplayElement.textContent = nanoScore.toString().padStart(9, '0');
         }
 
-        function getReward() {
-            return Math.floor(Math.random() * 100) + 1;
-        }
-
         function calculateSpeed() {
-            currentSpeedLevel = Math.max(1, tonCount + 1);
-            return Math.max(200, 1500 - (currentSpeedLevel * 200));
+            return Math.max(200, 1500 - (tonCount + 1) * 200);
         }
 
         function getRandomPosition(coinSize) {
@@ -356,7 +315,6 @@
             if (!gameActive || isPaused || !coinVisible) return;
 
             clearTimeout(coinTimeout);
-            totalClicks++;
 
             const isRed = currentCoinColor === 'pulse-red';
             let rewardText;
@@ -404,8 +362,6 @@
         function startNewGame() {
             nanoScore = 0;
             tonCount = 0;
-            totalClicks = 0;
-            currentSpeedLevel = 1;
             gameActive = true;
             isPaused = false;
 
