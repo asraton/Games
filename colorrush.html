@@ -829,7 +829,7 @@
                 }
                 
                 // To'lov holatini tekshirish
-                modalTitle.textContent = '💸 TON yechish';
+                // modalTitle.textContent = '💸 TON yechish'; // Sarlavha olib tashlandi
                 let paymentStatus;
                 try {
                     const res = await fetch(API_BASE + '/check-payment/' + userId);
@@ -850,7 +850,8 @@
                     
                     modalBody.innerHTML = `
                         <div style="text-align:center;padding:16px;">
-                            <p style="color:#ff9500;font-size:16px;margin-bottom:12px;">⚠️ Demo versiya</p>
+                            <p style="color:#ff9500;font-size:18px;margin-bottom:8px;font-weight:bold;">💸 TON yechish</p>
+                            <p style="color:#ff6b6b;font-size:14px;margin-bottom:12px;">⚠️ Demo versiya</p>
                             <p style="color:#fff;font-size:13px;margin-bottom:16px;">
                                 Haqiqiy o'yin boshlash uchun <b>1 TON</b> to'lang
                             </p>
