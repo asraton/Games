@@ -2,8 +2,14 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const GAME_URL = process.env.GAME_URL || 'https://your-railway-url.railway.app';
+// GAME_URL - Vercel frontend URL bo'lishi kerak (Railway emas!)
+// Masalan: https://n-ton-games.vercel.app
+const GAME_URL = process.env.GAME_URL || 'https://n-ton-games.vercel.app';
 const API_BASE_URL = process.env.API_BASE_URL || `${GAME_URL}/api`;
+const WEBHOOK_URL = process.env.WEBHOOK_URL || `${GAME_URL}/bot-webhook`;
+
+console.log('🔗 GAME_URL:', GAME_URL);
+console.log('🔗 API_BASE_URL:', API_BASE_URL);
 
 if (!TOKEN) {
     console.error('❌ TELEGRAM_BOT_TOKEN topilmadi! Railway variables ga qo\'shing');
@@ -14,7 +20,18 @@ console.log('========================================');
 console.log('🤖 nTonGame Bot - Ishga tushmoqda...');
 console.log('========================================\n');
 
-const bot = new TelegramBot(TOKEN, { polling: true });
+// Webhook uchun sozlash (Railway'da polling o'rniga webhook ishlatiladi)
+const useWebhook = process.env.USE_WEBHOOK === 'true';
+
+let bot;
+if (useWebhook && WEBHOOK_URL) {
+    console.log('🔗 Webhook rejimi');
+    bot = new TelegramBot(TOKEN, { webHook: { port: process.env.BOT_PORT || 8081 } });
+    bot.setWebHook(WEBHOOK_URL);
+} else {
+    console.log('📡 Polling rejimi');
+    bot = new TelegramBot(TOKEN, { polling: true });
+}
 
 // Bot ma'lumotlari
 bot.getMe().then((botInfo) => {
