@@ -646,9 +646,17 @@
                 tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
                     manifestUrl: window.location.origin + '/tonconnect-manifest.json'
                 });
+                
+                // Debug: wallet obyektini ko'ramiz
+                console.log('TON Connect UI yuklandi');
+                
                 tonConnectUI.onStatusChange((wallet) => {
-                    if (wallet) {
-                        connectedWalletAddress = wallet.account?.address;
+                    console.log('StatusChange wallet:', wallet);
+                    if (wallet && wallet.account) {
+                        // To'g'ri manzilni olish (user-friendly format)
+                        connectedWalletAddress = wallet.account.address || wallet.account.userFriendlyAddress || wallet.account.rawAddress;
+                        console.log('Ulangan wallet manzili:', connectedWalletAddress);
+                        
                         if (connectedWalletAddress && userId) {
                             fetch(API_BASE + '/user/register', {
                                 method: 'POST',
@@ -658,12 +666,16 @@
                         }
                     } else {
                         connectedWalletAddress = null;
+                        console.log('Wallet uzildi');
                     }
                     updateWalletUI();
                 });
+                
                 tonConnectUI.connectionRestored.then((restored) => {
-                    if (restored && tonConnectUI.wallet) {
-                        connectedWalletAddress = tonConnectUI.wallet.account?.address;
+                    console.log('Connection restored:', restored, 'Wallet:', tonConnectUI.wallet);
+                    if (restored && tonConnectUI.wallet && tonConnectUI.wallet.account) {
+                        connectedWalletAddress = tonConnectUI.wallet.account.address || tonConnectUI.wallet.account.userFriendlyAddress;
+                        console.log('Restored wallet manzili:', connectedWalletAddress);
                         updateWalletUI();
                     }
                 });
