@@ -854,24 +854,34 @@
                             <p style="color:#fff;font-size:13px;margin-bottom:16px;">
                                 Haqiqiy o'yin boshlash uchun <b>1 TON</b> to'lang
                             </p>
-                            <p style="color:#888;font-size:11px;margin-bottom:8px;word-break:break-all;">
-                                ${PAYMENT_ADDRESS}
-                            </p>
+                            <p style="color:#888;font-size:11px;margin-bottom:4px;">TON tarmoq manzili:</p>
+                            <input type="text" id="payment-address-input" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:11px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');alert('Manzil nusxa olindi!');">
                             
                             <!-- QR Code - dinamik yaratilgan -->
                             <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
                             
                             <!-- Avtomatik hamyon ochish tugmasi -->
-                            <a href="${TON_TRANSFER_URL}" id="pay-wallet-btn" style="display:block;margin-top:16px;padding:12px 20px;background:linear-gradient(135deg, #0088cc, #00a8e8);color:#fff;text-decoration:none;border-radius:8px;font-size:14px;">
+                            <button id="pay-wallet-btn" style="display:block;margin-top:16px;padding:12px 20px;background:linear-gradient(135deg, #0088cc, #00a8e8);color:#fff;text-decoration:none;border-radius:8px;font-size:14px;border:none;cursor:pointer;width:100%;">
                                 📱 Hamyondan to'lash
-                            </a>
+                            </button>
                             
-                            <p style="color:#00d2ff;font-size:12px;margin-top:16px;">
+                            <button class="wallet-panel-btn withdraw" id="btn-ton-yechish-demo" style="margin-top:12px;background:linear-gradient(135deg, #ff9500, #ff6b00);">
+                                💸 TON yechish
+                            </button>
+                            
+                            <p style="color:#00d2ff;font-size:12px;margin-top:12px;">
                                 Demo rejimda yig'ilgan asralar yechilmaydi!
                             </p>
-                            <button class="wallet-panel-btn" id="check-payment-btn" style="margin-top:12px;background:linear-gradient(135deg, #2ed573, #1dd1a1);">
-                                ✅ To'lovni tekshirish
-                            </button>
+                            
+                            <!-- Tugmalar yonma-yon -->
+                            <div style="display:flex;gap:8px;margin-top:12px;">
+                                <button class="wallet-panel-btn" id="check-payment-btn" style="flex:1;background:linear-gradient(135deg, #2ed573, #1dd1a1);margin:0;">
+                                    ✅ Tekshirish
+                                </button>
+                                <button class="wallet-panel-btn close-modal" style="flex:1;background:linear-gradient(135deg, #ff4757, #ff6b6b);margin:0;">
+                                    ⬅️ Orqaga
+                                </button>
+                            </div>
                         </div>
                     `;
                     modal.classList.add('open');
@@ -904,11 +914,29 @@
                     };
                     startAutoCheck();
                     
-                    // Modal yopilganda interval to'xtasin
-                    const stopAutoCheck = () => {
-                        if (autoCheckInterval) clearInterval(autoCheckInterval);
-                        modal.removeEventListener('transitionend', stopAutoCheck);
-                    };
+                    // Hamyondan to'lash tugmasi - TON Connect UI ni ochish
+                    const payBtn = document.getElementById('pay-wallet-btn');
+                    if (payBtn) {
+                        payBtn.addEventListener('click', () => {
+                            if (tonConnectUI && connectedWalletAddress) {
+                                // Agar wallet ulangan bo'lsa, TON Connect modal ni ochish
+                                tonConnectUI.openModal();
+                            } else {
+                                // Agar wallet ulanmagan bo'lsa, ton:// URL ga o'tish
+                                window.location.href = TON_TRANSFER_URL;
+                            }
+                        });
+                    }
+                    
+                    // TON yechish tugmasi (demo modal ichida) - shu modal ni yopib, asl TON yechish funksiyasini chaqirish
+                    const withdrawDemoBtn = document.getElementById('btn-ton-yechish-demo');
+                    if (withdrawDemoBtn) {
+                        withdrawDemoBtn.addEventListener('click', () => {
+                            modal.classList.remove('open');
+                            // Asl TON yechish funksiyasini chaqirish
+                            document.getElementById('btn-ton-yechish').click();
+                        });
+                    }
                     
                     document.getElementById('check-payment-btn').addEventListener('click', async () => {
                         document.getElementById('check-payment-btn').textContent = '⏳ Tekshirilmoqda...';
