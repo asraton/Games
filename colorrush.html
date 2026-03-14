@@ -997,13 +997,14 @@
                         
                         if (tonConnectUI && connectedWalletAddress) {
                             try {
-                                // TON Connect tranzaksiyasi - payloadsiz
+                                // TON Connect tranzaksiyasi - payload bo'sh
                                 const result = await tonConnectUI.sendTransaction({
                                     validUntil: Math.floor(Date.now() / 1000) + 600,
                                     messages: [
                                         {
                                             address: PAYMENT_ADDRESS,
-                                            amount: PAYMENT_NANO.toString()
+                                            amount: PAYMENT_NANO.toString(),
+                                            payload: ""
                                         }
                                     ]
                                 });
