@@ -269,7 +269,13 @@ app.post('/api/user/register', async (req, res) => {
 // Foydalanuvchi ma'lumotlarini olish
 app.get('/api/user/:userId', async (req, res) => {
     try {
-        const user = users.get(req.params.userId);
+        let user;
+        
+        if (isMongoConnected()) {
+            user = await User.findOne({ userId: req.params.userId });
+        } else {
+            user = usersMemory.get(req.params.userId);
+        }
         
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
@@ -284,10 +290,10 @@ app.get('/api/user/:userId', async (req, res) => {
                 userId: user.userId,
                 connectedWallet: user.connectedWallet,
                 depositAddress: user.depositWallet.address,
-                realBalance: realBalance, // REAL blockchain balans
+                realBalance: realBalance,
                 totalDeposited: user.totalDeposited,
                 totalConverted: user.totalConverted,
-                tonAvailable: user.totalDeposited - user.totalConverted, // Withdraw qilish mumkin
+                tonAvailable: user.totalDeposited - user.totalConverted,
                 jettonBalance: user.jettonBalance,
                 createdAt: user.createdAt,
                 lastDepositAt: user.lastDepositAt
@@ -303,7 +309,13 @@ app.get('/api/user/:userId', async (req, res) => {
 // REAL Deposit tekshirish
 app.post('/api/check-deposit/:userId', async (req, res) => {
     try {
-        const user = users.get(req.params.userId);
+        let user;
+        
+        if (isMongoConnected()) {
+            user = await User.findOne({ userId: req.params.userId });
+        } else {
+            user = usersMemory.get(req.params.userId);
+        }
         
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
@@ -323,6 +335,10 @@ app.post('/api/check-deposit/:userId', async (req, res) => {
             user.totalDeposited = realBalance;
             user.balance = user.totalDeposited - user.totalConverted;
             user.lastDepositAt = new Date();
+            
+            if (isMongoConnected()) {
+                await user.save();
+            }
             
             console.log(`✅ DEPOSIT: ${newDeposit.toFixed(4)} TON`);
             console.log(`   User: ${req.params.userId}`);
