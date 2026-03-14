@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TON Coin Rush</title>
+    <title>🎮 Ton o'yini</title>
     <style>
         * {
             -webkit-user-select: none;
@@ -312,7 +312,10 @@
             coin.style.left = pos.x + 'px';
             coin.style.top = pos.y + 'px';
             coin.style.display = 'block';
+            coin.classList.add('coin-pop');
             coinVisible = true;
+
+            setTimeout(() => coin.classList.remove('coin-pop'), 500);
 
             const visibleTime = calculateSpeed();
             clearTimeout(coinTimeout);
@@ -323,11 +326,15 @@
 
         function hideCoin() {
             clearTimeout(coinTimeout);
-            coin.style.display = 'none';
-            coinVisible = false;
-            if (gameActive && !isPaused) {
-                showCoin();
-            }
+            coin.classList.add('coin-shrink');
+            setTimeout(() => {
+                coin.style.display = 'none';
+                coin.classList.remove('coin-shrink');
+                coinVisible = false;
+                if (gameActive && !isPaused) {
+                    showCoin();
+                }
+            }, 200);
         }
 
         function showFloatText(x, y, text, isNegative) {
@@ -380,10 +387,14 @@
 
             updateDisplay();
             
-            // Tanga darhol yo'qoladi va yangisi chiqadi
-            coin.style.display = 'none';
-            coinVisible = false;
-            showCoin();
+            // Tanga efekt bilan yo'qoladi va yangisi chiqadi
+            coin.classList.add('coin-shrink');
+            setTimeout(() => {
+                coin.style.display = 'none';
+                coin.classList.remove('coin-shrink');
+                coinVisible = false;
+                showCoin();
+            }, 200);
         }
 
         function startNewGame() {
