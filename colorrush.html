@@ -833,21 +833,7 @@
     <div id="start-screen">
         <h1 id="title">⚡ TON Coin Rush</h1>
         
-        <div id="saved-game-section" style="display: none;">
-            <div class="saved-stats">
-                <h3>💾 Saqlangan o'yin</h3>
-                <p id="saved-ton">0 TON</p>
-                <p id="saved-nton">0 TON</p>
-                <p id="saved-clicks">0 ta bosish</p>
-            </div>
-            <button class="btn" id="continue-btn">▶️ Davom ettirish</button>
-            <button class="btn" id="new-game-btn">🔄 Yangi o'yin</button>
-        </div>
-        
-        <div id="new-game-section">
-            <button class="btn" id="start-btn">🎮 O'yinni Boshlash</button>
-        </div>
-        
+        <button class="btn" id="start-btn">🎮 O'yinni Boshlash</button>
         <button class="btn" id="exit-start-btn">🚪 Chiqish</button>
         
         <div class="instructions">
@@ -946,24 +932,6 @@
         
         <button id="disconnect-wallet-btn" style="display: none; background: rgba(255, 71, 87, 0.3); border: 2px solid rgba(255, 71, 87, 0.5); color: white; padding: 10px 30px; border-radius: 20px; cursor: pointer; margin-bottom: 10px;">Walletni uzish</button>
         <button id="close-wallet-modal">Yopish</button>
-    </div>
-
-    <!-- Confirm Modal -->
-    <div id="confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; justify-content: center; align-items: center;">
-        <div style="background: linear-gradient(135deg, #1a1a2e, #16213e); border: 2px solid rgba(255, 71, 87, 0.5); border-radius: 20px; padding: 30px; max-width: 400px; width: 90%; text-align: center;">
-            <h2 style="color: #ff4757; margin-bottom: 20px;">⚠️ Diqqat!</h2>
-            <p style="color: #fff; margin-bottom: 15px; font-size: 16px;">Yangi o'yin boshlashingiz bilan:</p>
-            <ul style="color: #aaa; text-align: left; margin-bottom: 20px; padding-left: 20px; font-size: 14px;">
-                <li>Yig'ilgan <span id="confirm-ton">0</span> TON 0 ga tushadi</li>
-                <li>Yig'ilgan <span id="confirm-nton">0</span> nTON 0 ga tushadi</li>
-                <li>Barcha tanga hisobi qayta boshlanadi</li>
-            </ul>
-            <p style="color: #ffd700; margin-bottom: 25px; font-weight: bold;">Davom etasizmi?</p>
-            <div style="display: flex; gap: 15px; justify-content: center;">
-                <button id="confirm-yes" style="background: linear-gradient(135deg, #ff4757, #ff6b6b); border: none; color: white; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-weight: bold;">Ha, yangi boshlayman</button>
-                <button id="confirm-no" style="background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); color: white; padding: 12px 30px; border-radius: 25px; cursor: pointer;">Yo'q, bekor</button>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -1111,8 +1079,6 @@
         const ntonDisplayElement = document.getElementById('nton-display');
         const totalClicksElement = document.getElementById('total-clicks');
         const startScreen = document.getElementById('start-screen');
-        const savedGameSection = document.getElementById('saved-game-section');
-        const newGameSection = document.getElementById('new-game-section');
         const stopBtn = document.getElementById('stop-btn');
         const exitGameBtn = document.getElementById('exit-game-btn');
         const walletBtn = document.getElementById('wallet-btn');
@@ -1374,26 +1340,27 @@
             }
         }
 
-        // Check for saved game
-        function checkSavedGame() {
-            const saved = localStorage.getItem('tonCoinRushSave');
-            if (saved) {
-                const data = JSON.parse(saved);
-                const savedTon = Math.floor((data.nanoScore || 0) / NANO_PER_TON);
-                const savedNton = (data.nanoScore || 0) % NANO_PER_TON;
-                document.getElementById('saved-ton').textContent = savedTon + ' TON';
-                document.getElementById('saved-nton').textContent = savedNton.toLocaleString() + ' nTON';
-                // Show both current session and all-time clicks
-                const sessionClicks = data.totalClicks || 0;
-                const allTimeClicks = globalStats.totalClicksAllTime || 0;
-                if (allTimeClicks > sessionClicks) {
-                    document.getElementById('saved-clicks').textContent = allTimeClicks.toLocaleString() + ' ta bosish (jami)';
-                } else {
-                    document.getElementById('saved-clicks').textContent = sessionClicks + ' ta bosish';
-                }
-                savedGameSection.style.display = 'block';
-                newGameSection.style.display = 'none';
-            }
+        // Start new game
+        function startNewGame() {
+            nanoScore = 0;
+            tonCount = 0;
+            totalClicks = 0;
+            currentSpeedLevel = 1;
+            hideBonus();
+            gameActive = true;
+            isPaused = false;
+            
+            // Track game start in global stats
+            globalStats.gamesPlayed++;
+            saveGlobalStats();
+            
+            updateDisplay();
+            startScreen.classList.add('hidden');
+            
+            stopBtn.textContent = '⏹️ STOP';
+            stopBtn.classList.remove('start-mode');
+            
+            showCoin();
         }
 
         // Save game
@@ -1840,8 +1807,6 @@
             
             stopBtn.textContent = '⏹️ STOP';
             stopBtn.classList.remove('start-mode');
-            
-            checkSavedGame();
         }
 
         // Shop funksiyalari
@@ -1947,8 +1912,6 @@
         // Event listeners - DOM tayyor bo'lganda qo'shish
         document.addEventListener('DOMContentLoaded', function() {
             const startBtn = document.getElementById('start-btn');
-            const newGameBtn = document.getElementById('new-game-btn');
-            const continueBtn = document.getElementById('continue-btn');
             const exitStartBtn = document.getElementById('exit-start-btn');
             
             if (startBtn) {
@@ -1956,25 +1919,7 @@
                     e.preventDefault();
                     e.stopPropagation();
                     console.log('Start button clicked');
-                    showNewGameConfirm('start');
-                });
-            }
-            
-            if (newGameBtn) {
-                newGameBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('New game button clicked');
-                    showNewGameConfirm('saved');
-                });
-            }
-            
-            if (continueBtn) {
-                continueBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Continue button clicked');
-                    continueGame();
+                    startNewGame();
                 });
             }
             
@@ -1983,7 +1928,10 @@
                     e.preventDefault();
                     e.stopPropagation();
                     console.log('Exit button clicked');
-                    exitToMenu();
+                    // Telegram Web App ni yopish
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        Telegram.WebApp.close();
+                    }
                 });
             }
         });
@@ -2095,48 +2043,6 @@
             convertTonBtn.addEventListener('click', convertTonToJetton);
         }
 
-        // Confirm modal elements
-        const confirmModal = document.getElementById('confirm-modal');
-        const confirmTon = document.getElementById('confirm-ton');
-        const confirmNton = document.getElementById('confirm-nton');
-        const confirmYes = document.getElementById('confirm-yes');
-        const confirmNo = document.getElementById('confirm-no');
-
-        // Show confirm modal for new game
-        function showNewGameConfirm(from) {
-            // Joriy yoki saqlangan hisobni olish
-            let displayTon = tonCount;
-            let displayNton = nanoScore;
-            
-            // Agar joriy o'yin bo'lmasa, saqlangan o'yindan olish
-            if (!gameActive && displayTon === 0 && displayNton === 0) {
-                const saved = localStorage.getItem('tonCoinRushSave');
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    const totalNano = data.nanoScore || 0;
-                    displayTon = Math.floor(totalNano / NANO_PER_TON);
-                    displayNton = totalNano % NANO_PER_TON;
-                }
-            }
-            
-            // Hisobni ko'rsatish
-            confirmTon.textContent = displayTon;
-            confirmNton.textContent = displayNton.toLocaleString();
-            
-            confirmModal.style.display = 'flex';
-            
-            // Ha tugmasi
-            confirmYes.onclick = () => {
-                confirmModal.style.display = 'none';
-                startNewGame();
-            };
-            
-            // Yo'q tugmasi
-            confirmNo.onclick = () => {
-                confirmModal.style.display = 'none';
-            };
-        }
-
         if (disconnectWalletBtn) {
             disconnectWalletBtn.addEventListener('click', async () => {
                 if (tonConnect) {
@@ -2160,7 +2066,7 @@
             }
         });
 
-        // Telegram Web App - avto start (faqat saqlangan o'yin bo'lsa)
+        // Telegram Web App
         if (window.Telegram && window.Telegram.WebApp) {
             Telegram.WebApp.ready();
             Telegram.WebApp.expand();
@@ -2168,50 +2074,17 @@
             // Foydalanuvchi nomini olish va ko'rsatish
             const user = Telegram.WebApp.initDataUnsafe?.user;
             if (user && user.first_name) {
-                // Sarlavha o'rniga foydalanuvchi nomini ko'rsatish
                 const titleEl = document.getElementById('title');
                 if (titleEl) {
                     titleEl.innerHTML = `👋 ${user.first_name}`;
                 }
             }
-            
-            // Avto-start - faqat saqlangan o'yin bo'lsa va foydalanuvchi hech narsa bosmagan bo'lsa
-            // 3000ms kutish va agar tugma bosilmagan bo'lsa avto-start
-            let autoStartTimer = setTimeout(() => {
-                const saved = localStorage.getItem('tonCoinRushSave');
-                if (saved && !window.userClickedButton) {
-                    // Saqlangan o'yin bo'lsa davom ettirish
-                    continueGame();
-                }
-            }, 3000);
-            
-            // Tugma bosilganda avto-start ni bekor qilish
-            window.userClickedButton = false;
-            ['start-btn', 'new-game-btn', 'continue-btn', 'exit-start-btn'].forEach(id => {
-                const btn = document.getElementById(id);
-                if (btn) {
-                    btn.addEventListener('click', () => {
-                        window.userClickedButton = true;
-                        clearTimeout(autoStartTimer);
-                    });
-                }
-            });
-        }
-
-        // Browser da start ekranini ko'rsatish (avto-start yo'q)
-        // Foydalanuvchi tugmalarni bosishi uchun kutish
-        if (!window.Telegram || !window.Telegram.WebApp) {
-            // Brauzerda avto-start yo'q - foydalanuvchi tugmani bosadi
-            console.log('Browser mode - waiting for user to click buttons');
         }
 
         // Initialize TON Connect when page loads
         window.addEventListener('load', () => {
             initTonConnect();
         });
-
-        // Check for saved game on load
-        checkSavedGame();
     </script>
 </body>
 </html>
