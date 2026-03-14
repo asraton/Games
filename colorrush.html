@@ -289,12 +289,13 @@
 
         function getRandomPosition(coinSize) {
             const screen = { width: window.innerWidth, height: window.innerHeight };
-            const margin = 30;
-            const maxX = Math.max(margin, screen.width - coinSize - margin);
-            const maxY = Math.max(margin, screen.height - coinSize - margin);
+            const margin = 10;
+            const availableWidth = screen.width - coinSize - margin * 2;
+            const availableHeight = screen.height - coinSize - margin * 2;
+            
             return {
-                x: Math.random() * (maxX - margin) + margin,
-                y: Math.random() * (maxY - margin) + margin
+                x: margin + Math.random() * availableWidth,
+                y: margin + Math.random() * availableHeight
             };
         }
 
