@@ -2,10 +2,13 @@
   "name": "tongame-server",
   "version": "1.0.0",
   "description": "TON Game backend server with deposit wallet system",
-  "main": "server-real.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node server-real.js",
-    "dev": "nodemon server-real.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "bot": "node bot-full.js",
+    "server:simple": "node server-simple.js",
+    "start:all": "node server-simple.js & node bot-full.js"
   },
   "dependencies": {
     "@ton/crypto": "^3.2.0",
