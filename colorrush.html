@@ -228,11 +228,7 @@
         <div id="score-display">
             <div class="score-box">
                 <div class="score-label">TON</div>
-                <div class="score-value" id="ton-value">0</div>
-            </div>
-            <div class="score-box">
-                <div class="score-label">nTON</div>
-                <div class="score-value" id="nton-display">000000000</div>
+                <div class="score-value" id="ton-value">0.000000000</div>
             </div>
         </div>
 
@@ -257,7 +253,6 @@
 
         // Elements
         const tonDisplayElement = document.getElementById('ton-value');
-        const ntonDisplayElement = document.getElementById('nton-display');
         const stopBtn = document.getElementById('stop-btn');
 
         const coin = document.getElementById('coin');
@@ -269,8 +264,9 @@
         const pulseColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 'pulse-cyan', 'pulse-purple', 'pulse-orange'];
 
         function updateDisplay() {
-            tonDisplayElement.textContent = tonCount;
-            ntonDisplayElement.textContent = nanoScore.toString().padStart(9, '0');
+            const totalNano = tonCount * NANO_PER_TON + nanoScore;
+            const totalTon = totalNano / NANO_PER_TON;
+            tonDisplayElement.textContent = totalTon.toFixed(9);
         }
 
         function getReward() {
