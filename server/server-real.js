@@ -727,7 +727,14 @@ app.post('/api/withdraw', async (req, res) => {
 // Wallet ma'lumotlarini ko'rish (debug)
 app.get('/api/debug/wallet/:userId', async (req, res) => {
     try {
-        const user = users.get(req.params.userId);
+        let user;
+        
+        if (isMongoConnected()) {
+            user = await User.findOne({ userId: req.params.userId });
+        } else {
+            user = usersMemory.get(req.params.userId);
+        }
+        
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
@@ -770,7 +777,14 @@ app.post('/api/user/:userId/stats', async (req, res) => {
         const { userId } = req.params;
         const { totalClicksAllTime, totalCoinsCollected, totalTonEarned, gamesPlayed } = req.body;
         
-        const user = users.get(userId);
+        let user;
+        
+        if (isMongoConnected()) {
+            user = await User.findOne({ userId });
+        } else {
+            user = usersMemory.get(userId);
+        }
+        
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
@@ -787,7 +801,6 @@ app.post('/api/user/:userId/stats', async (req, res) => {
             };
         }
         
-        // Yangi qiymatlarni qo'shish (incremental)
         if (totalClicksAllTime !== undefined) {
             user.globalStats.totalClicksAllTime = totalClicksAllTime;
         }
@@ -802,6 +815,10 @@ app.post('/api/user/:userId/stats', async (req, res) => {
         }
         
         user.globalStats.lastPlayed = new Date().toISOString();
+        
+        if (isMongoConnected()) {
+            await user.save();
+        }
         
         console.log(`📊 Global stats yangilandi: ${userId}`);
         console.log(`   Bosishlar: ${user.globalStats.totalClicksAllTime}`);
@@ -825,7 +842,14 @@ app.get('/api/user/:userId/stats', async (req, res) => {
     try {
         const { userId } = req.params;
         
-        const user = users.get(userId);
+        let user;
+        
+        if (isMongoConnected()) {
+            user = await User.findOne({ userId });
+        } else {
+            user = usersMemory.get(userId);
+        }
+        
         if (!user) {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
@@ -849,7 +873,7 @@ app.get('/api/user/:userId/stats', async (req, res) => {
 });
 
 // Default shop items yaratish
-function createDefaultShopItems() {
+async function createDefaultShopItems() {
     const defaultItems = [
         {
             itemId: 'speed_boost',
@@ -884,9 +908,19 @@ function createDefaultShopItems() {
     ];
     
     for (const item of defaultItems) {
-        if (!shopItems.has(item.itemId)) {
-            shopItems.set(item.itemId, item);
-            console.log(`Shop item yaratildi: ${item.name}`);
+        if (isMongoConnected()) {
+            // Check if item exists in MongoDB
+            const existingItem = await ShopItem.findOne({ itemId: item.itemId });
+            if (!existingItem) {
+                await ShopItem.create(item);
+                console.log(`Shop item yaratildi: ${item.name}`);
+            }
+        } else {
+            // Fallback to in-memory
+            if (!shopItemsMemory.has(item.itemId)) {
+                shopItemsMemory.set(item.itemId, item);
+                console.log(`Shop item yaratildi: ${item.name}`);
+            }
         }
     }
 }
@@ -902,7 +936,7 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
     console.log('⚠️ TELEGRAM_BOT_TOKEN yo\'q - bot ishlamaydi');
 }
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log('🔥 REAL TON COIN SERVER 🔥');
     console.log(`✅ Server ${PORT} portda ishga tushdi`);
     console.log('');
@@ -915,6 +949,7 @@ app.listen(PORT, () => {
     console.log('   ✅ Real deposit monitoring');
     console.log('   ✅ Real TON transfer (withdraw)');
     console.log('   ✅ Transaction history');
+    console.log('   ✅ MongoDB database (persistent storage)');
     console.log('');
     console.log('📱 URLs:');
     console.log(`   Game: http://localhost:8080`);
@@ -922,7 +957,8 @@ app.listen(PORT, () => {
     console.log(`   Debug: http://localhost:${PORT}/api/debug/wallet/:userId`);
     console.log('');
     
-    createDefaultShopItems();
+    // Initialize default shop items
+    await createDefaultShopItems();
 });
 
 module.exports = app;
