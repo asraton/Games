@@ -4,6 +4,9 @@ const TOKEN = '8206421731:AAEjI_gcmJpJwidDVip86oYQlPcKBlfTQE4';
 const GAME_URL = process.env.GAME_URL || 'http://localhost:8080';
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000/api';
 
+// Store pending wallet connections
+const pendingConnections = new Map();
+
 console.log('========================================');
 console.log('🤖 nTonGame Bot - Real TON Version');
 console.log('========================================');
@@ -89,22 +92,33 @@ try {
         console.log('Callback:', data);
 
         if (data.startsWith('wallet_')) {
+            // Generate unique connection ID
+            const connectId = `tonconnect_${userId}_${Date.now()}`;
+            
+            // Store connection pending in temporary storage
+            pendingConnections.set(connectId, {
+                userId: userId,
+                chatId: chatId,
+                timestamp: Date.now()
+            });
+            
             const walletKeyboard = {
                 reply_markup: {
                     inline_keyboard: [[
                         {
-                            text: '� Tonkeeper',
-                            url: 'https://app.tonkeeper.com/ton-connect'
-                        },
-                        {
-                            text: '� Telegram Wallet',
-                            url: 'https://t.me/wallet?startattach=tonconnect'
+                            text: '💰 Tonkeeper',
+                            url: `https://app.tonkeeper.com/ton-connect?clientId=${connectId}&manifestUrl=${encodeURIComponent(GAME_URL + '/tonconnect-manifest.json')}`
                         }
                     ], [
                         {
-                            text: '🌐 MyTonWallet',
-                            url: 'https://connect.mytonwallet.org/'
+                            text: '💎 Telegram Wallet',
+                            url: `https://t.me/wallet?startattach=tonconnect_${userId}`
                         },
+                        {
+                            text: '🌐 MyTonWallet',
+                            url: `https://connect.mytonwallet.org/?clientId=${connectId}&manifestUrl=${encodeURIComponent(GAME_URL + '/tonconnect-manifest.json')}`
+                        }
+                    ], [
                         {
                             text: '⬅️ Orqaga',
                             callback_data: 'back_to_main'
@@ -114,7 +128,12 @@ try {
                 parse_mode: 'Markdown'
             };
             
-            bot.sendMessage(chatId, `💳 *Wallet ulang:*\n\nO'zingizga ma'qul walletni tanlang va hamyonni ulang:`, walletKeyboard);
+            bot.sendMessage(chatId, `💳 *Wallet ulash*\n\nWalletni tanlang va o'yinga ulang:\n\n✅ Wallet ochiladi\n✅ "Connect" tugmasini bosing\n✅ Wallet o'yinga ulanadi`, walletKeyboard);
+            
+            // Clean up old pending connections after 5 minutes
+            setTimeout(() => {
+                pendingConnections.delete(connectId);
+            }, 300000);
         }
         else if (data === 'back_to_main') {
             // Re-send main menu
