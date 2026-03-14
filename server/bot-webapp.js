@@ -37,7 +37,6 @@ bot.onText(/\/start/, (msg) => {
 🎮 *TON Coin Rush* - TON Coin yig'ish o'yini!
 
 💰 Tangalarni bosib TON yig'ing
-🏆 Bonuslar va mukofotlar
 💸 Haqiqiy TON yechib olish
 
 ⬇️ O'ynash uchun tugmani bosing:`;
