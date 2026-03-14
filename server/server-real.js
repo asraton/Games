@@ -9,6 +9,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Health check endpoint (Railway uchun)
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
 // In-memory storage (keyingi bosqichda MongoDB ga o'tkaziladi)
 const users = new Map();
 const shopItems = new Map();
