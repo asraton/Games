@@ -62,7 +62,7 @@ bot.onText(/\/start/, (msg) => {
             ], [
                 {
                     text: '💰 Wallet ulash',
-                    callback_data: `wallet_${user.id}`
+                    url: `https://t.me/wallet?startattach=tonconnect_${user.id}`
                 },
                 {
                     text: '📊 Balansim',
@@ -88,42 +88,8 @@ bot.on('callback_query', async (query) => {
 
     console.log('Callback:', data);
 
-    if (data.startsWith('wallet_')) {
-        // Generate unique connection ID
-        const connectId = `tonconnect_${userId}_${Date.now()}`;
-        
-        // Store connection pending in temporary storage
-        pendingConnections.set(connectId, {
-            userId: userId,
-            chatId: chatId,
-            timestamp: Date.now()
-        });
-        
-        const walletKeyboard = {
-            reply_markup: {
-                inline_keyboard: [[
-                    {
-                        text: ' Telegram Wallet',
-                        url: `https://t.me/wallet?startattach=tonconnect_${userId}`
-                    }
-                ], [
-                    {
-                        text: '⬅️ Orqaga',
-                        callback_data: 'back_to_main'
-                    }
-                ]]
-            },
-            parse_mode: 'Markdown'
-        };
-        
-        bot.sendMessage(chatId, `💳 *Wallet ulash*\n\nTelegram Walletni tanlang va hamyonni ulang:`, walletKeyboard);
-        
-        // Clean up old pending connections after 5 minutes
-        setTimeout(() => {
-            pendingConnections.delete(connectId);
-        }, 300000);
-    }
-    else if (data === 'back_to_main') {
+    // Wallet now uses direct URL button - no callback needed
+    if (data === 'back_to_main') {
         // Re-send main menu
         const mainKeyboard = {
             reply_markup: {

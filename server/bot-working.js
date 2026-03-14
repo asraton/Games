@@ -4,9 +4,6 @@ const TOKEN = '8206421731:AAEjI_gcmJpJwidDVip86oYQlPcKBlfTQE4';
 const GAME_URL = process.env.GAME_URL || 'http://localhost:8080';
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000/api';
 
-// Store pending wallet connections
-const pendingConnections = new Map();
-
 console.log('========================================');
 console.log('🤖 nTonGame Bot - Real TON Version');
 console.log('========================================');
@@ -63,7 +60,7 @@ try {
                 ], [
                     {
                         text: '💰 Wallet ulash',
-                        callback_data: `wallet_${user.id}`
+                        url: `https://t.me/wallet?startattach=tonconnect_${user.id}`
                     },
                     {
                         text: '📊 Balans',
@@ -91,42 +88,8 @@ try {
 
         console.log('Callback:', data);
 
-        if (data.startsWith('wallet_')) {
-            // Generate unique connection ID
-            const connectId = `tonconnect_${userId}_${Date.now()}`;
-            
-            // Store connection pending in temporary storage
-            pendingConnections.set(connectId, {
-                userId: userId,
-                chatId: chatId,
-                timestamp: Date.now()
-            });
-            
-            const walletKeyboard = {
-                reply_markup: {
-                    inline_keyboard: [[
-                        {
-                            text: ' Telegram Wallet',
-                            url: `https://t.me/wallet?startattach=tonconnect_${userId}`
-                        }
-                    ], [
-                        {
-                            text: '⬅️ Orqaga',
-                            callback_data: 'back_to_main'
-                        }
-                    ]]
-                },
-                parse_mode: 'Markdown'
-            };
-            
-            bot.sendMessage(chatId, `💳 *Wallet ulash*\n\nTelegram Walletni tanlang va hamyonni ulang:`, walletKeyboard);
-            
-            // Clean up old pending connections after 5 minutes
-            setTimeout(() => {
-                pendingConnections.delete(connectId);
-            }, 300000);
-        }
-        else if (data === 'back_to_main') {
+        // Wallet now uses direct URL button - no callback needed
+        if (data === 'back_to_main') {
             // Re-send main menu
             const mainKeyboard = {
                 reply_markup: {
@@ -138,7 +101,7 @@ try {
                     ], [
                         {
                             text: '💰 Wallet ulash',
-                            callback_data: `wallet_${userId}`
+                            url: `https://t.me/wallet?startattach=tonconnect_${userId}`
                         },
                         {
                             text: '📊 Balans',

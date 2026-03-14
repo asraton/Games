@@ -7,9 +7,6 @@ const GAME_URL = (process.env.GAME_URL || 'https://n-ton-games.vercel.app').trim
 const API_BASE_URL = (process.env.API_BASE_URL || `${GAME_URL}/api`).trim();
 const WEBHOOK_URL = (process.env.WEBHOOK_URL || `${GAME_URL}/bot-webhook`).trim();
 
-// Store pending wallet connections
-const pendingConnections = new Map();
-
 console.log('🔗 GAME_URL:', GAME_URL);
 console.log('🔗 API_BASE_URL:', API_BASE_URL);
 
@@ -73,7 +70,7 @@ bot.onText(/\/start/, (msg) => {
             ], [
                 {
                     text: '💰 Wallet ulash',
-                    callback_data: 'wallet'
+                    url: `https://t.me/wallet?startattach=tonconnect_${user.id}`
                 },
                 {
                     text: '📊 Balans',
@@ -99,42 +96,8 @@ bot.on('callback_query', async (query) => {
 
     console.log('Callback:', data);
 
-    if (data === 'wallet') {
-        // Generate unique connection ID
-        const connectId = `tonconnect_${userId}_${Date.now()}`;
-        
-        // Store connection pending in temporary storage
-        pendingConnections.set(connectId, {
-            userId: userId,
-            chatId: chatId,
-            timestamp: Date.now()
-        });
-        
-        const walletKeyboard = {
-            reply_markup: {
-                inline_keyboard: [[
-                    {
-                        text: ' Telegram Wallet',
-                        url: `https://t.me/wallet?startattach=tonconnect_${userId}`
-                    }
-                ], [
-                    {
-                        text: '⬅️ Orqaga',
-                        callback_data: 'back_to_main'
-                    }
-                ]]
-            },
-            parse_mode: 'Markdown'
-        };
-        
-        bot.sendMessage(chatId, `💳 *Wallet ulash*\n\nTelegram Walletni tanlang va hamyonni ulang:`, walletKeyboard);
-        
-        // Clean up old pending connections after 5 minutes
-        setTimeout(() => {
-            pendingConnections.delete(connectId);
-        }, 300000);
-    }
-    else if (data === 'back_to_main') {
+    // Wallet now uses direct URL button - no callback needed
+    if (data === 'back_to_main') {
         // Re-send main menu
         const mainKeyboard = {
             reply_markup: {
