@@ -1022,20 +1022,23 @@
                 const payBtnPanel = document.getElementById('pay-wallet-btn-panel');
                 if (payBtnPanel) {
                     payBtnPanel.addEventListener('click', async () => {
-                        console.log('Wallet tugmasi bosildi. connectedWalletAddress:', connectedWalletAddress);
+                        console.log('=== TO\'LOV BOSHLANDI ===');
+                        console.log('Foydalanuvchi wallet:', connectedWalletAddress);
+                        console.log('Qabul qiluvchi (ASRA):', PAYMENT_ADDRESS);
+                        console.log('Miqdor:', PAYMENT_NANO, 'nanoton');
                         
                         if (tonConnectUI && connectedWalletAddress) {
-                            // Wallet ulangan - to'lov yuborish
-                            console.log('Wallet ulangan, to\'lov yuborilmoqda...');
+                            console.log('Wallet ulangan - tranzaksiya yuborilmoqda...');
+                            console.log('Yonalish: User -> ASRA Coin');
                             try {
-                                await tonConnectUI.sendTransaction({
+                                const result = await tonConnectUI.sendTransaction({
                                     validUntil: Math.floor(Date.now() / 1000) + 600,
                                     messages: [{
                                         address: PAYMENT_ADDRESS,
                                         amount: PAYMENT_NANO.toString()
-                                        // payload o'chirildi - xatolik sababi
                                     }]
                                 });
+                                console.log('Tranzaksiya natijasi:', result);
                                 alert('To\'lov yuborildi! Sahifani yangilang.');
                             } catch (e) {
                                 console.error('To\'lov xatosi:', e);
@@ -1214,7 +1217,7 @@
                         return;
                     }
                     if (amount > maxWithdrawAmount) {
-                        alert(`Kamida 1 TON qolishi kerak. Maksimum ${maxWithdrawAmount.toFixed(4)} TON yechish mumkin`);
+                        alert(`Kamida 2 TON to'plang ${maxWithdrawAmount.toFixed(4)} TON yechish mumkin`);
                         return;
                     }
                     
