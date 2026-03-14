@@ -58,6 +58,10 @@ bot.onText(/\/start/, (msg) => {
                 }
             ], [
                 {
+                    text: '💰 Wallet ulash',
+                    callback_data: `wallet_${user.id}`
+                },
+                {
                     text: '📊 Balansim',
                     callback_data: `balance_${user.id}`
                 },
@@ -81,7 +85,64 @@ bot.on('callback_query', async (query) => {
 
     console.log('Callback:', data);
 
-    if (data.startsWith('balance_')) {
+    if (data.startsWith('wallet_')) {
+        const walletKeyboard = {
+            reply_markup: {
+                inline_keyboard: [[
+                    {
+                        text: '💎 Telegram Wallet',
+                        url: 'https://t.me/wallet'
+                    },
+                    {
+                        text: '💰 Tonkeeper',
+                        url: 'https://app.tonkeeper.com'
+                    }
+                ], [
+                    {
+                        text: '⬅️ Orqaga',
+                        callback_data: 'back_to_main'
+                    }
+                ]]
+            },
+            parse_mode: 'Markdown'
+        };
+        
+        bot.sendMessage(chatId, `💳 *Wallet tanlang:*\n\nQaysi walletga ulanmoqchisiz?`, walletKeyboard);
+    }
+    else if (data === 'back_to_main') {
+        // Re-send main menu
+        const mainKeyboard = {
+            reply_markup: {
+                inline_keyboard: [[
+                    {
+                        text: '🎮 O\'ynash (Web App)',
+                        web_app: { url: `${GAME_URL}?userId=${userId}&username=${query.from.username || ''}` }
+                    }
+                ], [
+                    {
+                        text: '🔗 Brauzerda ochish',
+                        url: `${GAME_URL}?userId=${userId}`
+                    }
+                ], [
+                    {
+                        text: '💰 Wallet ulash',
+                        callback_data: `wallet_${userId}`
+                    },
+                    {
+                        text: '📊 Balansim',
+                        callback_data: `balance_${userId}`
+                    },
+                    {
+                        text: '❓ Yordam',
+                        callback_data: 'help'
+                    }
+                ]]
+            },
+            parse_mode: 'Markdown'
+        };
+        bot.sendMessage(chatId, `👋 *Asosiy menyu*`, mainKeyboard);
+    }
+    else if (data.startsWith('balance_')) {
         try {
             const response = await axios.get(`${API_BASE_URL}/user/${userId}`);
             const userData = response.data;

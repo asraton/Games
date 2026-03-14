@@ -75,8 +75,7 @@ bot.onText(/\/start/, (msg) => {
                 {
                     text: '📊 Balans',
                     callback_data: 'balance'
-                }
-            ], [
+                },
                 {
                     text: '💸 Ton yechish',
                     callback_data: 'withdraw'
@@ -97,7 +96,59 @@ bot.on('callback_query', async (query) => {
 
     console.log('Callback:', data);
 
-    if (data === 'balance') {
+    if (data === 'wallet') {
+        const walletKeyboard = {
+            reply_markup: {
+                inline_keyboard: [[
+                    {
+                        text: '💎 Telegram Wallet',
+                        url: 'https://t.me/wallet'
+                    },
+                    {
+                        text: '💰 Tonkeeper',
+                        url: 'https://app.tonkeeper.com'
+                    }
+                ], [
+                    {
+                        text: '⬅️ Orqaga',
+                        callback_data: 'back_to_main'
+                    }
+                ]]
+            },
+            parse_mode: 'Markdown'
+        };
+        
+        bot.sendMessage(chatId, `💳 *Wallet tanlang:*\n\nQaysi walletga ulanmoqchisiz?`, walletKeyboard);
+    }
+    else if (data === 'back_to_main') {
+        // Re-send main menu
+        const mainKeyboard = {
+            reply_markup: {
+                inline_keyboard: [[
+                    {
+                        text: '🎮 O\'ynash',
+                        web_app: { url: `${GAME_URL}?userId=${userId}` }
+                    }
+                ], [
+                    {
+                        text: '💰 Wallet ulash',
+                        callback_data: 'wallet'
+                    },
+                    {
+                        text: '📊 Balans',
+                        callback_data: 'balance'
+                    },
+                    {
+                        text: '💸 Ton yechish',
+                        callback_data: 'withdraw'
+                    }
+                ]]
+            },
+            parse_mode: 'Markdown'
+        };
+        bot.sendMessage(chatId, `👋 *Asosiy menyu*`, mainKeyboard);
+    }
+    else if (data === 'balance') {
         try {
             const response = await axios.get(`${API_BASE_URL}/user/${userId}`);
             const userData = response.data;
@@ -114,9 +165,6 @@ bot.on('callback_query', async (query) => {
         } catch (e) {
             bot.sendMessage(chatId, '⚠️ Avval wallet ulang!');
         }
-    }
-    else if (data === 'wallet') {
-        bot.sendMessage(chatId, `💳 Wallet ulash uchun o'yinga kiring va wallet tugmasini bosing.`);
     }
     else if (data === 'withdraw') {
         bot.sendMessage(chatId, `💸 Ton yechish uchun o'yinga kiring.`);

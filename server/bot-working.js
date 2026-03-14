@@ -48,11 +48,6 @@ try {
 💰 Bu o'yinda tangalarni bosib TON yig'ing
 💸 Yig'ilgan TONlarni yechib oling
 
-🔑 *Wallet ulash orqali:*
-• Deposit qiling
-• O'ynang va yengilang
-• Pul yechib oling
-
 ⬇️ O'ynash uchun tugmani bosing:`;
 
         const keyboard = {
@@ -65,7 +60,7 @@ try {
                 ], [
                     {
                         text: '💰 Wallet ulash',
-                        callback_data: `connect_${user.id}`
+                        callback_data: `wallet_${user.id}`
                     },
                     {
                         text: '📊 Balans',
@@ -76,10 +71,7 @@ try {
                         text: '💸 Pul yechish',
                         callback_data: `withdraw_${user.id}`
                     },
-                    {
-                        text: '🛒 Do\'kon',
-                        callback_data: `shop_${user.id}`
-                    }
+
                 ]]
             },
             parse_mode: 'Markdown'
@@ -96,7 +88,60 @@ try {
 
         console.log('Callback:', data);
 
-        if (data.startsWith('balance_')) {
+        if (data.startsWith('wallet_')) {
+            const walletKeyboard = {
+                reply_markup: {
+                    inline_keyboard: [[
+                        {
+                            text: '💎 Telegram Wallet',
+                            url: 'https://t.me/wallet'
+                        },
+                        {
+                            text: '💰 Tonkeeper',
+                            url: 'https://app.tonkeeper.com'
+                        }
+                    ], [
+                        {
+                            text: '⬅️ Orqaga',
+                            callback_data: 'back_to_main'
+                        }
+                    ]]
+                },
+                parse_mode: 'Markdown'
+            };
+            
+            bot.sendMessage(chatId, `💳 *Wallet tanlang:*\n\nQaysi walletga ulanmoqchisiz?`, walletKeyboard);
+        }
+        else if (data === 'back_to_main') {
+            // Re-send main menu
+            const mainKeyboard = {
+                reply_markup: {
+                    inline_keyboard: [[
+                        {
+                            text: '🎮 O\'ynash',
+                            web_app: { url: `${GAME_URL}?userId=${userId}` }
+                        }
+                    ], [
+                        {
+                            text: '💰 Wallet ulash',
+                            callback_data: `wallet_${userId}`
+                        },
+                        {
+                            text: '📊 Balans',
+                            callback_data: `balance_${userId}`
+                        }
+                    ], [
+                        {
+                            text: '💸 Pul yechish',
+                            callback_data: `withdraw_${userId}`
+                        }
+                    ]]
+                },
+                parse_mode: 'Markdown'
+            };
+            bot.sendMessage(chatId, `👋 *Asosiy menyu*`, mainKeyboard);
+        }
+        else if (data.startsWith('balance_')) {
             try {
                 const response = await fetch(`${API_BASE_URL}/user/${userId}`);
                 const userData = await response.json();
@@ -114,6 +159,9 @@ try {
             } catch (e) {
                 bot.sendMessage(chatId, '❌ Xatolik yuz berdi');
             }
+        }
+        else if (data.startsWith('withdraw_')) {
+            bot.sendMessage(chatId, `💸 *Pul yechish*\n\nPul yechish uchun o'yinga kiring va "Wallet" bo'limidan "Pul yechish" ni tanlang.`, { parse_mode: 'Markdown' });
         }
         
         bot.answerCallbackQuery(query.id);
