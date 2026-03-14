@@ -906,13 +906,25 @@
                     };
                     startAutoCheck();
                     
-                    // Hamyondan to'lash tugmasi - TON Connect UI ni ochish
+                    // Hamyondan to'lash tugmasi - TON Connect orqali to'lov yuborish
                     const payBtn = document.getElementById('pay-wallet-btn');
                     if (payBtn) {
-                        payBtn.addEventListener('click', () => {
+                        payBtn.addEventListener('click', async () => {
                             if (tonConnectUI && connectedWalletAddress) {
-                                // Agar wallet ulangan bo'lsa, TON Connect modal ni ochish
-                                tonConnectUI.openModal();
+                                // Agar wallet ulangan bo'lsa, to'lovni yuborish
+                                try {
+                                    await tonConnectUI.sendTransaction({
+                                        validUntil: Math.floor(Date.now() / 1000) + 600, // 10 daqiqa
+                                        messages: [{
+                                            address: PAYMENT_ADDRESS,
+                                            amount: PAYMENT_NANO.toString(),
+                                            payload: null
+                                        }]
+                                    });
+                                    alert('To\'lov yuborildi! Sahifani yangilang.');
+                                } catch (e) {
+                                    console.error('To\'lov xatosi:', e);
+                                }
                             } else {
                                 // Agar wallet ulanmagan bo'lsa, ton:// URL ga o'tish
                                 window.location.href = TON_TRANSFER_URL;
