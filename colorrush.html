@@ -1037,15 +1037,10 @@
                                 📱 Hamyondan to'lash
                             </button>
                             
-                            <!-- TON yechish va Orqaga tugmalari yonma-yon -->
-                            <div style="display:flex;gap:8px;margin-top:16px;">
-                                <button class="wallet-panel-btn withdraw" id="btn-ton-yechish-demo" style="flex:1;margin:0;text-align:center;">
-                                    ⚠️ TON yechish
-                                </button>
-                                <button class="wallet-panel-btn close-modal" style="flex:1;margin:0;text-align:center;">
-                                    ⬅️ Orqaga
-                                </button>
-                            </div>
+                            <!-- Faqat Orqaga tugmasi -->
+                            <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:16px;text-align:center;">
+                                ⬅️ Orqaga
+                            </button>
                         </div>
                     `;
                     modal.classList.add('open');
@@ -1118,75 +1113,63 @@
                         });
                     }
                     
-                    // TON yechish tugmasi (demo modal ichida) - shu modal ni yopib, asl TON yechish funksiyasini chaqirish
-                    const withdrawDemoBtn = document.getElementById('btn-ton-yechish-demo');
-                    if (withdrawDemoBtn) {
-                        withdrawDemoBtn.addEventListener('click', () => {
-                            modal.classList.remove('open');
-                            // Asl TON yechish funksiyasini chaqirish
-                            document.getElementById('btn-ton-yechish').click();
-                        });
-                    }
-                    
-                    return;
                 }
                 
-                // To'lov qilingan - normal withdrawal
+                // To'lov qilingan - normal withdrawal from game balance
                 modalTitle.textContent = '💸 TON yechish';
                 
-                // Balansni olish
-                let maxAmount = 0;
-                try {
-                    const res = await fetch(API_BASE + '/user/' + userId + '/balance');
-                    const data = await res.json();
-                    if (data.success) {
-                        maxAmount = data.maxWithdraw;
-                    }
-                } catch (e) {
-                    console.error('Balansni olishda xato:', e);
-                }
+                // O'yindagi TON balansini olish (localStorage)
+                const gameTonBalance = tonCount;
                 
                 modalBody.innerHTML = `
-                    <p style="font-size:11px;color:#888;margin-bottom:8px;word-break:break-all;">Adres: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>
-                    <p style="font-size:14px;color:#00d2ff;margin-bottom:8px;">Max: ${maxAmount.toFixed(4)} TON</p>
-                    <div class="withdraw-input-row">
-                        <input type="number" id="withdraw-amount" placeholder="Miqdor (TON)" min="0.1" step="0.1">
-                        <button id="max-btn">MAX</button>
+                    <div style="text-align:center;padding:16px;">
+                        <p style="color:#ffd700;font-size:18px;margin-bottom:12px;">💰 O'yin balansingiz</p>
+                        <p style="color:#00d2ff;font-size:32px;font-weight:bold;margin-bottom:16px;">${gameTonBalance.toFixed(4)} TON</p>
+                        <p style="color:#888;font-size:11px;margin-bottom:4px;">Yechib olish manzili:</p>
+                        <p style="color:#fff;font-size:12px;margin-bottom:16px;word-break:break-all;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;">${connectedWalletAddress}</p>
+                        
+                        <div class="withdraw-input-row" style="margin:16px 0;">
+                            <input type="number" id="withdraw-amount" placeholder="Miqdor (TON)" min="0.1" max="${gameTonBalance}" step="0.1" style="flex:1;">
+                            <button id="max-btn" style="white-space:nowrap;">MAX</button>
+                        </div>
+                        <p style="color:#888;font-size:10px;margin-bottom:16px;">Min: 0.1 TON | Max: ${gameTonBalance.toFixed(4)} TON</p>
+                        
+                        <button class="wallet-panel-btn withdraw" id="withdraw-submit" style="width:100%;margin-bottom:8px;">💸 Yechib olish</button>
+                        <button class="wallet-panel-btn close-modal" style="width:100%;">⬅️ Orqaga</button>
                     </div>
-                    <button class="wallet-panel-btn withdraw" id="withdraw-submit" style="margin-top:12px;width:100%;">Yuborish</button>
-                    <button class="wallet-panel-btn close-modal" style="margin-top:8px;width:100%;text-align:center;">⬅️ Orqaga</button>
                 `;
                 modal.classList.add('open');
                 
                 // Max tugmasi ishlashi
                 document.getElementById('max-btn').addEventListener('click', () => {
-                    document.getElementById('withdraw-amount').value = maxAmount.toFixed(4);
+                    document.getElementById('withdraw-amount').value = gameTonBalance.toFixed(4);
                 });
+                
+                // Yechish tugmasi
                 document.getElementById('withdraw-submit').addEventListener('click', async () => {
                     const amount = parseFloat(document.getElementById('withdraw-amount').value);
                     if (!amount || amount < 0.1) {
-                        alert('Minimum 0.1 TON');
+                        alert('Minimum 0.1 TON yechish mumkin');
                         return;
                     }
-                    try {
-                        const res = await fetch(API_BASE + '/withdraw', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                userId,
-                                amount,
-                                toAddress: connectedWalletAddress
-                            })
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                            modalBody.innerHTML = `<p style="color:#2ed573">✅ ${amount} TON yuborildi!</p>`;
-                        } else {
-                            modalBody.innerHTML = `<p style="color:#ff6b6b">${data.error || 'Xatolik'}</p>`;
-                        }
-                    } catch (e) {
-                        modalBody.innerHTML = '<p style="color:#ff6b6b">Xatolik yuz berdi</p>';
+                    if (amount > gameTonBalance) {
+                        alert(`Sizda faqat ${gameTonBalance.toFixed(4)} TON mavjud`);
+                        return;
                     }
+                    
+                    // O'yindagi TON ni kamaytirish
+                    tonCount -= amount;
+                    updateDisplay();
+                    saveGameData();
+                    
+                    modalBody.innerHTML = `
+                        <div style="text-align:center;padding:16px;">
+                            <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ ${amount} TON yechildi!</p>
+                            <p style="color:#fff;font-size:13px;margin-bottom:8px;">Qolgan balans: ${tonCount.toFixed(4)} TON</p>
+                            <p style="color:#888;font-size:11px;margin-bottom:16px;">Wallet: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>
+                            <button class="wallet-panel-btn close-modal" style="width:100%;">⬅️ Orqaga</button>
+                        </div>
+                    `;
                 });
             });
         });
