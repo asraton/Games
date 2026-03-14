@@ -205,9 +205,11 @@
         }
 
         #w-btn {
-            width: 44px;
+            width: auto;
+            min-width: 44px;
             height: 44px;
-            border-radius: 50%;
+            padding: 0 12px;
+            border-radius: 22px;
             background: linear-gradient(135deg, #0088cc, #00a8ff);
             border: 2px solid rgba(255,255,255,0.3);
             color: white;
@@ -216,14 +218,11 @@
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(0, 136, 204, 0.5);
             transition: all 0.3s ease;
-        }
-
-        #w-btn:hover {
-            transform: scale(1.08);
-            box-shadow: 0 6px 25px rgba(0, 136, 204, 0.7);
+            position: relative;
         }
 
         #w-btn.connected {
+            font-size: 12px;
             background: linear-gradient(135deg, #2ed573, #1e90ff);
         }
 
@@ -267,8 +266,18 @@
             box-shadow: 0 4px 15px rgba(0, 136, 204, 0.5);
         }
 
-        .wallet-panel-btn.withdraw {
-            background: linear-gradient(135deg, #ff9500, #ff6b00);
+        .wallet-panel-btn.disconnect {
+            background: linear-gradient(135deg, #ff4757, #ff6b6b);
+        }
+
+        .wallet-address {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+            word-break: break-all;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
         }
 
         /* Balans va Withdraw modal */
@@ -362,7 +371,8 @@
         <div class="wallet-section">
             <button id="w-btn" title="Hamyon">W</button>
             <div id="wallet-panel">
-                <button class="wallet-panel-btn" id="btn-wallet-ulash">💎 Wallet ulash</button>
+                <div id="wallet-address-display" class="wallet-address" style="display:none"></div>
+                <button class="wallet-panel-btn" id="btn-wallet-action">💎 Wallet ulash</button>
                 <button class="wallet-panel-btn withdraw" id="btn-ton-yechish">💸 TON yechish</button>
             </div>
         </div>
@@ -582,6 +592,36 @@
         let tonConnectUI = null;
         let connectedWalletAddress = null;
 
+        function updateWalletUI() {
+            const wBtn = document.getElementById('w-btn');
+            const walletActionBtn = document.getElementById('btn-wallet-action');
+            const walletAddressDisplay = document.getElementById('wallet-address-display');
+            
+            if (connectedWalletAddress) {
+                // Wallet ulangan
+                const shortAddr = connectedWalletAddress.slice(0, 6) + '...' + connectedWalletAddress.slice(-4);
+                wBtn.textContent = shortAddr;
+                wBtn.classList.add('connected');
+                
+                walletActionBtn.textContent = '❌ Wallet uzish';
+                walletActionBtn.classList.add('disconnect');
+                walletActionBtn.classList.remove('wallet-panel-btn');
+                
+                walletAddressDisplay.textContent = connectedWalletAddress;
+                walletAddressDisplay.style.display = 'block';
+            } else {
+                // Wallet ulanmagan
+                wBtn.textContent = 'W';
+                wBtn.classList.remove('connected');
+                
+                walletActionBtn.textContent = '💎 Wallet ulash';
+                walletActionBtn.classList.remove('disconnect');
+                walletActionBtn.classList.add('wallet-panel-btn');
+                
+                walletAddressDisplay.style.display = 'none';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const wBtn = document.getElementById('w-btn');
             const walletPanel = document.getElementById('wallet-panel');
@@ -613,7 +653,6 @@
                 tonConnectUI.onStatusChange((wallet) => {
                     if (wallet) {
                         connectedWalletAddress = wallet.account?.address;
-                        wBtn.classList.add('connected');
                         if (connectedWalletAddress && userId) {
                             fetch(API_BASE + '/user/register', {
                                 method: 'POST',
@@ -623,22 +662,31 @@
                         }
                     } else {
                         connectedWalletAddress = null;
-                        wBtn.classList.remove('connected');
                     }
+                    updateWalletUI();
                 });
                 tonConnectUI.connectionRestored.then((restored) => {
                     if (restored && tonConnectUI.wallet) {
                         connectedWalletAddress = tonConnectUI.wallet.account?.address;
-                        wBtn.classList.add('connected');
+                        updateWalletUI();
                     }
                 });
             }
 
-            // Wallet ulash - TON Connect modal
-            document.getElementById('btn-wallet-ulash').addEventListener('click', () => {
+            // Wallet ulash/uzish - TON Connect modal
+            document.getElementById('btn-wallet-action').addEventListener('click', () => {
                 walletPanel.classList.remove('open');
-                if (tonConnectUI) tonConnectUI.openModal();
-                else alert('TON Connect yuklanmadi');
+                if (!tonConnectUI) {
+                    alert('TON Connect yuklanmadi');
+                    return;
+                }
+                if (connectedWalletAddress) {
+                    // Wallet uzish
+                    tonConnectUI.disconnect();
+                } else {
+                    // Wallet ulash
+                    tonConnectUI.openModal();
+                }
             });
 
             // TON yechish
