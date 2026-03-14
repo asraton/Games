@@ -597,27 +597,25 @@
             const walletAddressDisplay = document.getElementById('wallet-address-display');
             const wBtn = document.getElementById('w-btn');
             
-            console.log('updateWalletUI called, connectedWalletAddress:', connectedWalletAddress);
-            
-            if (connectedWalletAddress && (connectedWalletAddress.startsWith('EQ') || connectedWalletAddress.startsWith('UQ'))) {
+            if (connectedWalletAddress) {
                 wBtn.classList.add('connected');
-                
                 walletActionBtn.textContent = '❌ Wallet uzish';
                 walletActionBtn.classList.add('disconnect');
                 
-                // Manzilni chiroyli qisqartirish (EQa1...b2c3 ko'rinishida)
-                const start = connectedWalletAddress.slice(0, 6);
+                // Manzilni chiroyli qisqartirish (masalan: EQa1...b2c3)
+                const start = connectedWalletAddress.slice(0, 4);
                 const end = connectedWalletAddress.slice(-4);
                 const shortAddr = `${start}...${end}`;
                 
-                walletAddressDisplay.innerHTML = `<strong style="color:#00d2ff">Ulangan:</strong> ${shortAddr}<br><small style="color:#888;font-size:10px">${connectedWalletAddress}</small>`;
+                walletAddressDisplay.innerHTML = `
+                    <strong style="color:#00d2ff">Ulangan:</strong><br>
+                    <span style="font-size:11px; color:#eee;">${shortAddr}</span>
+                `;
                 walletAddressDisplay.style.display = 'block';
             } else {
                 wBtn.classList.remove('connected');
-                
                 walletActionBtn.textContent = '💎 Wallet ulash';
                 walletActionBtn.classList.remove('disconnect');
-                
                 walletAddressDisplay.style.display = 'none';
             }
         }
@@ -655,37 +653,28 @@
                 console.log('TON Connect UI yuklandi');
                 
                 tonConnectUI.onStatusChange((wallet) => {
-                    console.log('=== TON Connect Status Change ===');
-                    console.log('Full wallet object:', JSON.stringify(wallet, null, 2));
+                    console.log('Hamyon holati o\'zgardi:', wallet);
                     
                     if (wallet && wallet.account) {
-                        // Foydalanuvchi o'rgangan EQ... yoki UQ... formatni olish
-                        const userFriendly = wallet.account.userFriendlyAddress;
+                        // MUHIM: userFriendlyAddress - bu aynan EQ... yoki UQ... formatidir
+                        connectedWalletAddress = wallet.account.userFriendlyAddress || wallet.account.address;
                         
-                        console.log('User-friendly address (UQ/EQ...):', userFriendly);
-                        console.log('All account fields:', Object.keys(wallet.account));
-                        
-                        // Faqat userFriendlyAddress ni olamiz - bu foydalanuvchi o'rgangan format
-                        if (userFriendly && (userFriendly.startsWith('EQ') || userFriendly.startsWith('UQ'))) {
-                            connectedWalletAddress = userFriendly;
-                            console.log('Selected user-friendly address:', connectedWalletAddress);
-                        } else {
-                            // Agar userFriendlyAddress bo'lmasa, xatolik
-                            console.error('userFriendlyAddress topilmadi yoki noto\'g\'ri format:', userFriendly);
-                            connectedWalletAddress = null;
-                        }
-                        
+                        console.log('Olingan manzil:', connectedWalletAddress);
+
+                        // Bazaga yuborish
                         if (connectedWalletAddress && userId) {
                             fetch(API_BASE + '/user/register', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ userId, connectedWallet: connectedWalletAddress })
-                            }).catch(() => {});
+                            }).catch(err => console.error('Bazaga saqlashda xato:', err));
                         }
                     } else {
                         connectedWalletAddress = null;
-                        console.log('Wallet disconnected');
+                        console.log('Hamyon uzildi');
                     }
+                    
+                    // UI-ni darhol yangilash
                     updateWalletUI();
                 });
                 
