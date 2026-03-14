@@ -722,6 +722,15 @@ function createDefaultShopItems() {
 
 // Serverni ishga tushirish
 const PORT = process.env.PORT || 3000;
+
+// Telegram bot - listen dan oldin route qo'shilishi kerak
+if (process.env.TELEGRAM_BOT_TOKEN) {
+    const { initBot } = require('./bot-final.js');
+    initBot(app);
+} else {
+    console.log('⚠️ TELEGRAM_BOT_TOKEN yo\'q - bot ishlamaydi');
+}
+
 app.listen(PORT, () => {
     console.log('🔥 REAL TON COIN SERVER 🔥');
     console.log(`✅ Server ${PORT} portda ishga tushdi`);
@@ -743,14 +752,6 @@ app.listen(PORT, () => {
     console.log('');
     
     createDefaultShopItems();
-    
-    // Telegram bot ishga tushirish (agar token mavjud bo'lsa)
-    if (process.env.TELEGRAM_BOT_TOKEN) {
-        console.log('🤖 Telegram bot ishga tushmoqda...');
-        require('./bot-final.js');
-    } else {
-        console.log('⚠️ TELEGRAM_BOT_TOKEN yo\'q - bot ishlamaydi');
-    }
 });
 
 module.exports = app;

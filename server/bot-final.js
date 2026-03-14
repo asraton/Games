@@ -2,48 +2,46 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-// GAME_URL - Vercel frontend URL bo'lishi kerak (Railway emas!)
+// GAME_URL - Vercel frontend URL
 const GAME_URL = (process.env.GAME_URL || 'https://n-ton-games.vercel.app').trim();
+// API_BASE_URL - Backend (Railway) URL
 const API_BASE_URL = (process.env.API_BASE_URL || `${GAME_URL}/api`).trim();
-const WEBHOOK_URL = (process.env.WEBHOOK_URL || `${GAME_URL}/bot-webhook`).trim();
+// WEBHOOK_URL - Backend URL, Telegram shu yerga yuboradi
+const WEBHOOK_URL = (process.env.WEBHOOK_URL || API_BASE_URL.replace(/\/api$/, '') + '/bot-webhook').trim();
 
-console.log('🔗 GAME_URL:', GAME_URL);
-console.log('🔗 API_BASE_URL:', API_BASE_URL);
-
-if (!TOKEN) {
-    console.error('❌ TELEGRAM_BOT_TOKEN topilmadi! Railway variables ga qo\'shing');
-    process.exit(1);
-}
-
-console.log('========================================');
-console.log('🤖 nTonGame Bot - Ishga tushmoqda...');
-console.log('========================================\n');
-
-// Webhook uchun sozlash (Railway'da polling o'rniga webhook ishlatiladi)
 const useWebhook = process.env.USE_WEBHOOK === 'true';
 
-let bot;
-if (useWebhook && WEBHOOK_URL) {
-    console.log('🔗 Webhook rejimi');
-    bot = new TelegramBot(TOKEN, { webHook: { port: process.env.BOT_PORT || 8081 } });
-    bot.setWebHook(WEBHOOK_URL);
-} else {
-    console.log('📡 Polling rejimi');
-    bot = new TelegramBot(TOKEN, { polling: true });
-}
+function initBot(app) {
+    if (!TOKEN) {
+        console.error('❌ TELEGRAM_BOT_TOKEN topilmadi!');
+        return null;
+    }
 
-// Bot ma'lumotlari
-bot.getMe().then((botInfo) => {
-    console.log('✅ Bot ulangan!');
-    console.log('   Username:', botInfo.username);
-    console.log('   ID:', botInfo.id);
-    console.log('\n🎮 Bot tayyor! Telegramda /start bosing\n');
-}).catch((err) => {
-    console.error('❌ Bot ulanmadi:', err.message);
-});
+    let bot;
+    if (useWebhook && app) {
+        console.log('🔗 Webhook rejimi');
+        bot = new TelegramBot(TOKEN);
+        app.post('/bot-webhook', (req, res) => {
+            bot.processUpdate(req.body);
+            res.sendStatus(200);
+        });
+    } else {
+        console.log('📡 Polling rejimi');
+        bot = new TelegramBot(TOKEN, { polling: true });
+    }
 
-// /start komandasi
-bot.onText(/\/start/, (msg) => {
+    if (useWebhook && WEBHOOK_URL) {
+        bot.setWebHook(WEBHOOK_URL).catch(err => console.error('Webhook xato:', err.message));
+    }
+
+    console.log('🔗 GAME_URL:', GAME_URL);
+    console.log('🔗 API_BASE_URL:', API_BASE_URL);
+
+    bot.getMe().then((botInfo) => {
+        console.log('✅ Bot ulangan:', botInfo.username);
+    }).catch((err) => console.error('❌ Bot ulanmadi:', err.message));
+
+    bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     const user = msg.from;
     
@@ -159,4 +157,8 @@ bot.on('error', (error) => {
     console.error('Bot error:', error.message);
 });
 
-console.log('Bot ishlamoqda...');
+console.log('🤖 Bot ishga tushdi');
+return bot;
+}
+
+module.exports = { initBot };

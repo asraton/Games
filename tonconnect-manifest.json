@@ -1,7 +1,7 @@
 {
-  "url": "http://localhost:8080",
-  "name": "TON Coin",
-  "iconUrl": "http://localhost:8080/assets/tanga.png",
-  "termsOfUseUrl": "http://localhost:8080/terms",
-  "privacyPolicyUrl": "http://localhost:8080/privacy"
+  "url": "https://n-ton-games.vercel.app",
+  "name": "TON Coin Rush",
+  "iconUrl": "https://n-ton-games.vercel.app/assets/tanga.png",
+  "termsOfUseUrl": "https://n-ton-games.vercel.app/terms",
+  "privacyPolicyUrl": "https://n-ton-games.vercel.app/privacy"
 }

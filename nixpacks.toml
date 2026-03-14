@@ -2,7 +2,7 @@
 cmds = ["cd server && npm install"]
 
 [phases.setup]
-nixPkgs = ["nodejs_18"]
+nixPkgs = ["nodejs_24"]
 
 [start]
 cmd = "cd server && node server-real.js"
