@@ -880,13 +880,8 @@
             tonCount = 0;
             totalClicks = 0;
             currentSpeedLevel = 1;
-            hideBonus();
             gameActive = true;
             isPaused = false;
-            
-            // Track game start in global stats
-            globalStats.gamesPlayed++;
-            saveGlobalStats();
             
             updateDisplay();
             startScreen.classList.add('hidden');
