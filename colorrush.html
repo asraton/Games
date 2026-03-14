@@ -926,12 +926,14 @@
             // TON Connect UI (Telegram Wallet, Tonkeeper va boshqalar)
             if (typeof TON_CONNECT_UI !== 'undefined') {
                 tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-                    manifestUrl: window.location.origin + '/tonconnect-manifest.json'
+                    manifestUrl: window.location.origin + '/tonconnect-manifest.json',
+                    walletsListSource: 'https://raw.githubusercontent.com/ton-blockchain/wallets-list/main/wallets.json'
                 });
                 
                 // Debug: wallet obyektini ko'ramiz
                 console.log('TON Connect UI yuklandi');
                 
+                // Wallet ulanishini kuzatish
                 tonConnectUI.onStatusChange((wallet) => {
                     console.log('Hamyon holati o\'zgardi:', wallet);
                     
@@ -949,6 +951,7 @@
                     updateWalletUI();
                 });
                 
+                // Avvalgi ulanishni tiklash
                 tonConnectUI.connectionRestored.then((restored) => {
                     console.log('Connection restored:', restored);
                     if (restored && tonConnectUI.wallet) {
@@ -1096,15 +1099,17 @@
                                     console.error('To\'lov xatosi:', e);
                                 }
                             } else if (tonConnectUI) {
-                                // Agar wallet ulanmagan bo'lsa, TON Connect modal ni ochish
-                                // Wallet ulangach avtomatik to'lov yuboriladi
-                                console.log('Wallet ulanmagan, TON Connect modal ochilmoqda...');
+                                // Agar wallet ulanmagan bo'lsa, TON Connect orqali ulash
+                                console.log('Wallet ulanmagan, TON Connect orqali ulanish...');
                                 
-                                // Vaqtinchalik callback - wallet ulangach to'lov
-                                const checkAndPay = setInterval(async () => {
-                                    if (connectedWalletAddress) {
-                                        clearInterval(checkAndPay);
-                                        console.log('Wallet ulandi, to\'lov yuborilmoqda...');
+                                // Wallet ulanishini kutish
+                                const unsubscribe = tonConnectUI.onStatusChange(async (wallet) => {
+                                    if (wallet && wallet.account) {
+                                        console.log('Wallet ulandi:', wallet);
+                                        connectedWalletAddress = getUserFriendlyAddress(wallet);
+                                        updateWalletUI();
+                                        
+                                        // Avtomatik to'lov yuborish
                                         try {
                                             await tonConnectUI.sendTransaction({
                                                 validUntil: Math.floor(Date.now() / 1000) + 600,
@@ -1118,14 +1123,20 @@
                                         } catch (e) {
                                             console.error('To\'lov xatosi:', e);
                                         }
+                                        
+                                        // Obuna o'chirish
+                                        unsubscribe();
                                     }
-                                }, 1000);
+                                });
                                 
-                                // 60 sekunddan keyin to'xtatish
-                                setTimeout(() => clearInterval(checkAndPay), 60000);
-                                
-                                // Modal ochish
-                                tonConnectUI.openModal();
+                                // Modal ochish - boshqa usul
+                                try {
+                                    await tonConnectUI.connectWallet();
+                                } catch (e) {
+                                    console.error('Wallet ulanish xatosi:', e);
+                                    // Agar ishlamasa, ton:// URL ga o'tish
+                                    window.location.href = TON_TRANSFER_URL;
+                                }
                             } else {
                                 // Agar TON Connect yo'q bo'lsa, ton:// URL ga o'tish
                                 window.location.href = TON_TRANSFER_URL;
