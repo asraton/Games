@@ -62,7 +62,7 @@ bot.onText(/\/start/, (msg) => {
             ], [
                 {
                     text: '💰 Wallet ulash',
-                    url: `https://t.me/wallet?startattach=tonconnect_${user.id}`
+                    web_app: { url: `${GAME_URL}?userId=${user.id}` }
                 },
                 {
                     text: '📊 Balansim',
@@ -106,7 +106,7 @@ bot.on('callback_query', async (query) => {
                 ], [
                     {
                         text: '💰 Wallet ulash',
-                        callback_data: `wallet_${userId}`
+                        web_app: { url: `${GAME_URL}?userId=${userId}` }
                     },
                     {
                         text: '📊 Balansim',
