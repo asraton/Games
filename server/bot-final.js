@@ -2,11 +2,11 @@ const TelegramBot = require('node-telegram-bot-api');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 // GAME_URL - Railway URL (backend + frontend birga)
-const GAME_URL = (process.env.GAME_URL || 'https://asra-production.up.railway.app').trim();
+const GAME_URL = (process.env.GAME_URL || 'https://asracoin.up.railway.app').trim();
 // API_BASE_URL - Backend API URL
-const API_BASE_URL = (process.env.API_BASE_URL || 'https://asra-production.up.railway.app/api').trim();
+const API_BASE_URL = (process.env.API_BASE_URL || 'https://asracoin.up.railway.app/api').trim();
 // WEBHOOK_URL - Backend URL, Telegram shu yerga yuboradi
-const WEBHOOK_URL = (process.env.WEBHOOK_URL || 'https://asra-production.up.railway.app/bot-webhook').trim();
+const WEBHOOK_URL = (process.env.WEBHOOK_URL || 'https://asracoin.up.railway.app/bot-webhook').trim();
 
 const useWebhook = process.env.USE_WEBHOOK === 'true';
 
