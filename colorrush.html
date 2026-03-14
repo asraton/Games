@@ -493,9 +493,44 @@
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('userId') || urlParams.get('user_id') || '';
 
-        // Game state
-        let asraScore = 0;
-        let tonCount = 0;
+        // LocalStorage key - har bir user uchun alohida
+        const STORAGE_KEY = userId ? `asra_game_${userId}` : 'asra_game_default';
+
+        // LocalStorage dan hisobni o'qish
+        function loadGameData() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    return {
+                        asraScore: data.asraScore || 0,
+                        tonCount: data.tonCount || 0
+                    };
+                }
+            } catch (e) {
+                console.error('LocalStorage oqishda xato:', e);
+            }
+            return { asraScore: 0, tonCount: 0 };
+        }
+
+        // LocalStorage ga hisobni saqlash
+        function saveGameData() {
+            try {
+                const data = {
+                    asraScore: asraScore,
+                    tonCount: tonCount,
+                    lastSaved: new Date().toISOString()
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch (e) {
+                console.error('LocalStorage saqlashda xato:', e);
+            }
+        }
+
+        // Saqlangan ma'lumotlarni yuklash
+        const savedData = loadGameData();
+        let asraScore = savedData.asraScore;
+        let tonCount = savedData.tonCount;
         const ASRA_PER_TON = 100000;
         let gameActive = false;
         let isPaused = false;
@@ -515,6 +550,8 @@
         function updateDisplay() {
             tonDisplayElement.textContent = tonCount;
             asraDisplayElement.textContent = asraScore.toString().padStart(9, '0');
+            // Har safar ko'rsatishda localStorage ga saqlash
+            saveGameData();
         }
 
         function calculateSpeed() {
@@ -635,12 +672,21 @@
         }
 
         function startNewGame() {
-            asraScore = 0;
-            tonCount = 0;
+            // Yangi o'yin boshlamaydi, faqat davom etadi - hisoblar saqlanadi
             gameActive = true;
             isPaused = false;
 
             updateDisplay();
+
+            stopBtn.textContent = '⏹️ STOP';
+            stopBtn.classList.add('stop-mode');
+
+            showCoin();
+        }
+
+        function resumeGame() {
+            gameActive = true;
+            isPaused = false;
 
             stopBtn.textContent = '⏹️ STOP';
             stopBtn.classList.add('stop-mode');
@@ -658,11 +704,18 @@
             stopBtn.classList.remove('stop-mode');
         }
 
+        let isFirstStart = true;
+
         function toggleGame() {
             if (gameActive) {
                 stopGame();
             } else {
-                startNewGame();
+                if (isFirstStart) {
+                    startNewGame();
+                    isFirstStart = false;
+                } else {
+                    resumeGame();
+                }
             }
         }
 
@@ -921,6 +974,7 @@
                                     `;
                                     asraScore = 0;
                                     tonCount = 0;
+                                    saveGameData(); // localStorage ga saqlash
                                     updateDisplay();
                                     stopGame();
                                 }
