@@ -3,10 +3,9 @@ const axios = require('axios');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 // GAME_URL - Vercel frontend URL bo'lishi kerak (Railway emas!)
-// Masalan: https://n-ton-games.vercel.app
-const GAME_URL = process.env.GAME_URL || 'https://n-ton-games.vercel.app';
-const API_BASE_URL = process.env.API_BASE_URL || `${GAME_URL}/api`;
-const WEBHOOK_URL = process.env.WEBHOOK_URL || `${GAME_URL}/bot-webhook`;
+const GAME_URL = (process.env.GAME_URL || 'https://n-ton-games.vercel.app').trim();
+const API_BASE_URL = (process.env.API_BASE_URL || `${GAME_URL}/api`).trim();
+const WEBHOOK_URL = (process.env.WEBHOOK_URL || `${GAME_URL}/bot-webhook`).trim();
 
 console.log('🔗 GAME_URL:', GAME_URL);
 console.log('🔗 API_BASE_URL:', API_BASE_URL);
