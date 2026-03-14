@@ -598,9 +598,26 @@
             
             async connect(walletApp) {
                 try {
-                    const walletConnectionSource = {
-                        jsBridgeKey: walletApp
-                    };
+                    let walletConnectionSource;
+                    
+                    if (walletApp === 'telegram-wallet') {
+                        // Telegram Wallet uses specific deep link format
+                        walletConnectionSource = {
+                            universalLink: 'https://t.me/wallet?attach=wallet',
+                            bridgeUrl: 'https://bridge.tonapi.io/bridge'
+                        };
+                    } else if (walletApp === 'tonkeeper') {
+                        // Tonkeeper universal link
+                        walletConnectionSource = {
+                            universalLink: 'https://app.tonkeeper.com/ton-connect',
+                            bridgeUrl: 'https://bridge.tonapi.io/bridge'
+                        };
+                    } else {
+                        // Fallback to jsBridge for injected wallets
+                        walletConnectionSource = {
+                            jsBridgeKey: walletApp
+                        };
+                    }
                     
                     await this.connector.connect(walletConnectionSource);
                     this.walletModal.style.display = 'none';
