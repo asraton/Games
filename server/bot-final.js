@@ -1,9 +1,9 @@
 const TelegramBot = require('node-telegram-bot-api');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-// GAME_URL - Vercel frontend URL
-const GAME_URL = (process.env.GAME_URL || 'https://n-ton-games.vercel.app').trim();
-// API_BASE_URL - Backend (Railway) URL
+// GAME_URL - Railway URL (backend + frontend birga)
+const GAME_URL = (process.env.GAME_URL || 'https://discerning-stillness.up.railway.app').trim();
+// API_BASE_URL - Backend API URL
 const API_BASE_URL = (process.env.API_BASE_URL || `${GAME_URL}/api`).trim();
 // WEBHOOK_URL - Backend URL, Telegram shu yerga yuboradi
 const WEBHOOK_URL = (process.env.WEBHOOK_URL || API_BASE_URL.replace(/\/api$/, '') + '/bot-webhook').trim();
@@ -50,9 +50,9 @@ function initBot(app) {
     
     const welcomeMessage = `👋 Salom, ${user.first_name}!
 
-🎮 *TON Coin o'yini xush kelibsiz!*
+🎮 *ASRA Coin o'yini xush kelibsiz!*
 
-💰 Bu o'yinda tangalarni bosib TON yig'ing
+💰 Bu o'yinda tangalarni bosib ASRA yig'ing
 💸 Yig'ilgan TONlarni yechib oling
 
 ⬇️ O'ynash uchun tugmani bosing:`;

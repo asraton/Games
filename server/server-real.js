@@ -630,7 +630,7 @@ app.post('/api/withdraw', async (req, res) => {
                     internal({
                         to: toAddress,
                         value: transferAmount,
-                        body: 'Withdraw from TON Coin Rush Game',
+                        body: 'Withdraw from ASRA Coin Game',
                         bounce: false
                     })
                 ]
@@ -1014,7 +1014,7 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
 }
 
 app.listen(PORT, async () => {
-    console.log('🔥 REAL TON COIN SERVER 🔥');
+    console.log('🔥 ASRA COIN SERVER 🔥');
     console.log(`✅ Server ${PORT} portda ishga tushdi`);
     console.log('');
     console.log('🔗 TON Center API:');
