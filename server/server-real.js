@@ -5,23 +5,29 @@ const { TonClient, WalletContractV4, internal, fromNano, toNano } = require('@to
 const { mnemonicNew, mnemonicToWalletKey } = require('@ton/crypto');
 const axios = require('axios');
 
+// MongoDB connection and models
+const connectDB = require('./db');
+const User = require('./models/User');
+const ShopItem = require('./models/ShopItem');
+const Purchase = require('./models/Purchase');
+
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Health check endpoint (Railway uchun)
-app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime()
-    });
-});
+// Connect to MongoDB Atlas
+connectDB();
 
-// In-memory storage (keyingi bosqichda MongoDB ga o'tkaziladi)
-const users = new Map();
-const shopItems = new Map();
-const purchases = [];
+// Helper function to check if MongoDB is connected
+function isMongoConnected() {
+    const mongoose = require('mongoose');
+    return mongoose.connection.readyState === 1;
+}
+
+// In-memory storage fallback (if MongoDB fails)
+const usersMemory = new Map();
+const shopItemsMemory = new Map();
+const purchasesMemory = [];
 
 // TON Center API config
 const TON_API_KEY = process.env.TON_API_KEY || '';
@@ -113,70 +119,131 @@ app.post('/api/user/register', async (req, res) => {
             return res.status(400).json({ error: 'userId va connectedWallet kerak' });
         }
         
-        // Mavjud foydalanuvchini tekshirish
-        let user = users.get(userId);
+        let user;
         
-        if (user) {
-            // Yangilangan balansni olish
-            const realBalance = await getRealTonBalance(user.depositWallet.address);
+        if (isMongoConnected()) {
+            // Use MongoDB
+            user = await User.findOne({ userId });
             
-            // Agar real balance ko'p bo'lsa, yangi deposit bor
-            if (realBalance > user.totalDeposited) {
-                const newDeposit = realBalance - user.totalDeposited;
-                user.totalDeposited = realBalance;
-                user.balance = user.totalDeposited - user.totalConverted;
-                user.lastDepositAt = new Date();
+            if (user) {
+                // Yangilangan balansni olish
+                const realBalance = await getRealTonBalance(user.depositWallet.address);
                 
-                console.log(`✅ Yangi deposit: ${newDeposit.toFixed(4)} TON (User: ${userId})`);
+                // Agar real balance ko'p bo'lsa, yangi deposit bor
+                if (realBalance > user.totalDeposited) {
+                    const newDeposit = realBalance - user.totalDeposited;
+                    user.totalDeposited = realBalance;
+                    user.balance = user.totalDeposited - user.totalConverted;
+                    user.lastDepositAt = new Date();
+                    await user.save();
+                    
+                    console.log(`✅ Yangi deposit: ${newDeposit.toFixed(4)} TON (User: ${userId})`);
+                }
+                
+                return res.json({
+                    success: true,
+                    user: {
+                        userId: user.userId,
+                        connectedWallet: user.connectedWallet,
+                        depositAddress: user.depositWallet.address,
+                        realBalance: realBalance,
+                        totalDeposited: user.totalDeposited,
+                        totalConverted: user.totalConverted,
+                        tonAvailable: user.balance,
+                        jettonBalance: user.jettonBalance,
+                        newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0
+                    }
+                });
             }
             
-            return res.json({
-                success: true,
-                user: {
-                    userId: user.userId,
-                    connectedWallet: user.connectedWallet,
-                    depositAddress: user.depositWallet.address,
-                    realBalance: realBalance,
-                    totalDeposited: user.totalDeposited,
-                    totalConverted: user.totalConverted,
-                    tonAvailable: user.balance,
-                    jettonBalance: user.jettonBalance,
-                    newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0
+            // Yangi deposit wallet yaratish
+            const depositWallet = await createDepositWallet();
+            
+            // Yangi foydalanuvchi yaratish
+            user = new User({
+                userId,
+                connectedWallet,
+                depositWallet,
+                balance: 0,
+                jettonBalance: 0,
+                totalDeposited: 0,
+                totalConverted: 0,
+                purchasedItems: [],
+                lastDepositAt: null,
+                lastBalanceCheck: null,
+                globalStats: {
+                    totalClicksAllTime: 0,
+                    totalCoinsCollected: 0,
+                    totalTonEarned: 0,
+                    gamesPlayed: 0,
+                    firstPlayed: new Date().toISOString(),
+                    lastPlayed: null
                 }
             });
+            
+            await user.save();
+            
+        } else {
+            // Fallback to in-memory
+            user = usersMemory.get(userId);
+            
+            if (user) {
+                const realBalance = await getRealTonBalance(user.depositWallet.address);
+                
+                if (realBalance > user.totalDeposited) {
+                    const newDeposit = realBalance - user.totalDeposited;
+                    user.totalDeposited = realBalance;
+                    user.balance = user.totalDeposited - user.totalConverted;
+                    user.lastDepositAt = new Date();
+                    
+                    console.log(`✅ Yangi deposit: ${newDeposit.toFixed(4)} TON (User: ${userId})`);
+                }
+                
+                return res.json({
+                    success: true,
+                    user: {
+                        userId: user.userId,
+                        connectedWallet: user.connectedWallet,
+                        depositAddress: user.depositWallet.address,
+                        realBalance: realBalance,
+                        totalDeposited: user.totalDeposited,
+                        totalConverted: user.totalConverted,
+                        tonAvailable: user.balance,
+                        jettonBalance: user.jettonBalance,
+                        newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0
+                    }
+                });
+            }
+            
+            const depositWallet = await createDepositWallet();
+            
+            user = {
+                userId,
+                connectedWallet,
+                depositWallet,
+                balance: 0,
+                jettonBalance: 0,
+                totalDeposited: 0,
+                totalConverted: 0,
+                purchasedItems: [],
+                createdAt: new Date(),
+                lastDepositAt: null,
+                lastBalanceCheck: null,
+                globalStats: {
+                    totalClicksAllTime: 0,
+                    totalCoinsCollected: 0,
+                    totalTonEarned: 0,
+                    gamesPlayed: 0,
+                    firstPlayed: new Date().toISOString(),
+                    lastPlayed: null
+                }
+            };
+            
+            usersMemory.set(userId, user);
         }
         
-        // Yangi deposit wallet yaratish
-        const depositWallet = await createDepositWallet();
-        
-        // Yangi foydalanuvchi yaratish
-        user = {
-            userId,
-            connectedWallet,
-            depositWallet,
-            balance: 0,
-            jettonBalance: 0,
-            totalDeposited: 0,
-            totalConverted: 0, // TON -> jetton ga aylangan miqdor
-            purchasedItems: [],
-            createdAt: new Date(),
-            lastDepositAt: null,
-            lastBalanceCheck: null,
-            // Global stats - restart bo'lganda ham saqlanadi
-            globalStats: {
-                totalClicksAllTime: 0,
-                totalCoinsCollected: 0,
-                totalTonEarned: 0,
-                gamesPlayed: 0,
-                firstPlayed: new Date().toISOString(),
-                lastPlayed: null
-            }
-        };
-        
-        users.set(userId, user);
-        
         console.log(`✅ Yangi user yaratildi: ${userId}`);
-        console.log(`🏦 Deposit address: ${depositWallet.address}`);
+        console.log(`🏦 Deposit address: ${user.depositWallet.address}`);
         
         res.json({
             success: true,
