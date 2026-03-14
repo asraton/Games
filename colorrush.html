@@ -756,8 +756,23 @@
                 
                 // Get user initials from Telegram
                 console.log('initDataUnsafe:', Telegram.WebApp.initDataUnsafe);
-                const tgUser = Telegram.WebApp.initDataUnsafe?.user;
-                console.log('tgUser:', tgUser);
+                let tgUser = Telegram.WebApp.initDataUnsafe?.user;
+                console.log('tgUser (initDataUnsafe):', tgUser);
+                
+                // Agar initDataUnsafe bo'sh bo'lsa, initData dan parse qilish
+                if (!tgUser && Telegram.WebApp.initData) {
+                    console.log('initData dan parse qilinmoqda...');
+                    try {
+                        const params = new URLSearchParams(Telegram.WebApp.initData);
+                        const userJson = params.get('user');
+                        if (userJson) {
+                            tgUser = JSON.parse(userJson);
+                            console.log('tgUser (initData):', tgUser);
+                        }
+                    } catch (e) {
+                        console.error('initData parse xato:', e);
+                    }
+                }
                 
                 if (tgUser) {
                     // Agar URL da ism bo'lmasa, Telegram dan olish
@@ -788,7 +803,7 @@
             userBadge.style.display = 'flex';
             console.log('Badge ko\'rsatildi:', userInitials);
         } else {
-            console.log('Badge ko\'rsatilmadi - element yoki initials yo\'q');
+            console.log('Badge ko\'rsatilmadi - element yo\'q:', !userBadge, 'yoki initials yo\'q:', !userInitials);
         }
 
         // W tugmasi va Wallet paneli
