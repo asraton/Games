@@ -1,14 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = path.join(__dirname, 'data');
+// Use environment variable for data path (Railway volume) or fallback to local
+const DATA_DIR = process.env.DATA_PATH || path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const SHOP_ITEMS_FILE = path.join(DATA_DIR, 'shopItems.json');
 const PURCHASES_FILE = path.join(DATA_DIR, 'purchases.json');
 
+console.log(`📁 JSON DB: Data directory = ${DATA_DIR}`);
+
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
+    console.log(`✅ Created data directory: ${DATA_DIR}`);
 }
 
 // Initialize files if they don't exist
@@ -37,9 +41,10 @@ function readData(filePath) {
 function writeData(filePath, data) {
     try {
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+        console.log(`✅ JSON DB: Data written to ${path.basename(filePath)}`);
         return true;
     } catch (error) {
-        console.error(`Error writing ${filePath}:`, error);
+        console.error(`❌ Error writing ${filePath}:`, error);
         return false;
     }
 }
