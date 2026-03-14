@@ -1095,8 +1095,39 @@
                                 } catch (e) {
                                     console.error('To\'lov xatosi:', e);
                                 }
+                            } else if (tonConnectUI) {
+                                // Agar wallet ulanmagan bo'lsa, TON Connect modal ni ochish
+                                // Wallet ulangach avtomatik to'lov yuboriladi
+                                console.log('Wallet ulanmagan, TON Connect modal ochilmoqda...');
+                                
+                                // Vaqtinchalik callback - wallet ulangach to'lov
+                                const checkAndPay = setInterval(async () => {
+                                    if (connectedWalletAddress) {
+                                        clearInterval(checkAndPay);
+                                        console.log('Wallet ulandi, to\'lov yuborilmoqda...');
+                                        try {
+                                            await tonConnectUI.sendTransaction({
+                                                validUntil: Math.floor(Date.now() / 1000) + 600,
+                                                messages: [{
+                                                    address: PAYMENT_ADDRESS,
+                                                    amount: PAYMENT_NANO.toString(),
+                                                    payload: null
+                                                }]
+                                            });
+                                            alert('To\'lov yuborildi! Sahifani yangilang.');
+                                        } catch (e) {
+                                            console.error('To\'lov xatosi:', e);
+                                        }
+                                    }
+                                }, 1000);
+                                
+                                // 60 sekunddan keyin to'xtatish
+                                setTimeout(() => clearInterval(checkAndPay), 60000);
+                                
+                                // Modal ochish
+                                tonConnectUI.openModal();
                             } else {
-                                // Agar wallet ulanmagan bo'lsa, ton:// URL ga o'tish
+                                // Agar TON Connect yo'q bo'lsa, ton:// URL ga o'tish
                                 window.location.href = TON_TRANSFER_URL;
                             }
                         });
