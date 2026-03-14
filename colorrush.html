@@ -363,7 +363,6 @@
             <button id="w-btn" title="Hamyon">W</button>
             <div id="wallet-panel">
                 <button class="wallet-panel-btn" id="btn-wallet-ulash">💎 Wallet ulash</button>
-                <button class="wallet-panel-btn" id="btn-balans">📊 Balans</button>
                 <button class="wallet-panel-btn withdraw" id="btn-ton-yechish">💸 TON yechish</button>
             </div>
         </div>
@@ -640,49 +639,6 @@
                 walletPanel.classList.remove('open');
                 if (tonConnectUI) tonConnectUI.openModal();
                 else alert('TON Connect yuklanmadi');
-            });
-
-            // Balans
-            document.getElementById('btn-balans').addEventListener('click', async () => {
-                walletPanel.classList.remove('open');
-                if (!userId) {
-                    modalTitle.textContent = '📊 Balans';
-                    modalBody.innerHTML = '<p style="color:#ff6b6b">Telegram orqali oching (Bot > O\'ynash)</p>';
-                    modal.classList.add('open');
-                    return;
-                }
-                if (!API_BASE) {
-                    modalTitle.textContent = '📊 Balans';
-                    modalBody.innerHTML = '<p style="color:#ff6b6b">Backend URL sozlang (meta name="api-base")</p>';
-                    modal.classList.add('open');
-                    return;
-                }
-                modalTitle.textContent = '📊 Balans';
-                modalBody.innerHTML = '<p>Yuklanmoqda...</p>';
-                modal.classList.add('open');
-                try {
-                    const res = await fetch(API_BASE + '/user/' + userId);
-                    const data = await res.json();
-                    if (data.success) {
-                        const tonAvail = data.user.tonAvailable || 0;
-                        const jettonBal = data.user.jettonBalance || 0;
-                        const realBal = data.user.realBalance || 0;
-                        modalBody.innerHTML = `
-                            <div class="balance-display">💰 ${tonAvail.toFixed(4)} TON</div>
-                            <div style="font-size:12px;color:#888;margin:5px 0">
-                                Deposited: ${(data.user.totalDeposited || 0).toFixed(4)} | 
-                                Converted: ${(data.user.totalConverted || 0).toFixed(4)}
-                            </div>
-                            <div class="balance-display" style="font-size:18px">💎 ${jettonBal.toLocaleString()} Jetton</div>
-                            <p style="font-size:11px;color:#666;margin-top:10px">Blockchain: ${realBal.toFixed(4)} TON</p>
-                            <p style="font-size:11px;color:#666">Deposit: ${(data.user.depositAddress || '-').slice(0, 20)}...</p>
-                        `;
-                    } else {
-                        modalBody.innerHTML = '<p style="color:#ff9500">Avval Wallet ulang!</p>';
-                    }
-                } catch (e) {
-                    modalBody.innerHTML = '<p style="color:#ff6b6b">API xatosi. Backend (Railway) URL sozlang.</p>';
-                }
             });
 
             // TON yechish
