@@ -429,8 +429,8 @@
                 <div class="score-value" id="ton-value">0</div>
             </div>
             <div class="score-box">
-                <div class="score-label">nTON</div>
-                <div class="score-value" id="nton-display">000000000</div>
+                <div class="score-label">asra</div>
+                <div class="score-value" id="asra-display">000000000</div>
             </div>
         </div>
 
@@ -462,7 +462,7 @@
     </div>
 
     <div id="coin" class="game-coin">
-        <img src="/assets/tanga.png" alt="TON Tanga">
+        <img src="/assets/ASRA.png" alt="ASRA">
     </div>
 
     <script>
@@ -475,15 +475,15 @@
         const userId = urlParams.get('userId') || urlParams.get('user_id') || '';
 
         // Game state
-        let nanoScore = 0;
+        let asraScore = 0;
         let tonCount = 0;
-        const NANO_PER_TON = 1000000000;
+        const ASRA_PER_TON = 100000;
         let gameActive = false;
         let isPaused = false;
 
         // Elements
         const tonDisplayElement = document.getElementById('ton-value');
-        const ntonDisplayElement = document.getElementById('nton-display');
+        const asraDisplayElement = document.getElementById('asra-display');
         const stopBtn = document.getElementById('stop-btn');
 
         const coin = document.getElementById('coin');
@@ -495,7 +495,7 @@
 
         function updateDisplay() {
             tonDisplayElement.textContent = tonCount;
-            ntonDisplayElement.textContent = nanoScore.toString().padStart(9, '0');
+            asraDisplayElement.textContent = asraScore.toString().padStart(9, '0');
         }
 
         function calculateSpeed() {
@@ -576,25 +576,25 @@
             let rewardText;
             
             if (isRed) {
-                nanoScore -= 100;
-                rewardText = '-100 nTON';
+                asraScore -= 100;
+                rewardText = '-100 asra';
                 
-                if (nanoScore < 0) {
+                if (asraScore < 0) {
                     if (tonCount > 0) {
                         tonCount--;
-                        nanoScore = NANO_PER_TON + nanoScore;
+                        asraScore = ASRA_PER_TON + asraScore;
                     } else {
-                        nanoScore = 0;
+                        asraScore = 0;
                     }
                 }
             } else {
                 const reward = Math.floor(Math.random() * 100) + 1;
-                nanoScore += reward;
-                rewardText = '+' + reward + ' nTON';
+                asraScore += reward;
+                rewardText = '+' + reward + ' asra';
                 
-                if (nanoScore >= NANO_PER_TON) {
+                if (asraScore >= ASRA_PER_TON) {
                     tonCount++;
-                    nanoScore = nanoScore - NANO_PER_TON;
+                    asraScore = asraScore - ASRA_PER_TON;
                 }
             }
 
@@ -616,7 +616,7 @@
         }
 
         function startNewGame() {
-            nanoScore = 0;
+            asraScore = 0;
             tonCount = 0;
             gameActive = true;
             isPaused = false;
@@ -867,7 +867,7 @@
                             </a>
                             
                             <p style="color:#00d2ff;font-size:12px;margin-top:16px;">
-                                Demo rejimda yig'ilgan nTONlar yechilmaydi!
+                                Demo rejimda yig'ilgan asralar yechilmaydi!
                             </p>
                             <button class="wallet-panel-btn" id="check-payment-btn" style="margin-top:12px;background:linear-gradient(135deg, #2ed573, #1dd1a1);">
                                 ✅ To'lovni tekshirish

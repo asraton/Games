@@ -15,6 +15,7 @@ app.use(express.json());
 // TON Center API config
 const TON_API_KEY = process.env.TON_API_KEY || '';
 const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
+const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || '';  // ⚠️ .env dan olinadi
 
 // TON client with API key
 const client = new TonClient({
@@ -142,7 +143,7 @@ app.post('/api/user/register', async (req, res) => {
                     tonAvailable: user.balance,
                     jettonBalance: user.jettonBalance,
                     hasPaid: user.hasPaid || false,
-                    paymentAddress: 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq',
+                    paymentAddress: PAYMENT_ADDRESS || '',
                     newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0
                 }
             });
@@ -165,8 +166,8 @@ app.post('/api/user/register', async (req, res) => {
             lastDepositAt: null,
             lastBalanceCheck: null,
             hasPaid: false, // Demo mode - 1 TON to'lanmaguncha
-            demoNtonBalance: 0, // Demo rejimda yig'ilgan nTON
-            paymentAddress: 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq',
+            demoAsraBalance: 0, // Demo rejimda yig'ilgan asra
+            paymentAddress: PAYMENT_ADDRESS || '',
             globalStats: {
                 totalClicksAllTime: 0,
                 totalCoinsCollected: 0,
@@ -194,7 +195,7 @@ app.post('/api/user/register', async (req, res) => {
                 tonAvailable: 0,
                 jettonBalance: 0,
                 hasPaid: false,
-                paymentAddress: 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq',
+                paymentAddress: PAYMENT_ADDRESS || '',
                 newDeposit: 0
             }
         });
@@ -565,7 +566,7 @@ app.post('/api/withdraw', async (req, res) => {
                 error: 'Demo versiya',
                 message: 'TON yechib olish uchun avval 1 TON to\'lashingiz kerak',
                 requiredPayment: 1,
-                paymentAddress: 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq',
+                paymentAddress: PAYMENT_ADDRESS || '',
                 demoMode: true
             });
         }
@@ -657,7 +658,6 @@ app.post('/api/withdraw', async (req, res) => {
             console.error('Transfer error:', txError);
             return res.status(500).json({ 
                 error: 'Transfer qilishda xatolik',
-                details: txError.message,
                 isReal: true
             });
         }
@@ -668,46 +668,48 @@ app.post('/api/withdraw', async (req, res) => {
     }
 });
 
-// Wallet ma'lumotlarini ko'rish (debug)
-app.get('/api/debug/wallet/:userId', async (req, res) => {
-    try {
-        const user = userDB.get(req.params.userId);
-        
-        if (!user) {
-            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+// Wallet ma'lumotlarini ko'rish (debug) - FAQAT development rejimida
+if (process.env.NODE_ENV !== 'production') {
+    app.get('/api/debug/wallet/:userId', async (req, res) => {
+        try {
+            const user = userDB.get(req.params.userId);
+            
+            if (!user) {
+                return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+            }
+            
+            // REAL balansni tekshirish
+            const realBalance = await getRealTonBalance(user.depositWallet.address);
+            
+            // Transactionlar
+            const transactions = await getTransactions(user.depositWallet.address, 5);
+            
+            res.json({
+                success: true,
+                debug: true,
+                depositAddress: user.depositWallet.address,
+                realBalance: realBalance,
+                totalDeposited: user.totalDeposited,
+                totalConverted: user.totalConverted,
+                tonAvailable: user.totalDeposited - user.totalConverted,
+                jettonBalance: user.jettonBalance,
+                globalStats: user.globalStats || null,
+                recentTransactions: transactions.map(tx => ({
+                    hash: tx.transaction_id?.hash,
+                    lt: tx.transaction_id?.lt,
+                    value: tx.in_msg?.value,
+                    from: tx.in_msg?.source,
+                    to: tx.in_msg?.destination,
+                    time: tx.utime
+                }))
+            });
+            
+        } catch (error) {
+            console.error('Debug error:', error);
+            res.status(500).json({ error: 'Server xatoligi' });
         }
-        
-        // REAL balansni tekshirish
-        const realBalance = await getRealTonBalance(user.depositWallet.address);
-        
-        // Transactionlar
-        const transactions = await getTransactions(user.depositWallet.address, 5);
-        
-        res.json({
-            success: true,
-            debug: true,
-            depositAddress: user.depositWallet.address,
-            realBalance: realBalance,
-            totalDeposited: user.totalDeposited,
-            totalConverted: user.totalConverted,
-            tonAvailable: user.totalDeposited - user.totalConverted,
-            jettonBalance: user.jettonBalance,
-            globalStats: user.globalStats || null,
-            recentTransactions: transactions.map(tx => ({
-                hash: tx.transaction_id?.hash,
-                lt: tx.transaction_id?.lt,
-                value: tx.in_msg?.value,
-                from: tx.in_msg?.source,
-                to: tx.in_msg?.destination,
-                time: tx.utime
-            }))
-        });
-        
-    } catch (error) {
-        console.error('Debug error:', error);
-        res.status(500).json({ error: 'Server xatoligi' });
-    }
-});
+    });
+}
 
 // To'lov holatini tekshirish
 app.get('/api/check-payment/:userId', async (req, res) => {
@@ -718,7 +720,6 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
         
-        const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
         const REQUIRED_AMOUNT = 1; // 1 TON
         
         // Agar allaqachon to'lagan bo'lsa
@@ -753,9 +754,9 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 user.paidAt = new Date().toISOString();
                 user.paidAmount = REQUIRED_AMOUNT;
                 
-                // Demo nTONlarni real balansga o'tkazish (yoki 0 ga tushirish)
-                // Bu yerda biz demo nTONlarni saqlab qolmaymiz, chunki ular yechilmaydi
-                user.demoNtonBalance = 0;
+                // Demo asralarni real balansga o'tkazish (yoki 0 ga tushirish)
+                // Bu yerda biz demo asralarni saqlab qolmaymiz, chunki ular yechilmaydi
+                user.demoAsraBalance = 0;
                 
                 userDB.set(req.params.userId, user);
                 
@@ -778,8 +779,8 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 hasPaid: false,
                 message: 'To\'lov kutilmoqda',
                 requiredAmount: REQUIRED_AMOUNT,
-                paymentAddress: PAYMENT_ADDRESS,
-                demoNtonBalance: user.demoNtonBalance || 0
+                paymentAddress: PAYMENT_ADDRESS || '',
+                demoAsraBalance: user.demoAsraBalance || 0
             });
             
         } catch (txError) {
@@ -789,8 +790,8 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 hasPaid: false,
                 message: 'To\'lov holatini tekshirishda xato',
                 requiredAmount: REQUIRED_AMOUNT,
-                paymentAddress: PAYMENT_ADDRESS,
-                demoNtonBalance: user.demoNtonBalance || 0
+                paymentAddress: PAYMENT_ADDRESS || '',
+                demoAsraBalance: user.demoAsraBalance || 0
             });
         }
         
@@ -809,7 +810,6 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
         
-        const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
         const REQUIRED_AMOUNT = 1;
         
         // Transactionlarni tekshirish
@@ -835,7 +835,7 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
             user.totalConverted = 0;
             user.balance = 0;
             user.jettonBalance = 0;
-            user.demoNtonBalance = 0;
+            user.demoAsraBalance = 0;
             user.purchasedItems = [];
             
             user.globalStats = {
@@ -863,7 +863,7 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
                 success: false,
                 hasPaid: false,
                 message: 'To\'lov topilmadi. Iltimos, 1 TON yuboring va qayta urinib ko\'ring.',
-                paymentAddress: PAYMENT_ADDRESS,
+                paymentAddress: PAYMENT_ADDRESS || '',
                 requiredAmount: REQUIRED_AMOUNT
             });
         }
@@ -974,7 +974,7 @@ async function createDefaultShopItems() {
         {
             itemId: 'double_reward',
             name: '💰 2x mukofot',
-            description: 'Har bir tanga uchun 2x nTON',
+            description: 'Har bir tanga uchun 2x asra',
             price: 2000,
             icon: 'assets/double.png',
             effect: 'double_reward',
@@ -1031,7 +1031,9 @@ app.listen(PORT, async () => {
     console.log('📱 URLs:');
     console.log(`   Game: http://localhost:8080`);
     console.log(`   API: http://localhost:${PORT}/api`);
-    console.log(`   Debug: http://localhost:${PORT}/api/debug/wallet/:userId`);
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`   Debug: http://localhost:${PORT}/api/debug/wallet/:userId`);
+    }
     console.log('');
     
     // Initialize default shop items
