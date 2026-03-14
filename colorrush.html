@@ -288,14 +288,17 @@
         }
 
         function getRandomPosition(coinSize) {
-            const screen = { width: window.innerWidth, height: window.innerHeight };
-            const margin = 10;
-            const availableWidth = screen.width - coinSize - margin * 2;
-            const availableHeight = screen.height - coinSize - margin * 2;
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            const minMargin = 10;
+            
+            // Calculate max positions ensuring coin stays fully visible
+            const maxX = Math.max(minMargin, screenWidth - coinSize - minMargin);
+            const maxY = Math.max(minMargin, screenHeight - coinSize - minMargin);
             
             return {
-                x: margin + Math.random() * availableWidth,
-                y: margin + Math.random() * availableHeight
+                x: minMargin + Math.random() * (maxX - minMargin),
+                y: minMargin + Math.random() * (maxY - minMargin)
             };
         }
 
