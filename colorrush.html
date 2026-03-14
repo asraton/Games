@@ -484,6 +484,7 @@
             <div id="wallet-panel">
                 <div id="wallet-address-display" class="wallet-address" style="display:none"></div>
                 <button class="wallet-panel-btn" id="btn-wallet-action">💎 Wallet ulash</button>
+                <button class="wallet-panel-btn" id="btn-pay-from-wallet" style="background:linear-gradient(135deg, #00d2ff, #0088cc);">📱 Hamyondan to'lash</button>
                 <button class="wallet-panel-btn withdraw" id="btn-ton-yechish">💸 TON yechish</button>
             </div>
         </div>
@@ -975,6 +976,78 @@
                 } else {
                     // Wallet ulash
                     tonConnectUI.openModal();
+                }
+            });
+
+            // Hamyondan to'lash - Wallet paneldan
+            document.getElementById('btn-pay-from-wallet').addEventListener('click', () => {
+                walletPanel.classList.remove('open');
+                if (!userId) {
+                    modalTitle.textContent = '💳 To\'lov';
+                    modalBody.innerHTML = `
+                        <p style="color:#ff6b6b;margin-bottom:16px;">Telegram orqali oching</p>
+                        <button class="wallet-panel-btn close-modal" style="width:100%;background:linear-gradient(135deg, #0088cc, #00a8ff);">⬅️ Orqaga</button>
+                    `;
+                    modal.classList.add('open');
+                    return;
+                }
+                
+                const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
+                const PAYMENT_NANO = 1000000000;
+                const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=GamePayment_${userId}`;
+                const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
+                
+                modalTitle.textContent = '💳 1 TON to\'lash';
+                modalBody.innerHTML = `
+                    <div style="text-align:center;padding:16px;">
+                        <p style="color:#fff;font-size:13px;margin-bottom:16px;">
+                            Haqiqiy o'yin boshlash uchun <b>1 TON</b> to'lang
+                        </p>
+                        <p style="color:#888;font-size:11px;margin-bottom:4px;">TON tarmoq manzili:</p>
+                        <input type="text" id="payment-address-input" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:11px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');alert('Manzil nusxa olindi!');">
+                        
+                        <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
+                        
+                        <button id="pay-wallet-btn-panel" class="wallet-panel-btn" style="width:100%;text-align:center;background:linear-gradient(135deg, #00d2ff, #0088cc);">
+                            📱 Hamyondan to'lash
+                        </button>
+                        
+                        <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:16px;text-align:center;">
+                            ⬅️ Orqaga
+                        </button>
+                    </div>
+                `;
+                modal.classList.add('open');
+                
+                const payBtnPanel = document.getElementById('pay-wallet-btn-panel');
+                if (payBtnPanel) {
+                    payBtnPanel.addEventListener('click', async () => {
+                        if (tonConnectUI && connectedWalletAddress) {
+                            try {
+                                await tonConnectUI.sendTransaction({
+                                    validUntil: Math.floor(Date.now() / 1000) + 600,
+                                    messages: [{
+                                        address: PAYMENT_ADDRESS,
+                                        amount: PAYMENT_NANO.toString(),
+                                        payload: null
+                                    }]
+                                });
+                                alert('To\'lov yuborildi! Sahifani yangilang.');
+                            } catch (e) {
+                                console.error('To\'lov xatosi:', e);
+                            }
+                        } else if (tonConnectUI) {
+                            try {
+                                await tonConnectUI.connectWallet();
+                                alert('Wallet ulandi! Endi "Hamyondan to\'lash" tugmasini bosib to\'lov qiling.');
+                            } catch (e) {
+                                console.error('Wallet ulanish xatosi:', e);
+                                window.location.href = TON_TRANSFER_URL;
+                            }
+                        } else {
+                            window.location.href = TON_TRANSFER_URL;
+                        }
+                    });
                 }
             });
 
