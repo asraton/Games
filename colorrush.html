@@ -208,26 +208,50 @@
             width: 44px;
             height: 44px;
             padding: 0;
-            border-radius: 22px;
-            background: linear-gradient(135deg, #0088cc, #00a8ff);
-            border: 2px solid rgba(255,255,255,0.3);
+            background: transparent;
+            border: none;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.5);
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            overflow: visible;
         }
 
         #w-btn img {
-            width: 24px;
-            height: 24px;
+            width: 36px;
+            height: 36px;
             display: block;
+            filter: drop-shadow(0 2px 4px rgba(0, 136, 204, 0.5));
         }
 
         #w-btn.connected {
-            background: linear-gradient(135deg, #2ed573, #1e90ff);
+            background: transparent;
+        }
+
+        #w-btn.connected img {
+            filter: drop-shadow(0 2px 6px rgba(46, 213, 115, 0.7));
+        }
+
+        /* User initials badge - top right corner */
+        #user-badge {
+            position: fixed;
+            top: clamp(5px, 1.5vh, 12px);
+            right: clamp(10px, 2vw, 20px);
+            z-index: 95;
+            background: linear-gradient(135deg, #0088cc, #00a8ff);
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.5);
+            border: 2px solid rgba(255,255,255,0.3);
+            text-transform: uppercase;
         }
 
         /* Wallet panel - W bosilganda ochiladi */
@@ -374,7 +398,7 @@
 
         <div class="wallet-section">
             <button id="w-btn" title="Hamyon">
-                <img src="/assets/wallet.svg" alt="Wallet" style="width:24px;height:24px;">
+                <img src="/assets/wallet.svg" alt="Wallet">
             </button>
             <div id="wallet-panel">
                 <div id="wallet-address-display" class="wallet-address" style="display:none"></div>
@@ -387,6 +411,9 @@
             <button id="stop-btn">▶️ START</button>
         </div>
     </div>
+
+    <!-- User initials badge -->
+    <div id="user-badge" style="display:none"></div>
 
     <div id="wallet-modal">
         <div class="wallet-modal-content" id="modal-content">
@@ -589,9 +616,28 @@
         coin.addEventListener('touchstart', catchCoin, { passive: false });
 
         // Telegram Web App
+        let userInitials = '';
         if (window.Telegram && window.Telegram.WebApp) {
             Telegram.WebApp.ready();
             Telegram.WebApp.expand();
+            
+            // Get user initials from Telegram
+            const tgUser = Telegram.WebApp.initDataUnsafe?.user;
+            if (tgUser) {
+                const firstName = tgUser.first_name || '';
+                const lastName = tgUser.last_name || '';
+                userInitials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+                if (!userInitials && firstName) userInitials = firstName.substring(0, 2).toUpperCase();
+                if (!userInitials && tgUser.username) userInitials = tgUser.username.substring(0, 2).toUpperCase();
+                
+                // Display user badge
+                const userBadge = document.getElementById('user-badge');
+                if (userBadge && userInitials) {
+                    userBadge.textContent = userInitials;
+                    userBadge.style.display = 'flex';
+                }
+                console.log('User initials:', userInitials);
+            }
         }
 
         // W tugmasi va Wallet paneli
