@@ -457,6 +457,7 @@
         <div class="wallet-modal-content" id="modal-content">
             <h3 id="modal-title"></h3>
             <div id="modal-body"></div>
+            <button class="close-modal" style="margin-top:12px;width:100%;padding:10px;background:linear-gradient(135deg, #0088cc, #00a8ff);color:#fff;border:none;border-radius:8px;cursor:pointer;">⬅️ Orqaga</button>
         </div>
     </div>
 
@@ -755,8 +756,12 @@
             closeModal.addEventListener('click', () => {
                 modal.classList.remove('open');
             });
+            
+            // Delegation for dynamically created close buttons
             modal.addEventListener('click', (e) => {
-                if (e.target === modal) modal.classList.remove('open');
+                if (e.target.classList.contains('close-modal')) {
+                    modal.classList.remove('open');
+                }
             });
 
             // TON Connect UI (Telegram Wallet, Tonkeeper va boshqalar)
