@@ -12,15 +12,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Health check endpoint for Railway
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// TON Center API config
-const TON_API_KEY = process.env.TON_API_KEY || '';
-const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
-
 // TON client with API key
 const client = new TonClient({
     endpoint: TON_CENTER_ENDPOINT + '/jsonRPC',
@@ -97,6 +88,11 @@ async function getTransactions(address, limit = 10) {
         return [];
     }
 }
+
+// Health check endpoint for Railway
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Foydalanuvchi ro'yxatdan o'tkazish
 app.post('/api/user/register', async (req, res) => {
