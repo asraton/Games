@@ -593,30 +593,26 @@
         let connectedWalletAddress = null;
 
         function updateWalletUI() {
-            const wBtn = document.getElementById('w-btn');
             const walletActionBtn = document.getElementById('btn-wallet-action');
             const walletAddressDisplay = document.getElementById('wallet-address-display');
+            const wBtn = document.getElementById('w-btn');
             
             if (connectedWalletAddress) {
-                // Wallet ulangan
-                const shortAddr = connectedWalletAddress.slice(0, 6) + '...' + connectedWalletAddress.slice(-4);
-                wBtn.textContent = shortAddr;
+                // Wallet ulangan - W tugmasi o'zgarmaydi, faqat rangi o'zgaradi
                 wBtn.classList.add('connected');
                 
                 walletActionBtn.textContent = '❌ Wallet uzish';
                 walletActionBtn.classList.add('disconnect');
-                walletActionBtn.classList.remove('wallet-panel-btn');
                 
-                walletAddressDisplay.textContent = connectedWalletAddress;
+                // To'liq adres panelda ko'rsatiladi
+                walletAddressDisplay.innerHTML = `<strong style="color:#00d2ff">Ulangan wallet:</strong><br>${connectedWalletAddress}`;
                 walletAddressDisplay.style.display = 'block';
             } else {
                 // Wallet ulanmagan
-                wBtn.textContent = 'W';
                 wBtn.classList.remove('connected');
                 
                 walletActionBtn.textContent = '💎 Wallet ulash';
                 walletActionBtn.classList.remove('disconnect');
-                walletActionBtn.classList.add('wallet-panel-btn');
                 
                 walletAddressDisplay.style.display = 'none';
             }
