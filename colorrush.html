@@ -1403,8 +1403,8 @@
 
         // Yordamchi funksiya - manzilni qisqartirish (ABC...XYZ format)
         function shortenAddress(address) {
-            if (!address || address.length < 12) return address;
-            return address.slice(0, 4) + '...' + address.slice(-4);
+            if (!address || address.length < 18) return address;
+            return address.slice(0, 8) + '...' + address.slice(-8);
         }
 
         // Yordamchi funksiya - manzilni EQ/UQ formatiga o'tkazish
