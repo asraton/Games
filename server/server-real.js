@@ -1,12 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const { TonClient, WalletContractV4, internal, fromNano, toNano, Address } = require('@ton/ton');
+const { TonClient, WalletContractV5R1, internal, toNano, Address } = require('@ton/ton');
 const { mnemonicNew, mnemonicToWalletKey } = require('@ton/crypto');
 const axios = require('axios');
 
 // JSON file database
-const { userDB, shopDB, purchaseDB } = require('./jsonDB');
+const { userDB, shopDB } = require('./jsonDB');
 
 const app = express();
 app.use(cors());
@@ -15,7 +15,7 @@ app.use(express.json());
 // TON Center API config
 const TON_API_KEY = process.env.TON_API_KEY || '';
 const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
-const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQDSvelqcBpNXm4qprJpXZggULrfNYeAFBi5t_WHNpv0G6qa';  // Master Wallet - receives 1 TON payments
+const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';  // Master Wallet - receives 1 TON payments
 
 // Master Wallet config - barcha yechishlar shu hamyondan amalga oshiriladi
 const MASTER_WALLET_MNEMONIC = process.env.MASTER_WALLET_MNEMONIC || '';
@@ -32,17 +32,6 @@ function areAddressesEqual(addr1, addr2) {
     } catch (e) {
         console.log(`⚠️ Address parse failed: ${addr1?.slice(0, 20)}... vs ${addr2?.slice(0, 20)}...`);
         return false;
-    }
-}
-
-// Backward compatibility - normalizeAddress nomi saqlanib qoladi
-function normalizeAddress(address) {
-    if (!address) return null;
-    try {
-        const addr = Address.parse(address);
-        return addr.toString({ bounceable: false }); // UQ format
-    } catch (e) {
-        return address.toLowerCase().trim();
     }
 }
 
@@ -95,7 +84,7 @@ async function createDepositWallet() {
     const mnemonic = await mnemonicNew(24);
     const keyPair = await mnemonicToWalletKey(mnemonic);
     
-    const wallet = WalletContractV4.create({
+    const wallet = WalletContractV5R1.create({
         workchain: 0,
         publicKey: keyPair.publicKey
     });
@@ -732,7 +721,7 @@ app.post('/api/withdraw', async (req, res) => {
             }
             
             const keyPair = await mnemonicToWalletKey(MASTER_WALLET_MNEMONIC.split(' '));
-            const wallet = WalletContractV4.create({
+            const wallet = WalletContractV5R1.create({
                 workchain: 0,
                 publicKey: keyPair.publicKey
             });

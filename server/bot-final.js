@@ -3,8 +3,6 @@ const TelegramBot = require('node-telegram-bot-api');
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 // GAME_URL - Railway URL (backend + frontend birga)
 const GAME_URL = (process.env.GAME_URL || 'https://asracoin.up.railway.app').trim();
-// API_BASE_URL - Backend API URL
-const API_BASE_URL = (process.env.API_BASE_URL || 'https://asracoin.up.railway.app/api').trim();
 // WEBHOOK_URL - Backend URL, Telegram shu yerga yuboradi
 const WEBHOOK_URL = (process.env.WEBHOOK_URL || 'https://asracoin.up.railway.app/bot-webhook').trim();
 
@@ -34,7 +32,6 @@ function initBot(app) {
     }
 
     console.log('🔗 GAME_URL:', GAME_URL);
-    console.log('🔗 API_BASE_URL:', API_BASE_URL);
 
     bot.getMe().then((botInfo) => {
         console.log('✅ Bot ulangan:', botInfo.username);

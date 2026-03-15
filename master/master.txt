@@ -1,9 +1,0 @@
-MASTER_WALLET_MNEMONIC=abandon ability able about above absent absorb abstract absurd abuse access accident account accuse achieve acid acoustic acquire across act action actor actress actual
-
-MASTER_WALLET_ADDRESS=UQDSvelqcBpNXm4qprJpXZggULrfNYeAFBi5t_WHNpv0G6qa
-
-PAYMENT_ADDRESS=UQDSvelqcBpNXm4qprJpXZggULrfNYeAFBi5t_WHNpv0G6qa
-
-
-
-https://tonscan.org/address/UQDSvelqcBpNXm4qprJpXZggULrfNYeAFBi5t_WHNpv0G6qa
