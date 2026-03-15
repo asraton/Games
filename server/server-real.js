@@ -18,7 +18,7 @@ const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
 const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQAYFg8VczIFRtX7QRcredLeBFydLgbUfwasup35C8-_Nlnu';  // xRocket Wallet
 
 // xRocket API config
-const XROCKET_API_TOKEN = process.env.XROCKET_API_TOKEN || 'b9f26c05a96e5d872544534a4';
+const XROCKET_API_TOKEN = process.env.XROCKET_API_TOKEN;
 const XROCKET_ENDPOINT = 'https://pay.xrocket.tg';
 
 // TON client with API key
@@ -26,6 +26,35 @@ const client = new TonClient({
     endpoint: TON_CENTER_ENDPOINT + '/jsonRPC',
     apiKey: TON_API_KEY
 });
+
+// TON Center API helper - missing function definition added
+async function toncenterRequest(method, params) {
+    try {
+        const url = `${TON_CENTER_ENDPOINT}/${method}`;
+        const queryParams = new URLSearchParams();
+        
+        for (const [key, value] of Object.entries(params)) {
+            if (value !== undefined && value !== null) {
+                queryParams.append(key, value);
+            }
+        }
+        
+        const headers = {};
+        if (TON_API_KEY) {
+            headers['X-Api-Key'] = TON_API_KEY;
+        }
+        
+        const response = await axios.get(`${url}?${queryParams.toString()}`, { 
+            headers, 
+            timeout: 30000 
+        });
+        
+        return response.data;
+    } catch (error) {
+        console.error('TON Center API error:', error.message);
+        return null;
+    }
+}
 
 // xRocket API helper - to'lovlarni tekshirish
 async function xRocketRequest(method, endpoint, data = null) {
@@ -626,8 +655,12 @@ app.post('/api/withdraw', async (req, res) => {
         console.log(`   hasPaid: ${user.hasPaid}`);
         console.log(`   gameData:`, user.gameData);
         
+        // Check if testMode is allowed (only in development)
+        const isDevEnvironment = process.env.NODE_ENV !== 'production';
+        const isTestMode = testMode === true && isDevEnvironment;
+        
         // To'lov qilinganmi tekshirish (faqat test mode emasligida)
-        if (!testMode && !user.hasPaid) {
+        if (!isTestMode && !user.hasPaid) {
             console.log(`❌ PAYMENT REQUIRED (real mode)`);
             return res.status(403).json({ 
                 error: 'Demo versiya',
@@ -638,9 +671,9 @@ app.post('/api/withdraw', async (req, res) => {
             });
         }
         
-        // TEST MODE: gameData.tonCount dan yechish
-        if (testMode) {
-            console.log(`🧪 TEST MODE withdraw`);
+        // TEST MODE: gameData.tonCount dan yechish (FAQAT development rejimida!)
+        if (isTestMode) {
+            console.log(`🧪 TEST MODE withdraw (Development only)`);
             const gameTon = user.gameData?.tonCount || 0;
             console.log(`   gameTon available: ${gameTon}`);
             
@@ -828,62 +861,66 @@ if (process.env.NODE_ENV !== 'production') {
     });
 }
 
-// Debug endpoint - xRocket transactionlarni ko'rish (production uchun ham)
-app.get('/api/debug/xrocket', async (req, res) => {
-    try {
-        const transactions = await getXRocketTransactions(20);
-        
-        res.json({
-            success: true,
-            count: transactions.length,
-            paymentAddress: PAYMENT_ADDRESS,
-            xrocketToken: XROCKET_API_TOKEN ? '✅ Mavjud' : '❌ Yo\'q',
-            transactions: transactions.map(tx => ({
-                id: tx.id,
-                amount: tx.amount,
-                status: tx.status,
-                from: tx.from?.address,
-                to: tx.to?.address,
-                createdAt: tx.createdAt
-            }))
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message,
-            paymentAddress: PAYMENT_ADDRESS
-        });
-    }
-});
+// Debug endpoint - xRocket transactionlarni ko'rish (FAQAT development rejimida)
+if (process.env.NODE_ENV !== 'production') {
+    app.get('/api/debug/xrocket', async (req, res) => {
+        try {
+            const transactions = await getXRocketTransactions(20);
+            
+            res.json({
+                success: true,
+                count: transactions.length,
+                paymentAddress: PAYMENT_ADDRESS,
+                xrocketToken: XROCKET_API_TOKEN ? '✅ Mavjud' : '❌ Yo\'q',
+                transactions: transactions.map(tx => ({
+                    id: tx.id,
+                    amount: tx.amount,
+                    status: tx.status,
+                    from: tx.from?.address,
+                    to: tx.to?.address,
+                    createdAt: tx.createdAt
+                }))
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error.message,
+                paymentAddress: PAYMENT_ADDRESS
+            });
+        }
+    });
+}
 
-// Debug endpoint - TON Center transactionlarni ko'rish (production uchun ham)
-app.get('/api/debug/toncenter', async (req, res) => {
-    try {
-        const transactions = await getTransactions(PAYMENT_ADDRESS, 20);
-        
-        res.json({
-            success: true,
-            count: transactions.length,
-            paymentAddress: PAYMENT_ADDRESS,
-            tonApiKey: TON_API_KEY ? '✅ Mavjud' : '❌ Yo\'q',
-            transactions: transactions.map(tx => ({
-                hash: tx.transaction_id?.hash,
-                lt: tx.transaction_id?.lt,
-                value: tx.in_msg?.value,
-                from: tx.in_msg?.source,
-                to: tx.in_msg?.destination,
-                time: tx.utime,
-                type: tx.in_msg ? 'incoming' : 'outgoing'
-            }))
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message,
-            paymentAddress: PAYMENT_ADDRESS
-        });
-    }
-});
+// Debug endpoint - TON Center transactionlarni ko'rish (FAQAT development rejimida)
+if (process.env.NODE_ENV !== 'production') {
+    app.get('/api/debug/toncenter', async (req, res) => {
+        try {
+            const transactions = await getTransactions(PAYMENT_ADDRESS, 20);
+            
+            res.json({
+                success: true,
+                count: transactions.length,
+                paymentAddress: PAYMENT_ADDRESS,
+                tonApiKey: TON_API_KEY ? '✅ Mavjud' : '❌ Yo\'q',
+                transactions: transactions.map(tx => ({
+                    hash: tx.transaction_id?.hash,
+                    lt: tx.transaction_id?.lt,
+                    value: tx.in_msg?.value,
+                    from: tx.in_msg?.source,
+                    to: tx.in_msg?.destination,
+                    time: tx.utime,
+                    type: tx.in_msg ? 'incoming' : 'outgoing'
+                }))
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error.message,
+                paymentAddress: PAYMENT_ADDRESS
+            });
+        }
+    });
+}
 
 // To'lov holatini tekshirish
 app.get('/api/check-payment/:userId', async (req, res) => {

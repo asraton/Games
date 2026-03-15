@@ -864,6 +864,14 @@
         // Telegram Web App - ismlarni olish (URL va Telegram dan)
         let userInitials = '';
         
+        // HTML Escape function - XSS dan himoya uchun
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
         // Avval URL dan ism o'qiymiz (Telegram WebApp dan keladi)
         let firstName = urlFirstName;
         let lastName = urlLastName;
@@ -904,8 +912,8 @@
         // Initials hosil qilish
         
         // Xavfsizlik tekshiruvi - bo'sh stringlarni hisobga olish
-        const safeFirstName = (firstName || '').trim();
-        const safeLastName = (lastName || '').trim();
+        const safeFirstName = escapeHtml((firstName || '').trim());
+        const safeLastName = escapeHtml((lastName || '').trim());
         
         if (safeFirstName || safeLastName) {
             userInitials = (safeFirstName.charAt(0) + safeLastName.charAt(0)).toUpperCase();
