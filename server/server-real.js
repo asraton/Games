@@ -299,36 +299,20 @@ app.get('/api/user/:userId', async (req, res) => {
                 realBalance: realBalance,
                 totalDeposited: user.totalDeposited,
                 totalConverted: user.totalConverted,
-            },
+                tonAvailable: user.totalDeposited - user.totalConverted,
+                jettonBalance: user.jettonBalance,
+                createdAt: user.createdAt,
+                lastDepositAt: user.lastDepositAt
+            }
         });
+        
     } catch (error) {
         console.error('Get user error:', error);
         res.status(500).json({ error: 'Server xatoligi' });
     }
 });
 
-// Restart API endpoint for full game reset - FAQAT development rejimida
-if (process.env.NODE_ENV !== 'production') {
-    app.post('/api/restart', async (req, res) => {
-        try {
-            // Reset user data
-            userDB.clear();
-            
-            // Reset shop data
-            shopDB.clear();
-            
-            // Reset purchase data
-            purchaseDB.clear();
-            
-            res.json({ success: true });
-        } catch (error) {
-            console.error('Restart game error:', error);
-            res.status(500).json({ error: 'Server xatoligi' });
-        }
-    });
-}
-
-// Serverni ishga tushirishc restart endpoint - o'yinchini qayta boshlash
+// Restart API endpoint - o'yinchini qayta boshlash (full reset)
 app.post('/api/restart-game/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
@@ -782,7 +766,7 @@ app.post('/api/withdraw', async (req, res) => {
                 error: 'Master hamyonda yetarli TON yo\'q',
                 required: amount,
                 available: masterBalance,
-                message: 'Iltimos, keyinroq qayta urinib ko\'ring. Admin bilan bog\'laning.',
+                message: 'Iltimos, keyinroq qayta urinib ko\'ring.',
                 isReal: true
             });
         }
