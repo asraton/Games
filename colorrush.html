@@ -2127,15 +2127,16 @@
                 
                 Swal.fire({
                     html: `
-                        <div style="text-align:center;font-family:inherit;">
-                            <img src="${coinInfo.img}" style="width:100vw;height:100vw;max-width:none;max-height:none;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(0,0,0,0.8));">
+                        <div style="text-align:center;font-family:inherit;display:flex;align-items:center;justify-content:center;min-height:70vh;">
+                            <img src="${coinInfo.img}" style="width:90vmin;height:90vmin;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(0,0,0,0.8));">
                         </div>
                     `,
                     showCancelButton: false,
                     showConfirmButton: false,
                     background: 'transparent',
-                    width: 'auto',
+                    width: '100vw',
                     padding: '0',
+                    grow: 'fullscreen',
                     customClass: {
                         popup: 'coin-purchase-popup'
                     },
