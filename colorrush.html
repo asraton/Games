@@ -1055,16 +1055,21 @@
                     });
                 
                 // Wallet ulanishini kuzatish
+                let userRegisteredThisSession = false;
+                
                 tonConnectUI.onStatusChange((wallet) => {
                     connectedWalletAddress = getUserFriendlyAddress(wallet);
                     
-                    if (connectedWalletAddress && userId) {
+                    // Faqat birinchi marta registratsiya qilish - sahifa qayta yuklanganda emas
+                    if (connectedWalletAddress && userId && !userRegisteredThisSession) {
+                        userRegisteredThisSession = true;
+                        console.log('📝 [REGISTER] Birinchi marta registratsiya:', userId);
                         fetch(API_BASE + '/user/register', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ userId, connectedWallet: connectedWalletAddress })
                         }).catch(err => {
-                            // Bazaga saqlashda xato
+                            console.error('❌ [REGISTER] Xato:', err);
                         });
                     }
                     
