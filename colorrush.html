@@ -920,7 +920,8 @@
 
             // TON Connect UI (Telegram Wallet, Tonkeeper va boshqalar)
             if (typeof TON_CONNECT_UI !== 'undefined') {
-                const manifestUrl = window.location.origin + '/tonconnect-manifest.json';
+                // Manifest URL - static file
+                const manifestUrl = 'https://asracoin.up.railway.app/tonconnect-manifest.json';
                 
                 tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
                     manifestUrl: manifestUrl,
