@@ -2137,6 +2137,14 @@
                     width: '100vw',
                     padding: '0',
                     grow: 'fullscreen',
+                    willOpen: () => {
+                        document.getElementById('shop-modal').style.filter = 'blur(8px)';
+                        document.querySelector('.game-container').style.filter = 'blur(8px)';
+                    },
+                    willClose: () => {
+                        document.getElementById('shop-modal').style.filter = 'none';
+                        document.querySelector('.game-container').style.filter = 'none';
+                    },
                     customClass: {
                         popup: 'coin-purchase-popup'
                     },
