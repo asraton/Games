@@ -643,19 +643,18 @@ app.post('/api/withdraw', async (req, res) => {
             });
         }
         
-        // 1 TON qoldirish sharti
-        const minRequiredBalance = 1;
-        if (availableTon - amount < minRequiredBalance) {
+        // Hamyonni "tirik" saqlash uchun 0.05 TON qoldirish
+        const minKeepForFees = 0.05;
+        if (availableTon - amount < minKeepForFees) {
             return res.status(400).json({
-                error: '1 TON qoldirish sharti',
-                message: `Hisobingizda kamida ${minRequiredBalance} TON qolishi kerak. Maksimal yechish: ${(availableTon - minRequiredBalance).toFixed(4)} TON`,
-                maxWithdraw: Math.max(0, availableTon - minRequiredBalance),
-                available: availableTon,
-                minRequired: minRequiredBalance
+                error: 'Komissiya uchun TON qoldirish kerak',
+                message: `Hamyonni aktiv saqlash uchun ${minKeepForFees} TON qolishi kerak`,
+                maxWithdraw: Math.max(0, availableTon - minKeepForFees),
+                available: availableTon
             });
         }
         
-        // REAL TON transfer qilish
+        // REAL TON transfer qilish - Seqno kutish bilan
         try {
             console.log(`🔄 WITHDRAW: ${amount} TON`);
             console.log(`   From: ${user.depositWallet.address}`);
@@ -669,13 +668,14 @@ app.post('/api/withdraw', async (req, res) => {
             
             const contract = client.open(wallet);
             
-            // Get seqno
-            const seqno = await contract.getSeqno();
+            // 1. Joriy seqno ni olish
+            let seqno = await contract.getSeqno();
+            console.log(`   Seqno (before): ${seqno}`);
             
-            // Transfer amount (minus fee)
-            const transferAmount = toNano(amount - 0.005); // 0.005 TON fee
+            // 2. Transfer miqdori (toNano string qabul qiladi)
+            const transferAmount = toNano(amount.toString());
             
-            // Send transfer
+            // 3. Tranzaksiya yuborish
             await contract.sendTransfer({
                 seqno,
                 secretKey: keyPair.secretKey,
@@ -683,13 +683,24 @@ app.post('/api/withdraw', async (req, res) => {
                     internal({
                         to: toAddress,
                         value: transferAmount,
-                        body: 'Withdraw from ASRA Coin Game',
+                        body: 'Withdraw from ASRA Coin',
                         bounce: false
                     })
                 ]
             });
             
-            // totalDeposited ni kamaytirish (withdraw qilingan TON)
+            // 4. Seqno o'zgarishini kutish (Blockchain tasdig'i)
+            console.log(`   Waiting for seqno update...`);
+            let currentSeqno = seqno;
+            let retry = 0;
+            while (currentSeqno === seqno && retry < 10) {
+                await new Promise(r => setTimeout(r, 1500)); // 1.5 soniya kutish
+                currentSeqno = await contract.getSeqno();
+                retry++;
+            }
+            console.log(`   Seqno (after): ${currentSeqno} (retries: ${retry})`);
+            
+            // 5. Bazani yangilash
             user.totalDeposited -= amount;
             user.balance = user.totalDeposited - user.totalConverted;
             userDB.set(userId, user);
@@ -698,19 +709,18 @@ app.post('/api/withdraw', async (req, res) => {
             
             res.json({
                 success: true,
-                message: `${amount} TON yechib olindi`,
+                message: `${amount} TON muvaffaqiyatli yuborildi`,
                 toAddress: toAddress,
                 tonDeposited: user.totalDeposited,
                 tonConverted: user.totalConverted,
                 tonAvailable: user.balance,
-                isReal: true,
-                txHash: null
+                isReal: true
             });
             
         } catch (txError) {
-            console.error('Transfer error:', txError);
+            console.error('Blockchain xatosi:', txError);
             return res.status(500).json({ 
-                error: 'Transfer qilishda xatolik',
+                error: 'Blockchain-da xatolik yuz berdi. Qayta urinib ko\'ring.',
                 isReal: true
             });
         }
