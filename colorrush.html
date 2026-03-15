@@ -503,11 +503,15 @@
         .coin-item {
             background: rgba(0,0,0,0.3);
             border-radius: 12px;
-            padding: 12px;
+            padding: 8px;
             border: 2px solid rgba(255,255,255,0.1);
             cursor: pointer;
             transition: all 0.2s;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
         }
 
         .coin-item:hover {
@@ -526,10 +530,10 @@
         }
 
         .coin-item img {
-            width: 60px;
-            height: 60px;
+            width: 120px;
+            height: 120px;
             object-fit: contain;
-            margin-bottom: 8px;
+            margin-top: 4px;
         }
 
         .coin-name {
@@ -637,44 +641,44 @@
                 <!-- Blue Coin - 1 TON -->
                 <div class="coin-item" data-coin="blue" data-price="1">
                     <div class="coin-check">✓</div>
-                    <img src="/assets/Blue.png" alt="Blue">
                     <div class="coin-name">Blue</div>
                     <div class="coin-price">1 TON</div>
+                    <img src="/assets/Blue.png" alt="Blue">
                 </div>
                 <!-- Green Coin - 5 TON -->
                 <div class="coin-item" data-coin="green" data-price="5">
                     <div class="coin-check">✓</div>
-                    <img src="/assets/Green.png" alt="Green">
                     <div class="coin-name">Green</div>
                     <div class="coin-price">5 TON</div>
+                    <img src="/assets/Green.png" alt="Green">
                 </div>
                 <!-- Pink Coin - 10 TON -->
                 <div class="coin-item" data-coin="pink" data-price="10">
                     <div class="coin-check">✓</div>
-                    <img src="/assets/Pink.png" alt="Pink">
                     <div class="coin-name">Pink</div>
                     <div class="coin-price">10 TON</div>
+                    <img src="/assets/Pink.png" alt="Pink">
                 </div>
                 <!-- Red Coin - 20 TON -->
                 <div class="coin-item" data-coin="red" data-price="20">
                     <div class="coin-check">✓</div>
-                    <img src="/assets/Red.png" alt="Red">
                     <div class="coin-name">Red</div>
                     <div class="coin-price">20 TON</div>
+                    <img src="/assets/Red.png" alt="Red">
                 </div>
                 <!-- Yellow Coin - 30 TON -->
                 <div class="coin-item" data-coin="yellow" data-price="30">
                     <div class="coin-check">✓</div>
-                    <img src="/assets/Yellow.png" alt="Yellow">
                     <div class="coin-name">Yellow</div>
                     <div class="coin-price">30 TON</div>
+                    <img src="/assets/Yellow.png" alt="Yellow">
                 </div>
                 <!-- ASRA Coin - 99 TON -->
                 <div class="coin-item" data-coin="asra" data-price="99">
                     <div class="coin-check">✓</div>
-                    <img src="/assets/ASRA.png" alt="ASRA">
                     <div class="coin-name">ASRA PRO</div>
                     <div class="coin-price">99 TON</div>
+                    <img src="/assets/ASRA.png" alt="ASRA">
                 </div>
             </div>
             <div class="selected-coin-display" id="selected-coin-display" style="display:none;">
@@ -685,7 +689,7 @@
             <div class="shop-info">
                 💡 Sotib olingan tangalar 1 oy davomida amal qiladi.<br>
                 🔄 Restart qilinganda barcha tangalar tiklanadi.<br>
-                ⚡ ASRA 200 TON to'planguncha avto-ishlaydi.
+                ⚡ ASRA pro 200 TON to'planguncha avto-ishlaydi.
             </div>
         </div>
     </div>
@@ -1764,12 +1768,51 @@
 
             // Shop ma'lumotlari
             const COIN_DATA = {
-                blue: { name: 'Blue', price: 1, speedBonus: 0, img: '/assets/Blue.png' },
-                green: { name: 'Green', price: 5, speedBonus: 1, img: '/assets/Green.png' },
-                pink: { name: 'Pink', price: 10, speedBonus: 2, img: '/assets/Pink.png' },
-                red: { name: 'Red', price: 20, speedBonus: 3, img: '/assets/Red.png' },
-                yellow: { name: 'Yellow', price: 30, speedBonus: 4, img: '/assets/Yellow.png' },
-                asra: { name: 'ASRA PRO', price: 99, speedBonus: 5, img: '/assets/ASRA.png', autoPlay: true, maxTon: 200, noPenalty: true }
+                blue: { 
+                    name: 'Blue', 
+                    price: 1, 
+                    speedBonus: 100, 
+                    img: '/assets/Blue.png',
+                    description: 'Tanga tezligi biroz sekinlashadi'
+                },
+                green: { 
+                    name: 'Green', 
+                    price: 5, 
+                    speedBonus: 200, 
+                    img: '/assets/Green.png',
+                    description: 'Tanga tezligi yanada sekinlashadi'
+                },
+                pink: { 
+                    name: 'Pink', 
+                    price: 10, 
+                    speedBonus: 300, 
+                    img: '/assets/Pink.png',
+                    description: 'Tanga tezligi sekinlashadi, ko\'proq vaqt'
+                },
+                red: { 
+                    name: 'Red', 
+                    price: 20, 
+                    speedBonus: 400, 
+                    img: '/assets/Red.png',
+                    description: 'Tanga tezligi sekinlashadi, +3x vaqt bonusi'
+                },
+                yellow: { 
+                    name: 'Yellow', 
+                    price: 30, 
+                    speedBonus: 500, 
+                    img: '/assets/Yellow.png',
+                    description: 'Tanga tezligi sekinlashadi, +4x vaqt bonusi'
+                },
+                asra: { 
+                    name: 'ASRA PRO', 
+                    price: 99, 
+                    speedBonus: 600, 
+                    img: '/assets/ASRA.png', 
+                    autoPlay: true, 
+                    maxTon: 200, 
+                    noPenalty: true,
+                    description: 'Avto-ishlash, -100 jarimasi yo\'q, 200 TON gacha'
+                }
             };
 
             // LocalStorage key for shop
@@ -1881,58 +1924,113 @@
                     return;
                 }
 
-                // To'lov modalini ko'rsatish
-                const coinName = COIN_DATA[coinType].name;
-                const SHOP_PAYMENT_ADDRESS = 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
-                const nanoAmount = price * 1000000000;
+                const coinInfo = COIN_DATA[coinType];
                 
                 Swal.fire({
-                    title: `${coinName} sotib olish`,
-                    html: `<p style="color:#ffd700;font-size:24px;font-weight:bold;">${price} TON</p>
-                           <p style="color:#888;font-size:12px;">Wallet: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>`,
-                    showCancelButton: true,
-                    confirmButtonText: 'To\'lash',
-                    cancelButtonText: 'Bekor',
-                    confirmButtonColor: '#2ed573',
-                    cancelButtonColor: '#ff4757',
+                    html: `
+                        <div style="text-align:center;font-family:inherit;">
+                            <img src="${coinInfo.img}" style="width:60px;height:60px;margin-bottom:8px;">
+                            <h3 style="color:#fff;font-size:16px;margin:4px 0;">${coinInfo.name}</h3>
+                            <p style="color:#ffd700;font-size:20px;font-weight:bold;margin:4px 0;">${price} TON</p>
+                            <p style="color:#aaa;font-size:11px;margin:4px 0;padding:0 20px;">${coinInfo.description}</p>
+                            <p style="color:#888;font-size:10px;margin-top:8px;">Wallet: ${connectedWalletAddress.slice(0,6)}...${connectedWalletAddress.slice(-4)}</p>
+                        </div>
+                    `,
+                    showCancelButton: false,
+                    showConfirmButton: false,
                     background: '#1a1a2e',
-                    color: '#fff'
-                }).then(async (result) => {
-                    if (result.isConfirmed && tonConnectUI) {
-                        try {
-                            const txResult = await tonConnectUI.sendTransaction({
-                                validUntil: Math.floor(Date.now() / 1000) + 600,
-                                messages: [{
-                                    address: SHOP_PAYMENT_ADDRESS,
-                                    amount: nanoAmount.toString()
-                                }]
-                            });
+                    width: '280px',
+                    padding: '15px',
+                    customClass: {
+                        popup: 'coin-detail-popup'
+                    },
+                    didOpen: () => {
+                        const popup = Swal.getPopup();
+                        popup.innerHTML += `
+                            <div style="display:flex;gap:10px;margin-top:15px;justify-content:center;">
+                                <button id="btn-buy-coin" style="
+                                    background: url('/assets/Button.png') no-repeat center center;
+                                    background-size: cover;
+                                    border: none;
+                                    width: 100px;
+                                    height: 40px;
+                                    color: #00ff00;
+                                    font-size: 12px;
+                                    font-weight: bold;
+                                    cursor: pointer;
+                                    text-shadow: 0 0 4px rgba(0,255,0,0.5);
+                                ">To'lash</button>
+                                <button id="btn-cancel-coin" style="
+                                    background: url('/assets/Button.png') no-repeat center center;
+                                    background-size: cover;
+                                    border: none;
+                                    width: 100px;
+                                    height: 40px;
+                                    color: #ff4757;
+                                    font-size: 12px;
+                                    font-weight: bold;
+                                    cursor: pointer;
+                                    text-shadow: 0 0 4px rgba(255,71,71,0.5);
+                                ">Bekor</button>
+                            </div>
+                        `;
+                        
+                        document.getElementById('btn-buy-coin').addEventListener('click', async () => {
+                            Swal.close();
+                            const SHOP_PAYMENT_ADDRESS = 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                            const nanoAmount = price * 1000000000;
+                            
+                            if (!tonConnectUI) {
+                                Swal.fire({
+                                    text: 'Wallet ulanmagan',
+                                    icon: 'error',
+                                    timer: 1500,
+                                    showConfirmButton: false,
+                                    width: '200px',
+                                    position: 'center'
+                                });
+                                return;
+                            }
+                            
+                            try {
+                                const txResult = await tonConnectUI.sendTransaction({
+                                    validUntil: Math.floor(Date.now() / 1000) + 600,
+                                    messages: [{
+                                        address: SHOP_PAYMENT_ADDRESS,
+                                        amount: nanoAmount.toString()
+                                    }]
+                                });
 
-                            // Muvaffaqiyatli to'lov
-                            shopData.purchased.push(coinType);
-                            shopData.purchaseTime[coinType] = new Date().getTime();
-                            shopData.selected = coinType;
-                            saveShopData();
-                            updateShopUI();
+                                // Muvaffaqiyatli to'lov
+                                shopData.purchased.push(coinType);
+                                shopData.purchaseTime[coinType] = new Date().getTime();
+                                shopData.selected = coinType;
+                                saveShopData();
+                                updateShopUI();
 
-                            Swal.fire({
-                                text: `${coinName} sotib olindi!`,
-                                icon: 'success',
-                                timer: 2000,
-                                showConfirmButton: false,
-                                width: '250px',
-                                position: 'center'
-                            });
-                        } catch (e) {
-                            Swal.fire({
-                                text: 'To\'lov bekor qilindi',
-                                icon: 'error',
-                                timer: 1500,
-                                showConfirmButton: false,
-                                width: '200px',
-                                position: 'center'
-                            });
-                        }
+                                Swal.fire({
+                                    text: `${coinInfo.name} sotib olindi!`,
+                                    icon: 'success',
+                                    timer: 2000,
+                                    showConfirmButton: false,
+                                    width: '250px',
+                                    position: 'center'
+                                });
+                            } catch (e) {
+                                Swal.fire({
+                                    text: 'To\'lov bekor qilindi',
+                                    icon: 'error',
+                                    timer: 1500,
+                                    showConfirmButton: false,
+                                    width: '200px',
+                                    position: 'center'
+                                });
+                            }
+                        });
+                        
+                        document.getElementById('btn-cancel-coin').addEventListener('click', () => {
+                            Swal.close();
+                        });
                     }
                 });
             });
@@ -2014,8 +2112,8 @@
                 
                 if (COIN_DATA[selectedCoin] && shopData.purchased.includes(selectedCoin)) {
                     // Qimmatroq tanga = sekinroq (ko'proq vaqt)
-                    const bonus = COIN_DATA[selectedCoin].speedBonus * 100;
-                    baseSpeed += bonus;
+                    // speedBonus ni qo'shish = ko'proq millisekund = sekinroq
+                    baseSpeed += COIN_DATA[selectedCoin].speedBonus;
                 }
                 
                 return baseSpeed;
