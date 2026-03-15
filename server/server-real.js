@@ -777,10 +777,48 @@ if (process.env.NODE_ENV !== 'production') {
 // To'lov holatini tekshirish
 app.get('/api/check-payment/:userId', async (req, res) => {
     try {
-        const user = userDB.get(req.params.userId);
+        const userId = req.params.userId;
         
+        if (!userId) {
+            return res.status(400).json({ error: 'userId kerak' });
+        }
+        
+        let user = userDB.get(userId);
+        
+        // Agar user yo'q bo'lsa, avtomatik yaratish
         if (!user) {
-            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+            console.log(`🆕 Auto-creating user for payment check: ${userId}`);
+            
+            // Yangi deposit wallet yaratish
+            const depositWallet = await createDepositWallet();
+            
+            user = {
+                userId,
+                connectedWallet: null,
+                depositWallet,
+                balance: 0,
+                jettonBalance: 0,
+                totalDeposited: 0,
+                totalConverted: 0,
+                purchasedItems: [],
+                createdAt: new Date().toISOString(),
+                lastDepositAt: null,
+                lastBalanceCheck: null,
+                hasPaid: false,
+                demoAsraBalance: 0,
+                paymentAddress: PAYMENT_ADDRESS || '',
+                globalStats: {
+                    totalClicksAllTime: 0,
+                    totalCoinsCollected: 0,
+                    totalTonEarned: 0,
+                    gamesPlayed: 0,
+                    firstPlayed: new Date().toISOString(),
+                    lastPlayed: null
+                }
+            };
+            
+            userDB.set(userId, user);
+            console.log(`✅ User yaratildi: ${userId}`);
         }
         
         const REQUIRED_AMOUNT = 1; // 1 TON
@@ -819,12 +857,11 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 user.paidAmount = REQUIRED_AMOUNT;
                 
                 // Demo asralarni real balansga o'tkazish (yoki 0 ga tushirish)
-                // Bu yerda biz demo asralarni saqlab qolmaymiz, chunki ular yechilmaydi
                 user.demoAsraBalance = 0;
                 
-                userDB.set(req.params.userId, user);
+                userDB.set(userId, user);
                 
-                console.log(`✅ To'lov qilindi: ${req.params.userId}`);
+                console.log(`✅ To'lov qilindi: ${userId}`);
                 console.log(`   Amount: 1 TON`);
                 console.log(`   Tx: ${paymentTx.transaction_id?.hash}`);
                 
@@ -868,10 +905,40 @@ app.get('/api/check-payment/:userId', async (req, res) => {
 // To'lov qilinishi kerakligini belgilash (user o'zi to'lov qilganini tasdiqlash)
 app.post('/api/confirm-payment/:userId', async (req, res) => {
     try {
-        const user = userDB.get(req.params.userId);
+        const userId = req.params.userId;
+        let user = userDB.get(userId);
         
+        // Agar user yo'q bo'lsa, avtomatik yaratish
         if (!user) {
-            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+            console.log(`🆕 Auto-creating user for confirm-payment: ${userId}`);
+            const depositWallet = await createDepositWallet();
+            
+            user = {
+                userId,
+                connectedWallet: null,
+                depositWallet,
+                balance: 0,
+                jettonBalance: 0,
+                totalDeposited: 0,
+                totalConverted: 0,
+                purchasedItems: [],
+                createdAt: new Date().toISOString(),
+                lastDepositAt: null,
+                lastBalanceCheck: null,
+                hasPaid: false,
+                demoAsraBalance: 0,
+                paymentAddress: PAYMENT_ADDRESS || '',
+                globalStats: {
+                    totalClicksAllTime: 0,
+                    totalCoinsCollected: 0,
+                    totalTonEarned: 0,
+                    gamesPlayed: 0,
+                    firstPlayed: new Date().toISOString(),
+                    lastPlayed: null
+                }
+            };
+            
+            userDB.set(userId, user);
         }
         
         const REQUIRED_AMOUNT = 1;
@@ -912,9 +979,9 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
                 lastPlayed: null
             };
             
-            userDB.set(req.params.userId, user);
+            userDB.set(userId, user);
             
-            console.log(`✅ To'lov tasdiqlandi va o'yin reset qilindi: ${req.params.userId}`);
+            console.log(`✅ To'lov tasdiqlandi va o'yin reset qilindi: ${userId}`);
             
             res.json({
                 success: true,
