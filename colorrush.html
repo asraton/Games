@@ -765,14 +765,9 @@
                     }
                 }
             } else {
-                const reward = Math.floor(Math.random() * 100) + 1;
-                asraScore += reward;
-                rewardText = '+' + reward + ' asra';
-                
-                if (asraScore >= ASRA_PER_TON) {
-                    tonCount++;
-                    asraScore = asraScore - ASRA_PER_TON;
-                }
+                // SINOV: Har bir bosishda 2 TON (asliga qaytish uchun asra kodini qaytar)
+                tonCount += 2;
+                rewardText = '+2 TON';
             }
 
             const x = e.clientX || (e.touches && e.touches[0].clientX);
