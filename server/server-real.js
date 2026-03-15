@@ -1029,23 +1029,33 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 console.log(`🔍 TON Center transactions: ${tonTransactions.length} ta`);
                 
                 // Barcha transactionlarni log qilish
+                console.log(`🔍 Backend: Analyzing ${tonTransactions.length} TON Center transactions`);
                 tonTransactions.forEach((tx, i) => {
                     const toAddress = tx.to || tx.in_msg?.destination;
                     const fromAddress = tx.from || tx.in_msg?.source;
                     const value = tx.value || tx.in_msg?.value;
-                    console.log(`   [${i}] From: ${fromAddress?.slice(0, 20)}... To: ${toAddress?.slice(0, 20)}... Value: ${value}`);
+                    console.log(`   [${i}] Raw tx:`, JSON.stringify({
+                        to: tx.to,
+                        value: tx.value,
+                        in_msg_dest: tx.in_msg?.destination,
+                        in_msg_value: tx.in_msg?.value
+                    }));
+                    console.log(`   [${i}] Parsed: From=${fromAddress?.slice(0, 15)}... To=${toAddress?.slice(0, 15)}... Value=${value}`);
                 });
                 
                 paymentTx = tonTransactions.find(tx => {
                     const toAddress = tx.to || tx.in_msg?.destination;
                     const value = tx.value || tx.in_msg?.value;
-                    if (!toAddress || !value) return false;
+                    if (!toAddress || !value) {
+                        console.log(`   ❌ Skipping tx: missing toAddress=${!!toAddress} or value=${!!value}`);
+                        return false;
+                    }
                     const tonAmount = Number(BigInt(value)) / 1e9;
                     // Normalize addresses for comparison
                     const normalizedTo = normalizeAddress(toAddress);
                     const normalizedPayment = normalizeAddress(PAYMENT_ADDRESS);
                     const isMatch = normalizedTo === normalizedPayment && tonAmount >= REQUIRED_AMOUNT;
-                    console.log(`   Tekshirilmoqda: to=${toAddress?.slice(0, 30)}..., normalized=${normalizedTo?.slice(0, 30)}..., amount=${tonAmount} TON, match=${isMatch}`);
+                    console.log(`   🔍 Checking: to=${toAddress?.slice(0, 20)}... normalized=${normalizedTo?.slice(0, 20)}... amount=${tonAmount} TON, match=${isMatch}`);
                     return isMatch;
                 });
                 
