@@ -1127,6 +1127,17 @@
                                 const data = await res.json();
                                 if (data.hasPaid) {
                                     clearInterval(autoCheckInterval);
+                                    
+                                    // To'lovni backend da tasdiqlash
+                                    try {
+                                        await fetch(API_BASE + '/confirm-payment/' + userId, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' }
+                                        });
+                                    } catch (e) {
+                                        // Tasdiqlashda xato - lekin hasPaid allaqachon true
+                                    }
+                                    
                                     modalBody.innerHTML = `
                                         <div style="text-align:center;padding:16px;">
                                             <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ To'lov tasdiqlandi!</p>
@@ -1197,8 +1208,7 @@
                 document.getElementById('max-btn').addEventListener('click', () => {
                     document.getElementById('withdraw-amount').value = maxWithdrawAmount.toFixed(4);
                 });
-                
-                // Yechish tugmasi
+                                // Yechish tugmasi
                 document.getElementById('withdraw-submit').addEventListener('click', async () => {
                     const amount = parseFloat(document.getElementById('withdraw-amount').value);
                     if (!amount || amount < 0.1) {
@@ -1224,19 +1234,53 @@
                         return;
                     }
                     
-                    // O'yindagi TON ni kamaytirish
-                    tonCount -= amount;
-                    updateDisplay();
-                    saveGameData();
-                    
-                    modalBody.innerHTML = `
-                        <div style="text-align:center;padding:16px;">
-                            <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ ${amount} TON yechildi!</p>
-                            <p style="color:#fff;font-size:13px;margin-bottom:8px;">Qolgan balans: ${tonCount.toFixed(4)} TON</p>
-                            <p style="color:#888;font-size:11px;margin-bottom:16px;">Wallet: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>
-                            <button class="wallet-panel-btn close-modal" style="width:100%;">⬅️ Orqaga</button>
-                        </div>
-                    `;
+                    // Backend ga yechish so'rovi
+                    try {
+                        const res = await fetch(API_BASE + '/withdraw', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                userId: userId,
+                                amount: amount,
+                                toAddress: connectedWalletAddress
+                            })
+                        });
+                        const result = await res.json();
+                        
+                        if (result.success) {
+                            // O'yindagi TON ni kamaytirish
+                            tonCount -= amount;
+                            updateDisplay();
+                            saveGameData();
+                            
+                            modalBody.innerHTML = `
+                                <div style="text-align:center;padding:16px;">
+                                    <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ ${amount} TON yuborildi!</p>
+                                    <p style="color:#fff;font-size:13px;margin-bottom:8px;">Qolgan balans: ${tonCount.toFixed(4)} TON</p>
+                                    <p style="color:#888;font-size:11px;margin-bottom:16px;">Wallet: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>
+                                    <button class="wallet-panel-btn close-modal" style="width:100%;">⬅️ Orqaga</button>
+                                </div>
+                            `;
+                        } else {
+                            Swal.fire({
+                                text: result.message || 'Yechishda xato',
+                                icon: 'error',
+                                timer: 2000,
+                                showConfirmButton: false,
+                                width: '200px',
+                                position: 'center'
+                            });
+                        }
+                    } catch (e) {
+                        Swal.fire({
+                            text: 'Qayta urining',
+                            icon: 'error',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            width: '200px',
+                            position: 'center'
+                        });
+                    }
                 });
             });
         });
