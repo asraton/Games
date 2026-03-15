@@ -15,7 +15,11 @@ app.use(express.json());
 // TON Center API config
 const TON_API_KEY = process.env.TON_API_KEY || '';
 const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
-const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQAYFg8VczIFRtX7QRcredLeBFydLgbUfwasup35C8-_Nlnu';  // xRocket Wallet
+const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQAYFg8VczIFRtX7QRcredLeBFydLgbUfwasup35C8-_Nlnu';  // Master Wallet - receives 1 TON payments
+
+// Master Wallet config - barcha yechishlar shu hamyondan amalga oshiriladi
+const MASTER_WALLET_MNEMONIC = process.env.MASTER_WALLET_MNEMONIC || '';
+const MASTER_WALLET_ADDRESS = process.env.MASTER_WALLET_ADDRESS || PAYMENT_ADDRESS;
 
 // xRocket API config
 const XROCKET_API_TOKEN = process.env.XROCKET_API_TOKEN;
@@ -741,7 +745,7 @@ app.post('/api/withdraw', async (req, res) => {
             });
         }
         
-        // REAL MODE: Agar deposit yo'q bo'lsa, game TON dan yechish
+        // REAL MODE: Master Wallet dan yechish
         // Minimum amount check
         if (amount < 0.1) {
             return res.status(400).json({ 
@@ -749,187 +753,116 @@ app.post('/api/withdraw', async (req, res) => {
             });
         }
         
-        const availableTon = user.totalDeposited - user.totalConverted;
         const gameTon = user.gameData?.tonCount || 0;
         
-        // Agar deposit TON yetarli bo'lsa, unidan yechish
-        if (availableTon >= amount) {
-            // REAL TON transfer qilish - Seqno kutish bilan
-            try {
-                console.log(`🔄 WITHDRAW: ${amount} TON`);
-                console.log(`   From: ${user.depositWallet.address}`);
-                console.log(`   To: ${toAddress}`);
-                
-                const keyPair = await mnemonicToWalletKey(user.depositWallet.mnemonic.split(' '));
-                const wallet = WalletContractV4.create({
-                    workchain: 0,
-                    publicKey: keyPair.publicKey
-                });
-                
-                const contract = client.open(wallet);
-                
-                // 1. Joriy seqno ni olish
-                let seqno = await contract.getSeqno();
-                console.log(`   Seqno (before): ${seqno}`);
-                
-                // 2. Transfer miqdori (toNano string qabul qiladi)
-                const transferAmount = toNano(amount.toString());
-                
-                // 3. Tranzaksiya yuborish
-                await contract.sendTransfer({
-                    seqno,
-                    secretKey: keyPair.secretKey,
-                    messages: [
-                        internal({
-                            to: toAddress,
-                            value: transferAmount,
-                            body: 'Withdraw from ASRA Coin',
-                            bounce: false
-                        })
-                    ]
-                });
-                
-                // 4. Seqno o'zgarishini kutish (Blockchain tasdig'i)
-                console.log(`   Waiting for seqno update...`);
-                let currentSeqno = seqno;
-                let retry = 0;
-                while (currentSeqno === seqno && retry < 10) {
-                    await new Promise(r => setTimeout(r, 1500)); // 1.5 soniya kutish
-                    currentSeqno = await contract.getSeqno();
-                    retry++;
-                }
-                console.log(`   Seqno (after): ${currentSeqno} (retries: ${retry})`);
-                
-                // 5. Bazani yangilash
-                user.totalDeposited -= amount;
-                user.balance = user.totalDeposited - user.totalConverted;
-                userDB.set(userId, user);
-                
-                console.log(`✅ WITHDRAW SUCCESS: ${amount} TON`);
-                
-                res.json({
-                    success: true,
-                    message: `${amount} TON muvaffaqiyatli yuborildi`,
-                    toAddress: toAddress,
-                    tonDeposited: user.totalDeposited,
-                    tonConverted: user.totalConverted,
-                    tonAvailable: user.balance,
-                    isReal: true
-                });
-                
-            } catch (txError) {
-                console.error('Blockchain xatosi:', txError);
-                return res.status(500).json({ 
-                    error: 'Blockchain-da xatolik yuz berdi. Qayta urinib ko\'ring.',
-                    isReal: true
-                });
-            }
+        // Game TON tekshirish
+        if (gameTon < amount) {
+            return res.status(400).json({
+                error: 'Yetarli TON yo\'q',
+                required: amount,
+                available: gameTon,
+                message: 'O\'yinda yetarli TON yo\'q'
+            });
         }
         
-        // Aks holda, game TON dan yechish (agar to'lov qilingan bo'lsa)
-        if (user.hasPaid && gameTon >= amount) {
-            // Avval depositWallet real balansini tekshirish
-            const depositRealBalance = await getRealTonBalance(user.depositWallet.address);
-            console.log(`💰 Deposit wallet balans: ${depositRealBalance.toFixed(4)} TON`);
-            console.log(`💰 Game TON balans: ${gameTon} TON`);
-            
-            if (depositRealBalance < amount) {
-                return res.status(400).json({
-                    error: 'Hamyonda yetarli TON yo\'q',
-                    required: amount,
-                    available: depositRealBalance,
-                    message: `Sizning deposit hamyoningizda faqat ${depositRealBalance.toFixed(4)} TON bor. Iltimos, o'yin admini bilan bog'laning.`,
-                    depositAddress: user.depositWallet.address,
-                    isReal: true
-                });
-            }
-            
-            // 1 TON qoldirish sharti (game balansida)
-            if (gameTon - amount < 1) {
-                return res.status(400).json({
-                    error: '1 TON qoldirish sharti',
-                    maxWithdraw: Math.max(0, gameTon - 1)
-                });
-            }
-            
-            // REAL TON transfer qilish depositWallet dan
-            try {
-                console.log(`🔄 GAME TON WITHDRAW: ${amount} TON`);
-                console.log(`   From deposit: ${user.depositWallet.address}`);
-                console.log(`   To user: ${toAddress}`);
-                
-                const keyPair = await mnemonicToWalletKey(user.depositWallet.mnemonic.split(' '));
-                const wallet = WalletContractV4.create({
-                    workchain: 0,
-                    publicKey: keyPair.publicKey
-                });
-                
-                const contract = client.open(wallet);
-                
-                // Joriy seqno ni olish
-                let seqno = await contract.getSeqno();
-                console.log(`   Seqno (before): ${seqno}`);
-                
-                // Transfer
-                const transferAmount = toNano(amount.toString());
-                
-                await contract.sendTransfer({
-                    seqno,
-                    secretKey: keyPair.secretKey,
-                    messages: [
-                        internal({
-                            to: toAddress,
-                            value: transferAmount,
-                            body: 'Game TON Withdraw from ASRA Coin',
-                            bounce: false
-                        })
-                    ]
-                });
-                
-                // Seqno o'zgarishini kutish
-                console.log(`   Waiting for seqno update...`);
-                let currentSeqno = seqno;
-                let retry = 0;
-                while (currentSeqno === seqno && retry < 10) {
-                    await new Promise(r => setTimeout(r, 1500));
-                    currentSeqno = await contract.getSeqno();
-                    retry++;
-                }
-                console.log(`   Seqno (after): ${currentSeqno} (retries: ${retry})`);
-                
-                // Bazadan game TON ni kamaytirish
-                user.gameData.tonCount -= amount;
-                userDB.set(userId, user);
-                
-                console.log(`✅ GAME TON WITHDRAW SUCCESS: ${amount} TON`);
-                console.log(`   Remaining game TON: ${user.gameData.tonCount}`);
-                
-                return res.json({
-                    success: true,
-                    message: `${amount} TON muvaffaqiyatli yuborildi`,
-                    tonCount: user.gameData.tonCount,
-                    toAddress: toAddress,
-                    isReal: true
-                });
-                
-            } catch (txError) {
-                console.error('❌ Blockchain xatosi:', txError);
-                return res.status(500).json({
-                    error: 'Blockchain-da xatolik. TON yuborilmadi.',
-                    details: txError.message,
-                    isReal: true
-                });
-            }
+        // 1 TON qoldirish sharti (game balansida)
+        if (gameTon - amount < 1) {
+            return res.status(400).json({
+                error: '1 TON qoldirish sharti',
+                maxWithdraw: Math.max(0, gameTon - 1)
+            });
         }
         
-        // Agar hech qayerda yetarli TON yo'q bo'lsa
-        return res.status(400).json({
-            error: 'Yetarli TON yo\'q',
-            required: amount,
-            available: availableTon + gameTon,
-            message: 'Deposit yoki o\'yin balansida yetarli TON yo\'q',
-            isReal: true
-        });
+        // Master Wallet balansini tekshirish
+        const masterBalance = await getRealTonBalance(MASTER_WALLET_ADDRESS);
+        console.log(`💰 Master Wallet balans: ${masterBalance.toFixed(4)} TON`);
+        console.log(`💰 User game TON: ${gameTon} TON`);
+        console.log(`💰 Withdraw amount: ${amount} TON`);
+        
+        if (masterBalance < amount) {
+            return res.status(400).json({
+                error: 'Master hamyonda yetarli TON yo\'q',
+                required: amount,
+                available: masterBalance,
+                message: 'Iltimos, keyinroq qayta urinib ko\'ring. Admin bilan bog\'laning.',
+                isReal: true
+            });
+        }
+        
+        // REAL TON transfer qilish MASTER WALLET dan
+        try {
+            console.log(`🔄 MASTER WALLET WITHDRAW: ${amount} TON`);
+            console.log(`   From Master: ${MASTER_WALLET_ADDRESS}`);
+            console.log(`   To User: ${toAddress}`);
+            
+            // Master wallet keyPair ni olish
+            if (!MASTER_WALLET_MNEMONIC) {
+                throw new Error('MASTER_WALLET_MNEMONIC sozlanmagan!');
+            }
+            
+            const keyPair = await mnemonicToWalletKey(MASTER_WALLET_MNEMONIC.split(' '));
+            const wallet = WalletContractV4.create({
+                workchain: 0,
+                publicKey: keyPair.publicKey
+            });
+            
+            const contract = client.open(wallet);
+            
+            // Joriy seqno ni olish
+            let seqno = await contract.getSeqno();
+            console.log(`   Seqno (before): ${seqno}`);
+            
+            // Transfer
+            const transferAmount = toNano(amount.toString());
+            
+            await contract.sendTransfer({
+                seqno,
+                secretKey: keyPair.secretKey,
+                messages: [
+                    internal({
+                        to: toAddress,
+                        value: transferAmount,
+                        body: 'ASRA Coin Game TON Withdraw',
+                        bounce: false
+                    })
+                ]
+            });
+            
+            // Seqno o'zgarishini kutish
+            console.log(`   Waiting for seqno update...`);
+            let currentSeqno = seqno;
+            let retry = 0;
+            while (currentSeqno === seqno && retry < 10) {
+                await new Promise(r => setTimeout(r, 1500));
+                currentSeqno = await contract.getSeqno();
+                retry++;
+            }
+            console.log(`   Seqno (after): ${currentSeqno} (retries: ${retry})`);
+            
+            // Bazadan game TON ni kamaytirish
+            user.gameData.tonCount -= amount;
+            userDB.set(userId, user);
+            
+            console.log(`✅ MASTER WALLET WITHDRAW SUCCESS: ${amount} TON`);
+            console.log(`   Remaining game TON: ${user.gameData.tonCount}`);
+            
+            return res.json({
+                success: true,
+                message: `${amount} TON muvaffaqiyatli yuborildi`,
+                tonCount: user.gameData.tonCount,
+                toAddress: toAddress,
+                fromMaster: MASTER_WALLET_ADDRESS,
+                isReal: true
+            });
+            
+        } catch (txError) {
+            console.error('❌ Master Wallet Blockchain xatosi:', txError);
+            return res.status(500).json({
+                error: 'Blockchain-da xatolik. TON yuborilmadi.',
+                details: txError.message,
+                isReal: true
+            });
+        }
         
     } catch (error) {
         console.error('Withdraw error:', error);
