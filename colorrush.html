@@ -664,7 +664,7 @@
         // Dastlabki yuklash (async)
         initGameData();
         
-        const ASRA_PER_TON = 100000; // 100000 asra = 1 ton (haqiqiy)
+        const ASRA_PER_TON = 10000; // 10000 asra = 1 ton
         let gameActive = false;
         let isPaused = false;
 
@@ -684,7 +684,7 @@
         const pulseColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 'pulse-cyan', 'pulse-purple', 'pulse-orange'];
 
         function updateDisplay() {
-            tonDisplayElement.textContent = tonCount;
+            tonDisplayElement.textContent = tonCount.toFixed(4);
             asraDisplayElement.textContent = asraScore.toString().padStart(9, '0');
             // Har safar ko'rsatishda localStorage ga saqlash
             saveGameData();
@@ -1297,7 +1297,7 @@
                         <div style="text-align:center;padding:16px;">
                             <p style="color:#ff6b6b;font-size:16px;margin-bottom:12px;">⚠️ Yetarli TON yo'q</p>
                             <p style="color:#fff;font-size:14px;margin-bottom:8px;">Sizda: ${gameTonBalance.toFixed(4)} TON</p>
-                            <p style="color:#888;font-size:12px;margin-bottom:16px;">Kamida 1 TON qolishi kerak</p>
+                            <p style="color:#888;font-size:12px;margin-bottom:16px;">Kamida 2 TON to'plang</p>
                             <p style="color:#00d2ff;font-size:13px;margin-bottom:16px;">Yechish uchun kamida 1.1 TON kerak</p>
                             <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Ortga</button>
                         </div>
