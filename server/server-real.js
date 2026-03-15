@@ -856,6 +856,35 @@ app.get('/api/debug/xrocket', async (req, res) => {
     }
 });
 
+// Debug endpoint - TON Center transactionlarni ko'rish (production uchun ham)
+app.get('/api/debug/toncenter', async (req, res) => {
+    try {
+        const transactions = await getTransactions(PAYMENT_ADDRESS, 20);
+        
+        res.json({
+            success: true,
+            count: transactions.length,
+            paymentAddress: PAYMENT_ADDRESS,
+            tonApiKey: TON_API_KEY ? '✅ Mavjud' : '❌ Yo\'q',
+            transactions: transactions.map(tx => ({
+                hash: tx.transaction_id?.hash,
+                lt: tx.transaction_id?.lt,
+                value: tx.in_msg?.value,
+                from: tx.in_msg?.source,
+                to: tx.in_msg?.destination,
+                time: tx.utime,
+                type: tx.in_msg ? 'incoming' : 'outgoing'
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            paymentAddress: PAYMENT_ADDRESS
+        });
+    }
+});
+
 // To'lov holatini tekshirish
 app.get('/api/check-payment/:userId', async (req, res) => {
     try {
@@ -937,19 +966,32 @@ app.get('/api/check-payment/:userId', async (req, res) => {
         // 2. Agar xRocket da topilmasa, TON Center dan tekshirish
         if (!paymentTx) {
             try {
+                console.log(`🔍 TON Center: ${PAYMENT_ADDRESS} uchun transactionlar olinmoqda...`);
                 const tonTransactions = await getTransactions(PAYMENT_ADDRESS, 20);
                 console.log(`🔍 TON Center transactions: ${tonTransactions.length} ta`);
+                
+                // Barcha transactionlarni log qilish
+                tonTransactions.forEach((tx, i) => {
+                    const toAddress = tx.in_msg?.destination;
+                    const fromAddress = tx.in_msg?.source;
+                    const value = tx.in_msg?.value;
+                    console.log(`   [${i}] From: ${fromAddress?.slice(0, 20)}... To: ${toAddress?.slice(0, 20)}... Value: ${value}`);
+                });
                 
                 paymentTx = tonTransactions.find(tx => {
                     const toAddress = tx.in_msg?.destination;
                     const value = tx.in_msg?.value;
                     if (!toAddress || !value) return false;
                     const tonAmount = Number(BigInt(value)) / 1e9;
-                    return toAddress === PAYMENT_ADDRESS && tonAmount >= REQUIRED_AMOUNT;
+                    const isMatch = toAddress === PAYMENT_ADDRESS && tonAmount >= REQUIRED_AMOUNT;
+                    console.log(`   Tekshirilmoqda: to=${toAddress?.slice(0, 30)}..., amount=${tonAmount} TON, match=${isMatch}`);
+                    return isMatch;
                 });
                 
                 if (paymentTx) {
                     console.log(`✅ TON Center da to'lov topildi: ${paymentTx.transaction_id?.hash}`);
+                } else {
+                    console.log(`❌ TON Center da to'lov topilmadi`);
                 }
             } catch (tonError) {
                 console.log('⚠️ TON Center tekshiruvda xato:', tonError.message);
