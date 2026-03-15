@@ -1767,9 +1767,9 @@
                 blue: { name: 'Blue', price: 1, speedBonus: 0, img: '/assets/Blue.png' },
                 green: { name: 'Green', price: 5, speedBonus: 1, img: '/assets/Green.png' },
                 pink: { name: 'Pink', price: 10, speedBonus: 2, img: '/assets/Pink.png' },
-                red: { name: 'Red', price: 20, speedBonus: 3, img: '/assets/Red.png', noPenalty: true },
+                red: { name: 'Red', price: 20, speedBonus: 3, img: '/assets/Red.png' },
                 yellow: { name: 'Yellow', price: 30, speedBonus: 4, img: '/assets/Yellow.png' },
-                asra: { name: 'ASRA PRO', price: 99, speedBonus: 5, img: '/assets/ASRA.png', autoPlay: true, maxTon: 200 }
+                asra: { name: 'ASRA PRO', price: 99, speedBonus: 5, img: '/assets/ASRA.png', autoPlay: true, maxTon: 200, noPenalty: true }
             };
 
             // LocalStorage key for shop
@@ -2021,12 +2021,12 @@
                 return baseSpeed;
             };
 
-            // Red tanga uchun -100 jarima yo'q
+            // ASRA PRO tanga uchun -100 jarima yo'q (avto-ishlash bilan)
             const originalCatchCoin = catchCoin;
             catchCoin = function(e) {
                 const selectedCoin = shopData.selected;
-                if (selectedCoin === 'red' && shopData.purchased.includes('red')) {
-                    // Red tanga - jarima yo'q
+                if (selectedCoin === 'asra' && shopData.purchased.includes('asra')) {
+                    // ASRA PRO tanga - jarima yo'q, avto-ishlash
                     e.preventDefault();
                     if (!gameActive || isPaused || !coinVisible) return;
 
@@ -2059,7 +2059,7 @@
                         showCoin();
                     }, 200);
                 } else {
-                    // Oddiy qoidalar
+                    // Oddiy qoidalar (Red tanga ham bu yerda)
                     originalCatchCoin(e);
                 }
             };
