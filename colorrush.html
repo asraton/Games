@@ -649,7 +649,7 @@
         // Dastlabki yuklash (async)
         initGameData();
         
-        const ASRA_PER_TON = 900; // 900 asra = 1 ton (test uchun)
+        const ASRA_PER_TON = 100000; // 100000 asra = 1 ton (haqiqiy)
         let gameActive = false;
         let isPaused = false;
 
@@ -1180,11 +1180,8 @@
                     // To'lov holatini tekshirishda xato
                 }
                 
-                // TEST REJIMI: Demo rejimda ham TON yechishni yoqish
-                // Vaqtinchalik - faqat test uchun
-                const TEST_MODE = true; // Test tugagach false qilish
-                
-                if (!TEST_MODE && (!paymentStatus || !paymentStatus.hasPaid)) {
+                // Haqiqiy rejim: To'lov tekshiruvi
+                if (!paymentStatus || !paymentStatus.hasPaid) {
                     const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
                     const PAYMENT_AMOUNT = 1; // 1 TON
                     const PAYMENT_NANO = 1000000000; // 1 TON in nanoton
@@ -1251,7 +1248,7 @@
                     };
                     startAutoCheck();
                     
-                    return; // Demo mode - bu yerda to'xtatish kerak
+                    return; // To'lov qilinmaguncha to'xtatish
                 }
                 
                 // To'lov qilingan - normal withdrawal from game balance
@@ -1335,8 +1332,7 @@
                             body: JSON.stringify({
                                 userId: userId,
                                 amount: amount,
-                                toAddress: connectedWalletAddress,
-                                testMode: TEST_MODE // Test rejimida hasPaid tekshiruvini o'tkazib yuboradi
+                                toAddress: connectedWalletAddress
                             })
                         });
                         const result = await res.json();
