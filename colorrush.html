@@ -302,9 +302,8 @@
             margin-bottom: 0;
         }
 
-        .wallet-panel-btn.disconnect {
-            color: #ff4757;
-        }
+        .btn-green { color: #2ed573 !important; }
+        .btn-red { color: #ff4757 !important; }
 
         .wallet-address {
             font-size: 12px;
@@ -456,10 +455,10 @@
             </button>
             <div id="wallet-panel">
                 <div id="wallet-address-display" class="wallet-address" style="display:none"></div>
-                <button class="wallet-panel-btn" id="btn-wallet-action">Wallet ulash</button>
-                <button class="wallet-panel-btn" id="btn-pay-from-wallet">Hamyondan to'lash</button>
-                <button class="wallet-panel-btn withdraw" id="btn-ton-yechish">TON yechish</button>
-                <button class="wallet-panel-btn restart" id="btn-restart">RESTART</button>
+                <button class="wallet-panel-btn btn-green" id="btn-wallet-action">Wallet ulash</button>
+                <button class="wallet-panel-btn btn-green" id="btn-pay-from-wallet">Hamyondan to'lash</button>
+                <button class="wallet-panel-btn btn-green" id="btn-ton-yechish">TON yechish</button>
+                <button class="wallet-panel-btn btn-red" id="btn-restart">RESTART</button>
             </div>
         </div>
 
@@ -1130,7 +1129,7 @@
                             Walletga o'tish
                         </button>
                         
-                        <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:16px;">
+                        <button class="wallet-panel-btn close-modal btn-red" style="width:100%;margin-top:16px;">
                             Ortga
                         </button>
                     </div>
@@ -1185,7 +1184,7 @@
                     modalTitle.textContent = 'TON yechish';
                     modalBody.innerHTML = `
                         <p style="color:${color};margin-bottom:16px;">${message}</p>
-                        <button class="wallet-panel-btn close-modal" style="width:100%;">Ortga</button>
+                        <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Ortga</button>
                     `;
                     modal.classList.add('open');
                 }
@@ -1299,7 +1298,7 @@
                             <p style="color:#fff;font-size:14px;margin-bottom:8px;">Sizda: ${gameTonBalance.toFixed(4)} TON</p>
                             <p style="color:#888;font-size:12px;margin-bottom:16px;">Kamida 1 TON qolishi kerak</p>
                             <p style="color:#00d2ff;font-size:13px;margin-bottom:16px;">Yechish uchun kamida 1.1 TON kerak</p>
-                            <button class="wallet-panel-btn close-modal" style="width:100%;">Ortga</button>
+                            <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Ortga</button>
                         </div>
                     `;
                     modal.classList.add('open');
@@ -1322,7 +1321,7 @@
                         <p style="color:#888;font-size:10px;margin-bottom:16px;">Min: 0.1 TON | Max: ${maxWithdrawAmount.toFixed(4)} TON (1 TON qoladi)</p>
                         
                         <button class="wallet-panel-btn withdraw" id="withdraw-submit" style="width:100%;margin-bottom:8px;">Yechib olish</button>
-                        <button class="wallet-panel-btn close-modal" style="width:100%;">Ortga</button>
+                        <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Ortga</button>
                     </div>
                 `;
                 modal.classList.add('open');
@@ -1389,7 +1388,7 @@
                                     <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ ${amount} TON yuborildi!</p>
                                     <p style="color:#fff;font-size:13px;margin-bottom:8px;">Qolgan balans: ${tonCount.toFixed(4)} TON</p>
                                     <p style="color:#888;font-size:11px;margin-bottom:16px;">Wallet: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>
-                                    <button class="wallet-panel-btn close-modal" style="width:100%;">Ortga</button>
+                                    <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Ortga</button>
                                 </div>
                             `;
                         } else {
