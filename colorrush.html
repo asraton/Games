@@ -104,34 +104,23 @@
 
         #stop-btn {
             background: url('/assets/Button.png') no-repeat center center;
-            background-size: cover;
-            border: 2px solid rgba(255, 255, 255, 0.4);
+            background-size: 100% 100%;
+            border: none;
             color: white;
             padding: clamp(12px, 2vh, 15px) clamp(35px, 4vw, 50px);
-            border-radius: clamp(25px, 3vw, 30px);
-            cursor: pointer;
             font-size: clamp(16px, 2vw, 18px);
             font-weight: bold;
-            box-shadow: 0 4px 20px rgba(46, 213, 115, 0.4), 0 0 30px rgba(46, 213, 115, 0.2);
-            transition: all 0.3s ease;
+            cursor: pointer;
             min-width: clamp(150px, 20vw, 180px);
+            transition: transform 0.1s;
         }
 
-        #stop-btn:hover {
-            box-shadow: 0 6px 25px rgba(46, 213, 115, 0.6), 0 0 40px rgba(46, 213, 115, 0.3);
-            transform: translateY(-2px);
+        #stop-btn:active {
+            transform: scale(0.95);
         }
 
         #stop-btn.stop-mode {
-            background: url('/assets/Button.png') no-repeat center center;
-            background-size: cover;
             filter: hue-rotate(140deg) brightness(0.9);
-            border: 2px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4), 0 0 30px rgba(255, 71, 87, 0.2);
-        }
-
-        #stop-btn.stop-mode:hover {
-            box-shadow: 0 6px 25px rgba(255, 71, 87, 0.6), 0 0 40px rgba(255, 71, 87, 0.3);
         }
 
         .game-coin {
@@ -236,29 +225,19 @@
             width: 44px;
             height: 44px;
             padding: 0;
-            background: transparent;
+            background: url('/assets/Wallet.png') no-repeat center center;
+            background-size: 100% 100%;
             border: none;
             cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: visible;
+            transition: transform 0.1s;
         }
 
-        #w-btn img {
-            width: 36px;
-            height: 36px;
-            display: block;
-            filter: drop-shadow(0 2px 4px rgba(0, 136, 204, 0.5));
+        #w-btn:active {
+            transform: scale(0.9);
         }
 
         #w-btn.connected {
-            background: transparent;
-        }
-
-        #w-btn.connected img {
-            filter: drop-shadow(0 2px 6px rgba(46, 213, 115, 0.7));
+            filter: brightness(1.2);
         }
 
         /* User initials badge - top right corner */
@@ -303,44 +282,24 @@
             display: block;
             width: 100%;
             background: url('/assets/Button.png') no-repeat center center;
-            background-size: cover;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #e0e0e0;
+            background-size: 100% 100%;
+            border: none;
+            color: white;
             padding: 12px 16px;
-            border-radius: 8px;
-            cursor: pointer;
             font-size: 14px;
             font-weight: 500;
             margin-bottom: 8px;
             text-align: left;
-            transition: all 0.2s;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform 0.1s;
         }
 
-        .wallet-panel-btn:last-child { margin-bottom: 0; }
-
-        .wallet-panel-btn:hover {
-            transform: translateX(4px);
-            background: linear-gradient(135deg, #555555, #3a3a3a);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        .wallet-panel-btn:active {
+            transform: scale(0.95);
         }
 
-        .wallet-panel-btn.disconnect {
-            background: linear-gradient(135deg, #5a4a4a, #3d2d2d);
-            border-color: rgba(255, 100, 100, 0.3);
-        }
-
-        .wallet-panel-btn.disconnect:hover {
-            background: linear-gradient(135deg, #6a5a5a, #4d3d3d);
-        }
-
-        .wallet-panel-btn.restart {
-            background: linear-gradient(135deg, #4a3a3a, #2d1d1d);
-            border-color: rgba(255, 80, 80, 0.3);
-        }
-
-        .wallet-panel-btn.restart:hover {
-            background: linear-gradient(135deg, #5a4a4a, #3d2d2d);
+        .wallet-panel-btn:last-child {
+            margin-bottom: 0;
         }
 
         .wallet-address {
@@ -394,22 +353,19 @@
 
         .close-modal {
             background: url('/assets/Button.png') no-repeat center center;
-            background-size: cover;
-            border: 2px solid rgba(255, 255, 255, 0.4);
+            background-size: 100% 100%;
+            border: none;
             color: white;
             padding: 12px 20px;
-            border-radius: 10px;
-            cursor: pointer;
-            margin-top: 15px;
             font-size: 14px;
             font-weight: bold;
-            box-shadow: 0 4px 15px rgba(46, 213, 115, 0.3);
-            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: transform 0.1s;
         }
 
-        .close-modal:hover {
-            box-shadow: 0 6px 20px rgba(46, 213, 115, 0.5);
-            transform: translateY(-2px);
+        .close-modal:active {
+            transform: scale(0.95);
         }
 
         #withdraw-amount {
@@ -435,24 +391,20 @@
         
         #max-btn {
             background: url('/assets/Button.png') no-repeat center center;
-            background-size: cover;
-            filter: hue-rotate(280deg);
-            border: 2px solid rgba(255, 255, 255, 0.4);
+            background-size: 100% 100%;
+            border: none;
             color: white;
             padding: 10px 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
             font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
             white-space: nowrap;
             flex-shrink: 0;
-            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
-            transition: all 0.3s ease;
+            transition: transform 0.1s;
         }
-        
-        #max-btn:hover {
-            box-shadow: 0 6px 20px rgba(255, 71, 87, 0.5);
-            transform: translateY(-2px);
+
+        #max-btn:active {
+            transform: scale(0.95);
         }
         
         .withdraw-input-row {
@@ -465,22 +417,19 @@
 
         #withdraw-submit {
             background: url('/assets/Button.png') no-repeat center center;
-            background-size: cover;
-            filter: hue-rotate(30deg) brightness(1.1);
-            border: 2px solid rgba(255, 255, 255, 0.4);
+            background-size: 100% 100%;
+            border: none;
             color: white;
             padding: 12px 24px;
-            border-radius: 10px;
-            cursor: pointer;
+            font-size: 14px;
             font-weight: bold;
+            cursor: pointer;
             margin-top: 8px;
-            box-shadow: 0 4px 15px rgba(255, 149, 0, 0.3);
-            transition: all 0.3s ease;
+            transition: transform 0.1s;
         }
 
-        #withdraw-submit:hover {
-            box-shadow: 0 6px 20px rgba(255, 149, 0, 0.5);
-            transform: translateY(-2px);
+        #withdraw-submit:active {
+            transform: scale(0.95);
         }
     </style>
 </head>
