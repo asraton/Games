@@ -218,14 +218,17 @@
         }
 
         #w-btn {
-            width: 44px;
+            width: 80px;
             height: 44px;
             padding: 0;
-            background: url('/assets/Wallet.png') no-repeat center center;
+            background: url('/assets/Button.png') no-repeat center center;
             background-size: 100% 100%;
             border: none;
             cursor: pointer;
             transition: transform 0.1s;
+            color: #00ff00;
+            font-size: 12px;
+            font-weight: bold;
         }
 
         #w-btn:active {
@@ -430,6 +433,164 @@
         #withdraw-submit:active {
             transform: scale(0.95);
         }
+
+        /* Shop Section Styles */
+        .shop-section {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 30px);
+            left: clamp(10px, 2vw, 20px);
+            z-index: 95;
+        }
+
+        #shop-btn {
+            width: 80px;
+            height: 44px;
+            padding: 0;
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: #ffd700;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        #shop-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* Shop Modal */
+        #shop-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #shop-modal.open { display: flex; }
+
+        .shop-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: clamp(16px, 4vw, 24px);
+            border-radius: 16px;
+            text-align: center;
+            max-width: 95vw;
+            width: min(380px, 95vw);
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            box-sizing: border-box;
+        }
+
+        .shop-modal-content h3 {
+            color: #ffd700;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .coin-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .coin-item {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .coin-item:hover {
+            border-color: rgba(255,215,0,0.5);
+            transform: scale(1.02);
+        }
+
+        .coin-item.purchased {
+            border-color: #2ed573;
+            background: rgba(46, 213, 115, 0.1);
+        }
+
+        .coin-item.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255,215,0,0.3);
+        }
+
+        .coin-item img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            margin-bottom: 8px;
+        }
+
+        .coin-name {
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .coin-price {
+            color: #ffd700;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .coin-check {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 20px;
+            height: 20px;
+            background: #2ed573;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 12px;
+        }
+
+        .coin-item.purchased .coin-check {
+            display: flex;
+        }
+
+        .shop-info {
+            color: #888;
+            font-size: 11px;
+            margin-top: 12px;
+            padding: 8px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .asra-auto-indicator {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 50, 50, 0.9);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: none;
+            z-index: 80;
+        }
+
+        .asra-auto-indicator.active {
+            display: block;
+            animation: pulse 1s infinite;
+        }
     </style>
 </head>
 <body>
@@ -446,9 +607,7 @@
         </div>
 
         <div class="wallet-section">
-            <button id="w-btn" title="Hamyon">
-                <img src="/assets/Wallet.png" alt="Wallet" style="width: 44px; height: 44px;">
-            </button>
+            <button id="w-btn" title="Hamyon">WALLET</button>
             <div id="wallet-panel">
                 <div id="wallet-address-display" class="wallet-address" style="display:none"></div>
                 <button class="wallet-panel-btn btn-green" id="btn-wallet-action">Wallet ulash</button>
@@ -458,8 +617,76 @@
             </div>
         </div>
 
+        <div class="shop-section">
+            <button id="shop-btn" title="Do'kon">SHOP</button>
+        </div>
+
         <div class="game-controls">
             <button id="stop-btn">START</button>
+        </div>
+    </div>
+
+    <!-- ASRA Auto-play indicator -->
+    <div id="asra-auto-indicator" class="asra-auto-indicator">ASRA Avto-ishlayapti...</div>
+
+    <!-- Shop Modal -->
+    <div id="shop-modal">
+        <div class="shop-modal-content">
+            <h3>🛒 Tanga Do'koni</h3>
+            <div class="coin-grid" id="coin-grid">
+                <!-- Blue Coin - 1 TON -->
+                <div class="coin-item" data-coin="blue" data-price="1">
+                    <div class="coin-check">✓</div>
+                    <img src="/assets/Blue.png" alt="Blue">
+                    <div class="coin-name">Blue</div>
+                    <div class="coin-price">1 TON</div>
+                </div>
+                <!-- Green Coin - 5 TON -->
+                <div class="coin-item" data-coin="green" data-price="5">
+                    <div class="coin-check">✓</div>
+                    <img src="/assets/Green.png" alt="Green">
+                    <div class="coin-name">Green</div>
+                    <div class="coin-price">5 TON</div>
+                </div>
+                <!-- Pink Coin - 10 TON -->
+                <div class="coin-item" data-coin="pink" data-price="10">
+                    <div class="coin-check">✓</div>
+                    <img src="/assets/Pink.png" alt="Pink">
+                    <div class="coin-name">Pink</div>
+                    <div class="coin-price">10 TON</div>
+                </div>
+                <!-- Red Coin - 20 TON -->
+                <div class="coin-item" data-coin="red" data-price="20">
+                    <div class="coin-check">✓</div>
+                    <img src="/assets/Red.png" alt="Red">
+                    <div class="coin-name">Red</div>
+                    <div class="coin-price">20 TON</div>
+                </div>
+                <!-- Yellow Coin - 30 TON -->
+                <div class="coin-item" data-coin="yellow" data-price="30">
+                    <div class="coin-check">✓</div>
+                    <img src="/assets/Yellow.png" alt="Yellow">
+                    <div class="coin-name">Yellow</div>
+                    <div class="coin-price">30 TON</div>
+                </div>
+                <!-- ASRA Coin - 99 TON -->
+                <div class="coin-item" data-coin="asra" data-price="99">
+                    <div class="coin-check">✓</div>
+                    <img src="/assets/ASRA.png" alt="ASRA">
+                    <div class="coin-name">ASRA PRO</div>
+                    <div class="coin-price">99 TON</div>
+                </div>
+            </div>
+            <div class="selected-coin-display" id="selected-coin-display" style="display:none;">
+                <img id="selected-coin-img" src="" alt="">
+                <span id="selected-coin-name">Tanlangan: Gunmetal</span>
+            </div>
+            <button class="wallet-panel-btn close-modal btn-red" id="close-shop" style="width:100%;">Yopish</button>
+            <div class="shop-info">
+                💡 Sotib olingan tangalar 1 oy davomida amal qiladi.<br>
+                🔄 Restart qilinganda barcha tangalar tiklanadi.<br>
+                ⚡ ASRA 200 TON to'planguncha avto-ishlaydi.
+            </div>
         </div>
     </div>
 
@@ -474,7 +701,7 @@
     </div>
 
     <div id="coin" class="game-coin">
-        <img src="/assets/Gunmetal.png" alt="ASRA">
+        <img src="/assets/Gunmetal.png" alt="ASRA" id="coin-img">
     </div>
 
     <script>
@@ -1526,6 +1753,329 @@
                     }
                 });
             });
+
+            // ==================== SHOP FUNCTIONALITY ====================
+            const shopBtn = document.getElementById('shop-btn');
+            const shopModal = document.getElementById('shop-modal');
+            const closeShop = document.getElementById('close-shop');
+            const coinGrid = document.getElementById('coin-grid');
+            const asraIndicator = document.getElementById('asra-auto-indicator');
+            const coinImg = document.getElementById('coin-img');
+
+            // Shop ma'lumotlari
+            const COIN_DATA = {
+                blue: { name: 'Blue', price: 1, speedBonus: 0, img: '/assets/Blue.png' },
+                green: { name: 'Green', price: 5, speedBonus: 1, img: '/assets/Green.png' },
+                pink: { name: 'Pink', price: 10, speedBonus: 2, img: '/assets/Pink.png' },
+                red: { name: 'Red', price: 20, speedBonus: 3, img: '/assets/Red.png', noPenalty: true },
+                yellow: { name: 'Yellow', price: 30, speedBonus: 4, img: '/assets/Yellow.png' },
+                asra: { name: 'ASRA PRO', price: 99, speedBonus: 5, img: '/assets/ASRA.png', autoPlay: true, maxTon: 200 }
+            };
+
+            // LocalStorage key for shop
+            const SHOP_STORAGE_KEY = userId ? `asra_shop_${userId}` : 'asra_shop_default';
+
+            // Shop ma'lumotlarini yuklash
+            let shopData = loadShopData();
+
+            function loadShopData() {
+                try {
+                    const saved = localStorage.getItem(SHOP_STORAGE_KEY);
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        // Tekshirish: 1 oydan eski bo'lsa tozalash
+                        if (data.purchased) {
+                            const now = new Date().getTime();
+                            const oneMonth = 30 * 24 * 60 * 60 * 1000;
+                            data.purchased = data.purchased.filter(coin => {
+                                const purchaseTime = data.purchaseTime && data.purchaseTime[coin];
+                                return purchaseTime && (now - purchaseTime < oneMonth);
+                            });
+                        }
+                        return data;
+                    }
+                } catch (e) {
+                    console.error('Shop load error:', e);
+                }
+                return { purchased: [], selected: 'gunmetal', purchaseTime: {} };
+            }
+
+            function saveShopData() {
+                try {
+                    localStorage.setItem(SHOP_STORAGE_KEY, JSON.stringify(shopData));
+                } catch (e) {
+                    console.error('Shop save error:', e);
+                }
+            }
+
+            // Shop UI ni yangilash
+            function updateShopUI() {
+                const coinItems = coinGrid.querySelectorAll('.coin-item');
+                coinItems.forEach(item => {
+                    const coinType = item.dataset.coin;
+                    item.classList.remove('purchased', 'selected');
+                    
+                    if (shopData.purchased.includes(coinType)) {
+                        item.classList.add('purchased');
+                    }
+                    if (shopData.selected === coinType) {
+                        item.classList.add('selected');
+                    }
+                });
+
+                // Tanlangan tangani ko'rsatish
+                const selectedDisplay = document.getElementById('selected-coin-display');
+                const selectedImg = document.getElementById('selected-coin-img');
+                const selectedName = document.getElementById('selected-coin-name');
+                
+                if (shopData.selected && shopData.selected !== 'gunmetal') {
+                    const coin = COIN_DATA[shopData.selected];
+                    if (coin) {
+                        selectedImg.src = coin.img;
+                        selectedName.textContent = `Tanlangan: ${coin.name}`;
+                        selectedDisplay.style.display = 'block';
+                        coinImg.src = coin.img;
+                    }
+                } else {
+                    selectedDisplay.style.display = 'none';
+                    coinImg.src = '/assets/Gunmetal.png';
+                }
+            }
+
+            // Shop ochish/yopish
+            shopBtn.addEventListener('click', () => {
+                shopModal.classList.add('open');
+                updateShopUI();
+            });
+
+            closeShop.addEventListener('click', () => {
+                shopModal.classList.remove('open');
+            });
+
+            // Tanga bosilganda
+            coinGrid.addEventListener('click', async (e) => {
+                const coinItem = e.target.closest('.coin-item');
+                if (!coinItem) return;
+
+                const coinType = coinItem.dataset.coin;
+                const price = parseInt(coinItem.dataset.price);
+
+                // Agar sotib olingan bo'lsa - tanlash
+                if (shopData.purchased.includes(coinType)) {
+                    shopData.selected = coinType;
+                    saveShopData();
+                    updateShopUI();
+                    return;
+                }
+
+                // Sotib olish jarayoni
+                if (!connectedWalletAddress) {
+                    Swal.fire({
+                        text: 'Avval Wallet ulang!',
+                        icon: 'warning',
+                        timer: 2000,
+                        showConfirmButton: false,
+                        width: '200px',
+                        position: 'center'
+                    });
+                    return;
+                }
+
+                // To'lov modalini ko'rsatish
+                const coinName = COIN_DATA[coinType].name;
+                const SHOP_PAYMENT_ADDRESS = 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                const nanoAmount = price * 1000000000;
+                
+                Swal.fire({
+                    title: `${coinName} sotib olish`,
+                    html: `<p style="color:#ffd700;font-size:24px;font-weight:bold;">${price} TON</p>
+                           <p style="color:#888;font-size:12px;">Wallet: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>`,
+                    showCancelButton: true,
+                    confirmButtonText: 'To\'lash',
+                    cancelButtonText: 'Bekor',
+                    confirmButtonColor: '#2ed573',
+                    cancelButtonColor: '#ff4757',
+                    background: '#1a1a2e',
+                    color: '#fff'
+                }).then(async (result) => {
+                    if (result.isConfirmed && tonConnectUI) {
+                        try {
+                            const txResult = await tonConnectUI.sendTransaction({
+                                validUntil: Math.floor(Date.now() / 1000) + 600,
+                                messages: [{
+                                    address: SHOP_PAYMENT_ADDRESS,
+                                    amount: nanoAmount.toString()
+                                }]
+                            });
+
+                            // Muvaffaqiyatli to'lov
+                            shopData.purchased.push(coinType);
+                            shopData.purchaseTime[coinType] = new Date().getTime();
+                            shopData.selected = coinType;
+                            saveShopData();
+                            updateShopUI();
+
+                            Swal.fire({
+                                text: `${coinName} sotib olindi!`,
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false,
+                                width: '250px',
+                                position: 'center'
+                            });
+                        } catch (e) {
+                            Swal.fire({
+                                text: 'To\'lov bekor qilindi',
+                                icon: 'error',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                width: '200px',
+                                position: 'center'
+                            });
+                        }
+                    }
+                });
+            });
+
+            // ASRA avto-ishlash funksiyasi
+            let asraAutoInterval = null;
+            let asraStartTon = 0;
+
+            function startAsraAutoPlay() {
+                if (asraAutoInterval) clearInterval(asraAutoInterval);
+                asraStartTon = tonCount;
+                asraIndicator.classList.add('active');
+                
+                asraAutoInterval = setInterval(() => {
+                    if (!gameActive || isPaused) return;
+                    
+                    // 200 TON to'planganmi?
+                    if (tonCount - asraStartTon >= 200) {
+                        stopAsraAutoPlay();
+                        return;
+                    }
+
+                    // Avto-click - random reward
+                    if (coinVisible) {
+                        const reward = Math.floor(Math.random() * 100) + 1;
+                        asraScore += reward;
+                        
+                        if (asraScore >= ASRA_PER_TON) {
+                            tonCount++;
+                            asraScore = asraScore - ASRA_PER_TON;
+                        }
+                        
+                        updateDisplay();
+                        
+                        // Vizual effekt
+                        const coinEl = document.getElementById('coin');
+                        const x = parseInt(coinEl.style.left) + coinEl.offsetWidth / 2;
+                        const y = parseInt(coinEl.style.top) + coinEl.offsetHeight / 2;
+                        showFloatText(x, y, '+' + reward + ' asra (AVTO)', false);
+                        
+                        // Tanga yangilash
+                        coin.classList.add('coin-shrink');
+                        setTimeout(() => {
+                            coin.classList.remove('coin-shrink');
+                            showCoin();
+                        }, 200);
+                    }
+                }, 1000); // Har 1 soniyada
+            }
+
+            function stopAsraAutoPlay() {
+                if (asraAutoInterval) {
+                    clearInterval(asraAutoInterval);
+                    asraAutoInterval = null;
+                }
+                asraIndicator.classList.remove('active');
+            }
+
+            // O'yin boshlanganda ASRA tekshirish
+            const originalStartNewGame = startNewGame;
+            startNewGame = function() {
+                originalStartNewGame();
+                if (shopData.selected === 'asra' && shopData.purchased.includes('asra')) {
+                    startAsraAutoPlay();
+                }
+            };
+
+            const originalStopGame = stopGame;
+            stopGame = function() {
+                originalStopGame();
+                stopAsraAutoPlay();
+            };
+
+            // Tezlik hisoblashni yangilash (tangalar asosida)
+            const originalCalculateSpeed = calculateSpeed;
+            calculateSpeed = function() {
+                let baseSpeed = originalCalculateSpeed();
+                const selectedCoin = shopData.selected;
+                
+                if (COIN_DATA[selectedCoin] && shopData.purchased.includes(selectedCoin)) {
+                    // Qimmatroq tanga = sekinroq (ko'proq vaqt)
+                    const bonus = COIN_DATA[selectedCoin].speedBonus * 100;
+                    baseSpeed += bonus;
+                }
+                
+                return baseSpeed;
+            };
+
+            // Red tanga uchun -100 jarima yo'q
+            const originalCatchCoin = catchCoin;
+            catchCoin = function(e) {
+                const selectedCoin = shopData.selected;
+                if (selectedCoin === 'red' && shopData.purchased.includes('red')) {
+                    // Red tanga - jarima yo'q
+                    e.preventDefault();
+                    if (!gameActive || isPaused || !coinVisible) return;
+
+                    clearTimeout(coinTimeout);
+                    
+                    // Har doim musbat reward
+                    const reward = Math.floor(Math.random() * 100) + 1;
+                    asraScore += reward;
+                    const rewardText = '+' + reward + ' asra';
+                    
+                    if (asraScore >= ASRA_PER_TON) {
+                        tonCount++;
+                        asraScore = asraScore - ASRA_PER_TON;
+                    }
+
+                    const x = e.clientX || (e.touches && e.touches[0].clientX);
+                    const y = e.clientY || (e.touches && e.touches[0].clientY);
+
+                    if (x && y) showFloatText(x, y - 50, rewardText, false);
+
+                    updateDisplay();
+                    
+                    const coinImg = coin.querySelector('img');
+                    pulseColors.forEach(c => coinImg.classList.remove(c));
+                    coin.classList.add('coin-shrink');
+                    setTimeout(() => {
+                        coin.style.display = 'none';
+                        coin.classList.remove('coin-shrink');
+                        coinVisible = false;
+                        showCoin();
+                    }, 200);
+                } else {
+                    // Oddiy qoidalar
+                    originalCatchCoin(e);
+                }
+            };
+
+            // RESTART - shop ma'lumotlarini tozalash
+            const originalRestartHandler = document.getElementById('btn-restart').onclick;
+            document.getElementById('btn-restart').addEventListener('click', async () => {
+                // Shop ma'lumotlarini tozalash
+                shopData = { purchased: [], selected: 'gunmetal', purchaseTime: {} };
+                localStorage.removeItem(SHOP_STORAGE_KEY);
+                stopAsraAutoPlay();
+                coinImg.src = '/assets/Gunmetal.png';
+            });
+
+            // Boshlang'ich UI ni yangilash
+            updateShopUI();
         });
     </script>
 </body>
