@@ -1102,8 +1102,11 @@
                     modalBody.innerHTML = `
                         <div style="text-align:center;padding:16px;">
                             <p style="color:#ff6b6b;font-size:14px;margin-bottom:12px;">⚠️ Demo versiya</p>
-                            <p style="color:#fff;font-size:13px;margin-bottom:16px;">
+                            <p style="color:#fff;font-size:13px;margin-bottom:8px;">
                                 Haqiqiy o'yin boshlash uchun <b>1 TON</b> to'lang
+                            </p>
+                            <p style="color:#00d2ff;font-size:12px;margin-bottom:16px;">
+                                Haqiqiy o'yinda TON yechib olish mumkin
                             </p>
                             <p style="color:#888;font-size:11px;margin-bottom:4px;">TON tarmoq manzili:</p>
                             <input type="text" id="payment-address-input" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:11px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Nusxa olindi',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
