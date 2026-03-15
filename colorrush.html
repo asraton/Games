@@ -2127,47 +2127,51 @@
                 
                 Swal.fire({
                     html: `
-                        <div style="text-align:center;font-family:inherit;padding:10px 0;">
-                            <h3 style="color:#fff;font-size:14px;margin:0 0 8px 0;">${coinInfo.name}</h3>
-                            <p style="color:#ffd700;font-size:18px;font-weight:bold;margin:0 0 8px 0;">${price} TON</p>
-                            <p style="color:#aaa;font-size:10px;margin:0;padding:0 15px;line-height:1.4;">${coinInfo.description}</p>
+                        <div style="text-align:center;font-family:inherit;padding:20px 0;">
+                            <div style="width:200px;height:200px;margin:0 auto 15px;background:rgba(0,0,0,0.3);border-radius:50%;padding:10px;border:3px solid rgba(255,215,0,0.3);">
+                                <img src="${coinInfo.img}" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.5));">
+                            </div>
+                            <h3 style="color:#ffd700;font-size:22px;margin:0 0 8px 0;text-shadow:0 2px 4px rgba(0,0,0,0.5);">${coinInfo.name}</h3>
+                            <p style="color:#fff;font-size:24px;font-weight:bold;margin:0 0 12px 0;">${price} TON</p>
+                            <p style="color:#aaa;font-size:13px;margin:0;padding:0 20px;line-height:1.5;">${coinInfo.description}</p>
                         </div>
                     `,
                     showCancelButton: false,
                     showConfirmButton: false,
-                    background: '#1a1a2e',
-                    width: '240px',
-                    padding: '12px',
+                    background: 'linear-gradient(145deg, #2a2a3a 0%, #1a1a2e 100%)',
+                    width: '320px',
+                    padding: '20px',
+                    borderRadius: '16px',
                     customClass: {
-                        popup: 'coin-detail-popup'
+                        popup: 'coin-purchase-popup'
                     },
                     didOpen: () => {
                         const popup = Swal.getPopup();
                         popup.innerHTML += `
-                            <div style="display:flex;gap:10px;margin-top:15px;justify-content:center;">
+                            <div style="display:flex;gap:15px;margin-top:20px;justify-content:center;">
                                 <button id="btn-buy-coin" style="
-                                    background: url('/assets/Button.png') no-repeat center center;
-                                    background-size: cover;
-                                    border: none;
-                                    width: 100px;
-                                    height: 40px;
-                                    color: #00ff00;
-                                    font-size: 12px;
+                                    background: linear-gradient(145deg, #3a3a4a 0%, #2a2a3a 100%);
+                                    border: 2px solid #2ed573;
+                                    border-radius: 8px;
+                                    width: 120px;
+                                    height: 44px;
+                                    color: #2ed573;
+                                    font-size: 14px;
                                     font-weight: bold;
                                     cursor: pointer;
-                                    text-shadow: 0 0 4px rgba(0,255,0,0.5);
-                                ">To'lash</button>
+                                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                ">Sotib olish</button>
                                 <button id="btn-cancel-coin" style="
-                                    background: url('/assets/Button.png') no-repeat center center;
-                                    background-size: cover;
-                                    border: none;
-                                    width: 100px;
-                                    height: 40px;
+                                    background: linear-gradient(145deg, #3a3a4a 0%, #2a2a3a 100%);
+                                    border: 2px solid #ff4757;
+                                    border-radius: 8px;
+                                    width: 120px;
+                                    height: 44px;
                                     color: #ff4757;
-                                    font-size: 12px;
+                                    font-size: 14px;
                                     font-weight: bold;
                                     cursor: pointer;
-                                    text-shadow: 0 0 4px rgba(255,71,71,0.5);
+                                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
                                 ">Bekor</button>
                             </div>
                         `;
