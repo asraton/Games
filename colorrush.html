@@ -823,6 +823,7 @@
             updateDisplay();
 
             stopBtn.textContent = 'STOP';
+            stopBtn.style.color = '#ff4757';
             stopBtn.classList.add('stop-mode');
 
             showCoin();
@@ -833,6 +834,7 @@
             isPaused = false;
 
             stopBtn.textContent = 'STOP';
+            stopBtn.style.color = '#ff4757';
             stopBtn.classList.add('stop-mode');
 
             showCoin();
@@ -845,6 +847,7 @@
             coin.style.display = 'none';
 
             stopBtn.textContent = 'START';
+            stopBtn.style.color = '#2ed573';
             stopBtn.classList.remove('stop-mode');
         }
 
@@ -1125,7 +1128,7 @@
                         
                         <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
                         
-                        <button id="pay-wallet-btn-panel" class="wallet-panel-btn" style="width:100%;">
+                        <button id="pay-wallet-btn-panel" class="wallet-panel-btn btn-green" style="width:100%;">
                             Walletga o'tish
                         </button>
                         
@@ -1449,7 +1452,7 @@
                         <button class="wallet-panel-btn" id="confirm-restart" style="width:100%;margin-bottom:8px;">
                             HA, RESTART
                         </button>
-                        <button class="wallet-panel-btn close-modal" style="width:100%;">
+                        <button class="wallet-panel-btn close-modal btn-green" style="width:100%;">
                             BEKOR QILISH
                         </button>
                     </div>
