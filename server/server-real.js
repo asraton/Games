@@ -1030,15 +1030,15 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 
                 // Barcha transactionlarni log qilish
                 tonTransactions.forEach((tx, i) => {
-                    const toAddress = tx.in_msg?.destination;
-                    const fromAddress = tx.in_msg?.source;
-                    const value = tx.in_msg?.value;
+                    const toAddress = tx.to || tx.in_msg?.destination;
+                    const fromAddress = tx.from || tx.in_msg?.source;
+                    const value = tx.value || tx.in_msg?.value;
                     console.log(`   [${i}] From: ${fromAddress?.slice(0, 20)}... To: ${toAddress?.slice(0, 20)}... Value: ${value}`);
                 });
                 
                 paymentTx = tonTransactions.find(tx => {
-                    const toAddress = tx.in_msg?.destination;
-                    const value = tx.in_msg?.value;
+                    const toAddress = tx.to || tx.in_msg?.destination;
+                    const value = tx.value || tx.in_msg?.value;
                     if (!toAddress || !value) return false;
                     const tonAmount = Number(BigInt(value)) / 1e9;
                     // Normalize addresses for comparison
