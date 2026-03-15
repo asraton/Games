@@ -839,7 +839,6 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             // Oxirgi 20 transaction ichidan PAYMENT_ADDRESS ga 1 TON yuborilganini tekshirish
             const paymentTx = transactions.find(tx => {
                 const toAddress = tx.in_msg?.destination;
-                const fromAddress = tx.in_msg?.source;
                 const value = tx.in_msg?.value;
                 
                 if (!toAddress || !value) return false;
@@ -847,12 +846,8 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 // value nanoton da keladi
                 const tonAmount = Number(BigInt(value)) / 1e9;
                 
-                // Faqat boshqa hamyondan kelgan transactionlarni qabul qilish
-                // (O'z-o'ziga yuborilganlarni inkor qilish)
-                const isExternal = fromAddress && fromAddress !== PAYMENT_ADDRESS;
-                
-                // PAYMENT_ADDRESS ga yetib kelganmi, miqdor yetarlimi, va boshqa hamyondanmi
-                return toAddress === PAYMENT_ADDRESS && tonAmount >= REQUIRED_AMOUNT && isExternal;
+                // PAYMENT_ADDRESS ga yetib kelganmi va miqdor yetarlimi
+                return toAddress === PAYMENT_ADDRESS && tonAmount >= REQUIRED_AMOUNT;
             });
             
             if (paymentTx) {
