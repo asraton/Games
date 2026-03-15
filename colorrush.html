@@ -666,6 +666,21 @@
             display: flex;
         }
 
+        .coin-status {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            font-size: 9px;
+            font-weight: bold;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .coin-item.selected .coin-status {
+            color: #ffd700;
+            font-size: 11px;
+        }
+
         .shop-info {
             color: #888;
             font-size: 11px;
@@ -850,6 +865,7 @@
                 <!-- Blue Coin - 1 TON -->
                 <div class="coin-item" data-coin="blue" data-price="1">
                     <div class="coin-check">✓</div>
+                    <div class="coin-status">off</div>
                     <div class="coin-info">
                         <div class="coin-name">Blue</div>
                         <div class="coin-price">1 TON</div>
@@ -859,6 +875,7 @@
                 <!-- Green Coin - 5 TON -->
                 <div class="coin-item" data-coin="green" data-price="5">
                     <div class="coin-check">✓</div>
+                    <div class="coin-status">off</div>
                     <div class="coin-info">
                         <div class="coin-name">Green</div>
                         <div class="coin-price">5 TON</div>
@@ -868,6 +885,7 @@
                 <!-- Pink Coin - 10 TON -->
                 <div class="coin-item" data-coin="pink" data-price="10">
                     <div class="coin-check">✓</div>
+                    <div class="coin-status">off</div>
                     <div class="coin-info">
                         <div class="coin-name">Pink</div>
                         <div class="coin-price">10 TON</div>
@@ -877,6 +895,7 @@
                 <!-- Red Coin - 20 TON -->
                 <div class="coin-item" data-coin="red" data-price="20">
                     <div class="coin-check">✓</div>
+                    <div class="coin-status">off</div>
                     <div class="coin-info">
                         <div class="coin-name">Red</div>
                         <div class="coin-price">20 TON</div>
@@ -886,6 +905,7 @@
                 <!-- Yellow Coin - 30 TON -->
                 <div class="coin-item" data-coin="yellow" data-price="30">
                     <div class="coin-check">✓</div>
+                    <div class="coin-status">off</div>
                     <div class="coin-info">
                         <div class="coin-name">Yellow</div>
                         <div class="coin-price">30 TON</div>
@@ -895,16 +915,13 @@
                 <!-- ASRA Coin - 99 TON -->
                 <div class="coin-item" data-coin="asra" data-price="99">
                     <div class="coin-check">✓</div>
+                    <div class="coin-status">off</div>
                     <div class="coin-info">
                         <div class="coin-name">ASRA PRO</div>
                         <div class="coin-price">99 TON</div>
                     </div>
                     <img src="/assets/ASRA.png" alt="ASRA">
                 </div>
-            </div>
-            <div class="selected-coin-display" id="selected-coin-display" style="display:none;">
-                <img id="selected-coin-img" src="" alt="">
-                <span id="selected-coin-name">Tanlangan: Gunmetal</span>
             </div>
             <button class="wallet-panel-btn close-modal btn-red" id="close-shop" style="width:100%;">Yopish</button>
         </div>
@@ -2072,6 +2089,7 @@
                 const coinItems = coinGrid.querySelectorAll('.coin-item');
                 coinItems.forEach(item => {
                     const coinType = item.dataset.coin;
+                    const statusEl = item.querySelector('.coin-status');
                     item.classList.remove('purchased', 'selected');
                     
                     if (shopData.purchased.includes(coinType)) {
@@ -2079,24 +2097,16 @@
                     }
                     if (shopData.selected === coinType) {
                         item.classList.add('selected');
+                        if (statusEl) statusEl.textContent = 'ON';
+                    } else {
+                        if (statusEl) statusEl.textContent = 'off';
                     }
                 });
 
-                // Tanlangan tangani ko'rsatish
-                const selectedDisplay = document.getElementById('selected-coin-display');
-                const selectedImg = document.getElementById('selected-coin-img');
-                const selectedName = document.getElementById('selected-coin-name');
-                
-                if (shopData.selected && shopData.selected !== 'gunmetal') {
-                    const coin = COIN_DATA[shopData.selected];
-                    if (coin) {
-                        selectedImg.src = coin.img;
-                        selectedName.textContent = `Tanlangan: ${coin.name}`;
-                        selectedDisplay.style.display = 'block';
-                        coinImg.src = coin.img;
-                    }
+                // Asosiy tanga rasmini yangilash
+                if (shopData.selected && shopData.selected !== 'gunmetal' && shopData.purchased.includes(shopData.selected)) {
+                    coinImg.src = COIN_DATA[shopData.selected].img;
                 } else {
-                    selectedDisplay.style.display = 'none';
                     coinImg.src = '/assets/Gunmetal.png';
                 }
             }
@@ -2140,9 +2150,15 @@
                 const coinType = coinItem.dataset.coin;
                 const price = parseInt(coinItem.dataset.price);
 
-                // Agar sotib olingan bo'lsa - tanlash
+                // Agar sotib olingan bo'lsa - toggle (tanlash/ochirish)
                 if (shopData.purchased.includes(coinType)) {
-                    shopData.selected = coinType;
+                    if (shopData.selected === coinType) {
+                        // Agar allaqachon tanlangan bo'lsa - ochirish (gunmetal ga qaytish)
+                        shopData.selected = 'gunmetal';
+                    } else {
+                        // Tanlash
+                        shopData.selected = coinType;
+                    }
                     saveShopData();
                     updateShopUI();
                     return;
