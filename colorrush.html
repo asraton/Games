@@ -2127,8 +2127,8 @@
                 
                 Swal.fire({
                     html: `
-                        <div style="text-align:center;font-family:inherit;display:flex;align-items:center;justify-content:center;min-height:70vh;">
-                            <img src="${coinInfo.img}" style="width:90vmin;height:90vmin;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(0,0,0,0.8));">
+                        <div style="text-align:center;font-family:inherit;display:flex;align-items:center;justify-content:center;height:100vh;padding:0;margin:0;">
+                            <img src="${coinInfo.img}" style="width:95vmin;height:95vmin;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(0,0,0,0.8));">
                         </div>
                     `,
                     showCancelButton: false,
@@ -2143,30 +2143,30 @@
                     didOpen: () => {
                         const popup = Swal.getPopup();
                         popup.innerHTML += `
-                            <div style="background:linear-gradient(145deg, #2a2a3a 0%, #1a1a2e 100%);border:2px solid rgba(255,215,0,0.4);border-radius:12px;padding:4px 15px;margin-top:15px;display:flex;gap:12px;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+                            <div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:linear-gradient(145deg, #2a2a3a 0%, #1a1a2e 100%);border:2px solid rgba(255,215,0,0.4);border-radius:12px;padding:8px 20px;display:flex;gap:15px;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10000;">
                                 <button id="btn-buy-coin" style="
-                                    background: linear-gradient(145deg, #3a3a4a 0%, #2a2a3a 100%);
-                                    border: 2px solid #2ed573;
-                                    border-radius: 8px;
+                                    background: url('/assets/Button.png') no-repeat center center;
+                                    background-size: cover;
+                                    border: none;
                                     width: 120px;
                                     height: 44px;
                                     color: #2ed573;
                                     font-size: 14px;
                                     font-weight: bold;
                                     cursor: pointer;
-                                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
                                 ">Sotib olish</button>
                                 <button id="btn-cancel-coin" style="
-                                    background: linear-gradient(145deg, #3a3a4a 0%, #2a2a3a 100%);
-                                    border: 2px solid #ff4757;
-                                    border-radius: 8px;
+                                    background: url('/assets/Button.png') no-repeat center center;
+                                    background-size: cover;
+                                    border: none;
                                     width: 120px;
                                     height: 44px;
                                     color: #ff4757;
                                     font-size: 14px;
                                     font-weight: bold;
                                     cursor: pointer;
-                                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
                                 ">Bekor</button>
                             </div>
                         `;
