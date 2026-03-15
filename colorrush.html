@@ -1081,7 +1081,7 @@
                     return;
                 }
                 
-                const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
+                const PAYMENT_ADDRESS = 'UQAYFg8VczIFRtX7QRcredLeBFydLgbUfwasup35C8-_Nlnu';
                 const PAYMENT_NANO = 1000000000;
                 const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${safeFirstName}_${userId}`;
                 const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
@@ -1182,7 +1182,7 @@
                 
                 // Haqiqiy rejim: To'lov tekshiruvi
                 if (!paymentStatus || !paymentStatus.hasPaid) {
-                    const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
+                    const PAYMENT_ADDRESS = 'UQAYFg8VczIFRtX7QRcredLeBFydLgbUfwasup35C8-_Nlnu';
                     const PAYMENT_AMOUNT = 1; // 1 TON
                     const PAYMENT_NANO = 1000000000; // 1 TON in nanoton
                     // TON Connect transfer URL - avtomatik hamyon ochish uchun
