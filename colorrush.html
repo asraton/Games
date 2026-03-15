@@ -458,6 +458,96 @@
             transform: scale(0.9);
         }
 
+        /* Help Section Styles */
+        .help-section {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 30px);
+            left: calc(clamp(10px, 2vw, 20px) + 90px);
+            z-index: 95;
+        }
+
+        #help-btn {
+            width: 60px;
+            height: 44px;
+            padding: 0;
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: #00d2ff;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        #help-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* Help Modal */
+        #help-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #help-modal.open { display: flex; }
+
+        .help-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: clamp(16px, 4vw, 24px);
+            border-radius: 16px;
+            text-align: left;
+            max-width: 95vw;
+            width: min(360px, 95vw);
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 2px solid rgba(0, 210, 255, 0.4);
+            box-sizing: border-box;
+        }
+
+        .help-modal-content h3 {
+            color: #00d2ff;
+            margin-bottom: 16px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .help-section-title {
+            color: #ffd700;
+            font-size: 13px;
+            font-weight: bold;
+            margin: 12px 0 6px 0;
+        }
+
+        .help-text {
+            color: #ccc;
+            font-size: 11px;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .help-text-small {
+            color: #888;
+            font-size: 10px;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .help-footer {
+            color: #00d2ff;
+            font-size: 11px;
+            text-align: center;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0, 210, 255, 0.3);
+        }
+
         /* Shop Modal */
         #shop-modal {
             display: none;
@@ -623,6 +713,10 @@
             <button id="shop-btn" title="Do'kon">SHOP</button>
         </div>
 
+        <div class="help-section">
+            <button id="help-btn" title="Yordam">HELP</button>
+        </div>
+
         <div class="game-controls">
             <button id="stop-btn">START</button>
         </div>
@@ -630,6 +724,49 @@
 
     <!-- ASRA Auto-play indicator -->
     <div id="asra-auto-indicator" class="asra-auto-indicator">ASRA Avto-ishlayapti...</div>
+
+    <!-- Help Modal -->
+    <div id="help-modal">
+        <div class="help-modal-content">
+            <h3>📖 O'yin Haqida Ma'lumot</h3>
+            
+            <div class="help-section-title">🎮 Qanday o'ynaladi?</div>
+            <div class="help-text">
+                START tugmasini bosing va ekranda paydo bo'ladigan tangalarni tezda bosing. Har bir tanga uchun 1-100 ASRA olasiz. 10,000 ASRA = 1 TON.
+            </div>
+            
+            <div class="help-section-title">⚡ Sariq va Qizil Tangalar</div>
+            <div class="help-text">
+                Sariq tangalar bonus beradi, qizil tangalar esa -100 ASRA jarima. Ehtiyot bo'ling!
+            </div>
+            
+            <div class="help-section-title">🛒 Do'kon (SHOP)</div>
+            <div class="help-text">
+                Tangalar sotib oling: Blue (1 TON), Green (5 TON), Pink (10 TON), Red (20 TON), Yellow (30 TON), ASRA PRO (99 TON). Qimmatroq tanga = sekinroq o'yin = ko'proq vaqt tangani ushish uchun!
+            </div>
+            
+            <div class="help-section-title">🎯 Maqsad</div>
+            <div class="help-text">
+                TON yig'ing, ASRA to'plang, do'kondan yangi tangalar sotib oling. ASRA PRO bilan avto-ishlash funksiyasidan foydalaning (200 TON gacha).
+            </div>
+            
+            <div class="help-section-title">🔮 Kelajak</div>
+            <div class="help-text-small">
+                ASRA o'yini - bu TON ekotizimiga kirish eshigi. Kelajakda TON orqali istagan narsangizni sotib olish imkoniyati mavjud bo'ladi. O'yin orqali TON nima ekanini o'rganing va ekotizimga qo'shiling.
+            </div>
+            
+            <div class="help-section-title">💙 ASRA Jamoasi Minnatdorchiligi</div>
+            <div class="help-text-small">
+                Qo'llab-quvvatlaganingiz uchun rahmat! Siz bilan birga biz katta kelajak sari yuramiz.
+            </div>
+            
+            <button class="wallet-panel-btn close-modal btn-red" id="close-help" style="width:100%;margin-top:16px;">Yopish</button>
+            
+            <div class="help-footer">
+                ASRA Coin Jamoasi
+            </div>
+        </div>
+    </div>
 
     <!-- Shop Modal -->
     <div id="shop-modal">
@@ -639,43 +776,55 @@
                 <!-- Blue Coin - 1 TON -->
                 <div class="coin-item" data-coin="blue" data-price="1">
                     <div class="coin-check">✓</div>
-                    <div class="coin-name">Blue</div>
-                    <div class="coin-price">1 TON</div>
+                    <div class="coin-info">
+                        <div class="coin-name">Blue</div>
+                        <div class="coin-price">1 TON</div>
+                    </div>
                     <img src="/assets/Blue.png" alt="Blue">
                 </div>
                 <!-- Green Coin - 5 TON -->
                 <div class="coin-item" data-coin="green" data-price="5">
                     <div class="coin-check">✓</div>
-                    <div class="coin-name">Green</div>
-                    <div class="coin-price">5 TON</div>
+                    <div class="coin-info">
+                        <div class="coin-name">Green</div>
+                        <div class="coin-price">5 TON</div>
+                    </div>
                     <img src="/assets/Green.png" alt="Green">
                 </div>
                 <!-- Pink Coin - 10 TON -->
                 <div class="coin-item" data-coin="pink" data-price="10">
                     <div class="coin-check">✓</div>
-                    <div class="coin-name">Pink</div>
-                    <div class="coin-price">10 TON</div>
+                    <div class="coin-info">
+                        <div class="coin-name">Pink</div>
+                        <div class="coin-price">10 TON</div>
+                    </div>
                     <img src="/assets/Pink.png" alt="Pink">
                 </div>
                 <!-- Red Coin - 20 TON -->
                 <div class="coin-item" data-coin="red" data-price="20">
                     <div class="coin-check">✓</div>
-                    <div class="coin-name">Red</div>
-                    <div class="coin-price">20 TON</div>
+                    <div class="coin-info">
+                        <div class="coin-name">Red</div>
+                        <div class="coin-price">20 TON</div>
+                    </div>
                     <img src="/assets/Red.png" alt="Red">
                 </div>
                 <!-- Yellow Coin - 30 TON -->
                 <div class="coin-item" data-coin="yellow" data-price="30">
                     <div class="coin-check">✓</div>
-                    <div class="coin-name">Yellow</div>
-                    <div class="coin-price">30 TON</div>
+                    <div class="coin-info">
+                        <div class="coin-name">Yellow</div>
+                        <div class="coin-price">30 TON</div>
+                    </div>
                     <img src="/assets/Yellow.png" alt="Yellow">
                 </div>
                 <!-- ASRA Coin - 99 TON -->
                 <div class="coin-item" data-coin="asra" data-price="99">
                     <div class="coin-check">✓</div>
-                    <div class="coin-name">ASRA PRO</div>
-                    <div class="coin-price">99 TON</div>
+                    <div class="coin-info">
+                        <div class="coin-name">ASRA PRO</div>
+                        <div class="coin-price">99 TON</div>
+                    </div>
                     <img src="/assets/ASRA.png" alt="ASRA">
                 </div>
             </div>
@@ -1893,6 +2042,27 @@
                 shopModal.classList.remove('open');
             });
 
+            // ==================== HELP FUNCTIONALITY ====================
+            const helpBtn = document.getElementById('help-btn');
+            const helpModal = document.getElementById('help-modal');
+            const closeHelp = document.getElementById('close-help');
+
+            // Help ochish/yopish
+            helpBtn.addEventListener('click', () => {
+                helpModal.classList.add('open');
+            });
+
+            closeHelp.addEventListener('click', () => {
+                helpModal.classList.remove('open');
+            });
+
+            // Help modal tashqarisiga bosilganda yopish
+            helpModal.addEventListener('click', (e) => {
+                if (e.target === helpModal) {
+                    helpModal.classList.remove('open');
+                }
+            });
+
             // Tanga bosilganda
             coinGrid.addEventListener('click', async (e) => {
                 const coinItem = e.target.closest('.coin-item');
@@ -1926,19 +2096,17 @@
                 
                 Swal.fire({
                     html: `
-                        <div style="text-align:center;font-family:inherit;">
-                            <img src="${coinInfo.img}" style="width:60px;height:60px;margin-bottom:8px;">
-                            <h3 style="color:#fff;font-size:16px;margin:4px 0;">${coinInfo.name}</h3>
-                            <p style="color:#ffd700;font-size:20px;font-weight:bold;margin:4px 0;">${price} TON</p>
-                            <p style="color:#aaa;font-size:11px;margin:4px 0;padding:0 20px;">${coinInfo.description}</p>
-                            <p style="color:#888;font-size:10px;margin-top:8px;">Wallet: ${connectedWalletAddress.slice(0,6)}...${connectedWalletAddress.slice(-4)}</p>
+                        <div style="text-align:center;font-family:inherit;padding:10px 0;">
+                            <h3 style="color:#fff;font-size:14px;margin:0 0 8px 0;">${coinInfo.name}</h3>
+                            <p style="color:#ffd700;font-size:18px;font-weight:bold;margin:0 0 8px 0;">${price} TON</p>
+                            <p style="color:#aaa;font-size:10px;margin:0;padding:0 15px;line-height:1.4;">${coinInfo.description}</p>
                         </div>
                     `,
                     showCancelButton: false,
                     showConfirmButton: false,
                     background: '#1a1a2e',
-                    width: '280px',
-                    padding: '15px',
+                    width: '240px',
+                    padding: '12px',
                     customClass: {
                         popup: 'coin-detail-popup'
                     },
