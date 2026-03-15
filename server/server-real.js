@@ -70,14 +70,24 @@ async function getXRocketBalance() {
 // xRocket orqali transactionlarni olish
 async function getXRocketTransactions(limit = 20) {
     try {
+        console.log(`🚀 xRocket API so'rov: /app/deposits?limit=${limit}`);
+        console.log(`   Token: ${XROCKET_API_TOKEN?.slice(0, 10)}...`);
+        
         // xRocket deposits ni olish
         const result = await xRocketRequest('GET', `/app/deposits?limit=${limit}`);
+        
+        console.log(`📦 xRocket API javob:`, JSON.stringify(result, null, 2).slice(0, 500));
+        
         if (result && result.success) {
-            return result.data?.deposits || [];
+            const deposits = result.data?.deposits || [];
+            console.log(`✅ xRocket deposits topildi: ${deposits.length} ta`);
+            return deposits;
+        } else {
+            console.log(`⚠️ xRocket API javob muvaffaqiyatsiz:`, result);
         }
         return [];
     } catch (error) {
-        console.error('xRocket transactions fetch error:', error);
+        console.error('❌ xRocket transactions fetch error:', error.message);
         return [];
     }
 }
