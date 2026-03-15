@@ -548,7 +548,14 @@ app.post('/api/withdraw', async (req, res) => {
     try {
         const { userId, amount, toAddress, testMode } = req.body;
         
+        console.log(`📝 WITHDRAW REQUEST:`);
+        console.log(`   userId: ${userId}`);
+        console.log(`   amount: ${amount}`);
+        console.log(`   testMode: ${testMode}`);
+        console.log(`   toAddress: ${toAddress?.slice(0, 20)}...`);
+        
         if (!userId || !amount || amount <= 0 || !toAddress) {
+            console.log(`❌ VALIDATION ERROR: missing fields`);
             return res.status(400).json({ 
                 error: 'userId, amount va toAddress kerak' 
             });
@@ -557,11 +564,17 @@ app.post('/api/withdraw', async (req, res) => {
         const user = userDB.get(userId);
         
         if (!user) {
+            console.log(`❌ USER NOT FOUND: ${userId}`);
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
         
+        console.log(`✅ User found: ${userId}`);
+        console.log(`   hasPaid: ${user.hasPaid}`);
+        console.log(`   gameData:`, user.gameData);
+        
         // To'lov qilinganmi tekshirish (faqat test mode emasligida)
         if (!testMode && !user.hasPaid) {
+            console.log(`❌ PAYMENT REQUIRED (real mode)`);
             return res.status(403).json({ 
                 error: 'Demo versiya',
                 message: 'TON yechib olish uchun avval 1 TON to\'lashingiz kerak',
@@ -573,8 +586,12 @@ app.post('/api/withdraw', async (req, res) => {
         
         // TEST MODE: gameData.tonCount dan yechish
         if (testMode) {
+            console.log(`🧪 TEST MODE withdraw`);
             const gameTon = user.gameData?.tonCount || 0;
+            console.log(`   gameTon available: ${gameTon}`);
+            
             if (gameTon < amount) {
+                console.log(`❌ Not enough TON: need ${amount}, have ${gameTon}`);
                 return res.status(400).json({
                     error: 'Yetarli TON yo\'q',
                     required: amount,
@@ -585,6 +602,7 @@ app.post('/api/withdraw', async (req, res) => {
             
             // 1 TON qoldirish sharti
             if (gameTon - amount < 1) {
+                console.log(`❌ Must keep 1 TON: have ${gameTon}, withdraw ${amount}`);
                 return res.status(400).json({
                     error: '1 TON qoldirish sharti',
                     maxWithdraw: Math.max(0, gameTon - 1)
@@ -594,6 +612,9 @@ app.post('/api/withdraw', async (req, res) => {
             // GameData dan TON ni kamaytirish
             user.gameData.tonCount -= amount;
             userDB.set(userId, user);
+            
+            console.log(`✅ TEST WITHDRAW SUCCESS: ${amount} TON`);
+            console.log(`   Remaining: ${user.gameData.tonCount} TON`);
             
             return res.json({
                 success: true,
