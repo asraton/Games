@@ -18,7 +18,7 @@ const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
 const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQAYFg8VczIFRtX7QRcredLeBFydLgbUfwasup35C8-_Nlnu';  // xRocket Wallet
 
 // xRocket API config
-const XROCKET_API_TOKEN = process.env.XROCKET_API_TOKEN || '42830f31bbe3397ca4d1e5a24';
+const XROCKET_API_TOKEN = process.env.XROCKET_API_TOKEN || 'b9f26c05a96e5d872544534a4';
 const XROCKET_ENDPOINT = 'https://pay.xrocket.tg';
 
 // TON client with API key
@@ -904,23 +904,47 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             });
         }
         
-        // Transactionlarni tekshirish (xRocket API)
+        // Transactionlarni tekshirish (Avval xRocket, keyin TON Center)
+        let paymentTx = null;
+        
+        // 1. xRocket API dan tekshirish
         try {
-            const transactions = await getXRocketTransactions(20);
+            const xrTransactions = await getXRocketTransactions(20);
+            console.log(`🔍 xRocket transactions: ${xrTransactions.length} ta`);
             
-            console.log(`🔍 xRocket transactions tekshirilmoqda: ${transactions.length} ta`);
-            
-            // Oxirgi 20 transaction ichidan PAYMENT_ADDRESS ga 1 TON yuborilganini tekshirish
-            const paymentTx = transactions.find(tx => {
+            paymentTx = xrTransactions.find(tx => {
                 const amount = parseFloat(tx.amount) || 0;
-                const status = tx.status;
-                const toAddress = tx.to?.address;
-                
-                console.log(`   Tx: ${tx.id}, Amount: ${amount}, Status: ${status}, To: ${toAddress?.slice(0, 20)}...`);
-                
-                // xRocket da status 'completed' bo'lishi kerak
-                return amount >= REQUIRED_AMOUNT && status === 'completed';
+                return amount >= REQUIRED_AMOUNT && tx.status === 'completed';
             });
+            
+            if (paymentTx) {
+                console.log(`✅ xRocket da to'lov topildi: ${paymentTx.id}`);
+            }
+        } catch (xrError) {
+            console.log('⚠️ xRocket tekshiruvda xato:', xrError.message);
+        }
+        
+        // 2. Agar xRocket da topilmasa, TON Center dan tekshirish
+        if (!paymentTx) {
+            try {
+                const tonTransactions = await getTransactions(PAYMENT_ADDRESS, 20);
+                console.log(`🔍 TON Center transactions: ${tonTransactions.length} ta`);
+                
+                paymentTx = tonTransactions.find(tx => {
+                    const toAddress = tx.in_msg?.destination;
+                    const value = tx.in_msg?.value;
+                    if (!toAddress || !value) return false;
+                    const tonAmount = Number(BigInt(value)) / 1e9;
+                    return toAddress === PAYMENT_ADDRESS && tonAmount >= REQUIRED_AMOUNT;
+                });
+                
+                if (paymentTx) {
+                    console.log(`✅ TON Center da to'lov topildi: ${paymentTx.transaction_id?.hash}`);
+                }
+            } catch (tonError) {
+                console.log('⚠️ TON Center tekshiruvda xato:', tonError.message);
+            }
+        }
             
             if (paymentTx) {
                 // To'lov qilingan!
