@@ -106,7 +106,7 @@
             background: url('/assets/Button.png') no-repeat center center;
             background-size: 100% 100%;
             border: none;
-            color: #2ed573;
+            color: #ff4757;
             padding: clamp(12px, 2vh, 15px) clamp(35px, 4vw, 50px);
             font-size: clamp(16px, 2vw, 18px);
             font-weight: bold;
@@ -284,7 +284,7 @@
             background: url('/assets/Button.png') no-repeat center center;
             background-size: 100% 100%;
             border: none;
-            color: #2ed573;
+            color: #ff4757;
             padding: 12px 16px;
             font-size: 14px;
             font-weight: 500;
@@ -300,6 +300,10 @@
 
         .wallet-panel-btn:last-child {
             margin-bottom: 0;
+        }
+
+        .wallet-panel-btn.disconnect {
+            color: #ff4757;
         }
 
         .wallet-address {
@@ -355,7 +359,7 @@
             background: url('/assets/Button.png') no-repeat center center;
             background-size: 100% 100%;
             border: none;
-            color: #2ed573;
+            color: #ff4757;
             padding: 12px 20px;
             font-size: 14px;
             font-weight: bold;
@@ -393,7 +397,7 @@
             background: url('/assets/Button.png') no-repeat center center;
             background-size: 100% 100%;
             border: none;
-            color: #2ed573;
+            color: #ff4757;
             padding: 10px 14px;
             font-size: 13px;
             font-weight: bold;
@@ -419,7 +423,7 @@
             background: url('/assets/Button.png') no-repeat center center;
             background-size: 100% 100%;
             border: none;
-            color: #2ed573;
+            color: #ff4757;
             padding: 12px 24px;
             font-size: 14px;
             font-weight: bold;
@@ -483,9 +487,25 @@
         const metaApi = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
         const API_BASE = metaApi || (window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '');
         
-        // userId - Telegramdan (?userId=123)
+        // userId - Avval localStorage dan, keyin Telegramdan (?userId=123)
         const urlParams = new URLSearchParams(window.location.search);
-        const userId = urlParams.get('userId') || urlParams.get('user_id') || '';
+        const urlUserId = urlParams.get('userId') || urlParams.get('user_id') || '';
+        const storedUserId = localStorage.getItem('asra_current_userId');
+        
+        // Telegram WebApp initData dan userId olish (restartlarda URL dan yo'qolsa)
+        let tgUserId = '';
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe?.user?.id) {
+            tgUserId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+        }
+        
+        // Agar URL da userId bo'lsa - saqlab qo'yamiz, yo'qsa localStorage dan olamiz
+        const userId = urlUserId || storedUserId || tgUserId || '';
+        
+        // userId ni localStorage ga saqlash (restartlarda saqlanib qolishi uchun)
+        if (userId) {
+            localStorage.setItem('asra_current_userId', userId);
+        }
+        
         const urlFirstName = decodeURIComponent(urlParams.get('firstName') || '');
         const urlLastName = decodeURIComponent(urlParams.get('lastName') || '');
 
@@ -546,6 +566,7 @@
         // Backend dan o'yin ma'lumotlarini yuklash
         async function loadGameDataFromAPI() {
             console.log('🔍 [LOAD] Boshlandi. userId:', userId);
+            console.log('🔑 [LOAD] STORAGE_KEY:', STORAGE_KEY);
             
             if (!userId) {
                 console.log('⚠️ [LOAD] userId yo\'q, localStorage dan yuklayman');
@@ -557,6 +578,28 @@
                 const res = await fetch(API_BASE + '/load-game/' + userId);
                 const data = await res.json();
                 console.log('📦 [LOAD] Backend javobi:', data);
+                
+                if (res.status === 404 || data.error === 'Foydalanuvchi topilmadi') {
+                    console.log('⚠️ [LOAD] Backendda user topilmadi, localStorage dan yuklanmoqda...');
+                    const localData = loadGameDataLocal();
+                    
+                    // Agar localStorage da ma'lumot bo'lsa, user ni backend ga registratsiya qilish
+                    if (localData.asraScore > 0 || localData.tonCount > 0) {
+                        console.log('📝 [LOAD] User backend da yo\'q, lekin localStorage da ma\'lumot bor. Registratsiya...');
+                        try {
+                            await fetch(API_BASE + '/user/register', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId })
+                            });
+                            // Ma'lumotlarni backend ga saqlash
+                            await saveGameDataToAPI(localData.asraScore, localData.tonCount);
+                        } catch (regErr) {
+                            console.error('❌ [LOAD] Registratsiya xatosi:', regErr);
+                        }
+                    }
+                    return localData;
+                }
                 
                 if (data.success) {
                     // Agar backend da 0 bo'lsa, lekin localStorage da ma'lumot bo'lsa - migratsiya
@@ -571,6 +614,12 @@
                         }
                     }
                     console.log('✅ [LOAD] Backenddan olindi:', data);
+                    // Backend dan olgan ma'lumotni localStorage ga ham saqlash (backup)
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                        asraScore: data.asraScore || 0,
+                        tonCount: data.tonCount || 0,
+                        lastSaved: new Date().toISOString()
+                    }));
                     return {
                         asraScore: data.asraScore || 0,
                         tonCount: data.tonCount || 0
@@ -1061,17 +1110,6 @@
 
             // Hamyondan to'lash - Wallet paneldan
             document.getElementById('btn-pay-from-wallet').addEventListener('click', () => {
-                walletPanel.classList.remove('open');
-                if (!userId) {
-                    modalTitle.textContent = '💳 To\'lov';
-                    modalBody.innerHTML = `
-                        <p style="color:#ff6b6b;margin-bottom:16px;">Telegram orqali oching</p>
-                        <button class="wallet-panel-btn close-modal" style="width:100%;background:linear-gradient(135deg, #0088cc, #00a8ff);">⬅️ Orqaga</button>
-                    `;
-                    modal.classList.add('open');
-                    return;
-                }
-                
                 const PAYMENT_ADDRESS = 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
                 const PAYMENT_NANO = 1000000000;
                 const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${safeFirstName}_${userId}`;
@@ -1093,7 +1131,7 @@
                         </button>
                         
                         <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:16px;">
-                            Orqaga
+                            Ortga
                         </button>
                     </div>
                 `;
@@ -1147,7 +1185,7 @@
                     modalTitle.textContent = 'TON yechish';
                     modalBody.innerHTML = `
                         <p style="color:${color};margin-bottom:16px;">${message}</p>
-                        <button class="wallet-panel-btn close-modal" style="width:100%;">Orqaga</button>
+                        <button class="wallet-panel-btn close-modal" style="width:100%;">Ortga</button>
                     `;
                     modal.classList.add('open');
                 }
@@ -1195,9 +1233,9 @@
                                 Haqiqiy o'yinda TON yechib olish mumkin
                             </p>
                             
-                            <!-- Faqat Orqaga tugmasi -->
+                            <!-- Faqat Ortga tugmasi -->
                             <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:16px;">
-                                Orqaga
+                                Ortga
                             </button>
                         </div>
                     `;
@@ -1261,7 +1299,7 @@
                             <p style="color:#fff;font-size:14px;margin-bottom:8px;">Sizda: ${gameTonBalance.toFixed(4)} TON</p>
                             <p style="color:#888;font-size:12px;margin-bottom:16px;">Kamida 1 TON qolishi kerak</p>
                             <p style="color:#00d2ff;font-size:13px;margin-bottom:16px;">Yechish uchun kamida 1.1 TON kerak</p>
-                            <button class="wallet-panel-btn close-modal" style="width:100%;">Orqaga</button>
+                            <button class="wallet-panel-btn close-modal" style="width:100%;">Ortga</button>
                         </div>
                     `;
                     modal.classList.add('open');
@@ -1284,7 +1322,7 @@
                         <p style="color:#888;font-size:10px;margin-bottom:16px;">Min: 0.1 TON | Max: ${maxWithdrawAmount.toFixed(4)} TON (1 TON qoladi)</p>
                         
                         <button class="wallet-panel-btn withdraw" id="withdraw-submit" style="width:100%;margin-bottom:8px;">Yechib olish</button>
-                        <button class="wallet-panel-btn close-modal" style="width:100%;">Orqaga</button>
+                        <button class="wallet-panel-btn close-modal" style="width:100%;">Ortga</button>
                     </div>
                 `;
                 modal.classList.add('open');
@@ -1351,7 +1389,7 @@
                                     <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ ${amount} TON yuborildi!</p>
                                     <p style="color:#fff;font-size:13px;margin-bottom:8px;">Qolgan balans: ${tonCount.toFixed(4)} TON</p>
                                     <p style="color:#888;font-size:11px;margin-bottom:16px;">Wallet: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>
-                                    <button class="wallet-panel-btn close-modal" style="width:100%;">Orqaga</button>
+                                    <button class="wallet-panel-btn close-modal" style="width:100%;">Ortga</button>
                                 </div>
                             `;
                         } else {
