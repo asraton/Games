@@ -600,7 +600,6 @@
             flex-direction: column;
             align-items: center;
             gap: 2px;
-            overflow: visible;
         }
 
         .coin-item:hover {
@@ -619,8 +618,9 @@
         }
 
         .coin-item img {
-            width: 200px;
-            height: 200px;
+            width: 100%;
+            max-width: 160px;
+            height: auto;
             object-fit: contain;
             margin-top: 2px;
         }
