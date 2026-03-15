@@ -15,7 +15,7 @@ app.use(express.json());
 // TON Center API config
 const TON_API_KEY = process.env.TON_API_KEY || '';
 const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
-const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQAYFg8VczIFRtX7QRcredLeBFydLgbUfwasup35C8-_Nlnu';  // Master Wallet - receives 1 TON payments
+const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQDSvelqcBpNXm4qprJpXZggULrfNYeAFBi5t_WHNpv0G6qa';  // Master Wallet - receives 1 TON payments
 
 // Master Wallet config - barcha yechishlar shu hamyondan amalga oshiriladi
 const MASTER_WALLET_MNEMONIC = process.env.MASTER_WALLET_MNEMONIC || '';
