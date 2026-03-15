@@ -576,6 +576,16 @@
                 const data = await res.json();
                 
                 if (data.success) {
+                    // Agar backend da 0 bo'lsa, lekin localStorage da ma'lumot bo'lsa - migratsiya
+                    if (data.asraScore === 0 && data.tonCount === 0) {
+                        const localData = loadGameDataLocal();
+                        if (localData.asraScore > 0 || localData.tonCount > 0) {
+                            // LocalStorage dan backend ga ko'chirish
+                            console.log('Migrating localStorage to backend:', localData);
+                            await saveGameDataToAPI(localData.asraScore, localData.tonCount);
+                            return localData;
+                        }
+                    }
                     return {
                         asraScore: data.asraScore || 0,
                         tonCount: data.tonCount || 0
@@ -587,6 +597,24 @@
             
             // API ishlamasa localStorage dan olish
             return loadGameDataLocal();
+        }
+
+        // Backend ga o'yin ma'lumotlarini saqlash (alohida funksiya)
+        async function saveGameDataToAPI(asra, ton) {
+            if (!userId) return;
+            
+            try {
+                await fetch(API_BASE + '/save-game/' + userId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        asraScore: asra,
+                        tonCount: ton
+                    })
+                });
+            } catch (e) {
+                // Backend saqlashda xato
+            }
         }
 
         // LocalStorage dan o'yin ma'lumotlarini yuklash (fallback)
