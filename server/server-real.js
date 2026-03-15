@@ -21,10 +21,6 @@ const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQAYFg8VczIFRtX7QRcredLe
 const MASTER_WALLET_MNEMONIC = process.env.MASTER_WALLET_MNEMONIC || '';
 const MASTER_WALLET_ADDRESS = process.env.MASTER_WALLET_ADDRESS || PAYMENT_ADDRESS;
 
-// xRocket API config
-const XROCKET_API_TOKEN = process.env.XROCKET_API_TOKEN;
-const XROCKET_ENDPOINT = 'https://pay.xrocket.tg';
-
 // Address normalization - TON Address library orqali solishtirish
 function areAddressesEqual(addr1, addr2) {
     if (!addr1 || !addr2) return false;
@@ -82,71 +78,6 @@ async function toncenterRequest(method, params) {
     } catch (error) {
         console.error('TON Center API error:', error.message);
         return null;
-    }
-}
-
-// xRocket API helper - to'lovlarni tekshirish
-async function xRocketRequest(method, endpoint, data = null) {
-    try {
-        const url = `${XROCKET_ENDPOINT}${endpoint}`;
-        const headers = {
-            'Authorization': `Bearer ${XROCKET_API_TOKEN}`,
-            'Content-Type': 'application/json'
-        };
-        
-        let response;
-        if (data) {
-            response = await axios.post(url, data, { headers, timeout: 30000 });
-        } else {
-            response = await axios.get(url, { headers, timeout: 30000 });
-        }
-        
-        return response.data;
-    } catch (error) {
-        console.error('xRocket API error:', error.message);
-        if (error.response) {
-            console.error('Response:', error.response.data);
-        }
-        return null;
-    }
-}
-
-// xRocket orqali balansni tekshirish
-async function getXRocketBalance() {
-    try {
-        const result = await xRocketRequest('GET', '/app/stats');
-        if (result && result.success) {
-            return result.data?.balances || {};
-        }
-        return {};
-    } catch (error) {
-        console.error('xRocket balance check error:', error);
-        return {};
-    }
-}
-
-// xRocket orqali transactionlarni olish
-async function getXRocketTransactions(limit = 20) {
-    try {
-        console.log(`🚀 xRocket API so'rov: /app/deposits?limit=${limit}`);
-        console.log(`   Token: ${XROCKET_API_TOKEN?.slice(0, 10)}...`);
-        
-        // xRocket deposits ni olish
-        const result = await xRocketRequest('GET', `/app/deposits?limit=${limit}`);
-        
-        console.log(`📦 xRocket API javob:`, JSON.stringify(result, null, 2).slice(0, 500));
-        
-        if (result && result.success) {
-            const deposits = result.data?.deposits || [];
-            console.log(`✅ xRocket deposits topildi: ${deposits.length} ta`);
-            return deposits;
-        } else {
-            console.log(`⚠️ xRocket API javob muvaffaqiyatsiz:`, result);
-        }
-        return [];
-    } catch (error) {
-        console.error('❌ xRocket transactions fetch error:', error.message);
-        return [];
     }
 }
 
@@ -913,36 +844,6 @@ if (process.env.NODE_ENV !== 'production') {
     });
 }
 
-// Debug endpoint - xRocket transactionlarni ko'rish (FAQAT development rejimida)
-if (process.env.NODE_ENV !== 'production') {
-    app.get('/api/debug/xrocket', async (req, res) => {
-        try {
-            const transactions = await getXRocketTransactions(20);
-            
-            res.json({
-                success: true,
-                count: transactions.length,
-                paymentAddress: PAYMENT_ADDRESS,
-                xrocketToken: XROCKET_API_TOKEN ? '✅ Mavjud' : '❌ Yo\'q',
-                transactions: transactions.map(tx => ({
-                    id: tx.id,
-                    amount: tx.amount,
-                    status: tx.status,
-                    from: tx.from?.address,
-                    to: tx.to?.address,
-                    createdAt: tx.createdAt
-                }))
-            });
-        } catch (error) {
-            res.status(500).json({
-                success: false,
-                error: error.message,
-                paymentAddress: PAYMENT_ADDRESS
-            });
-        }
-    });
-}
-
 // Debug endpoint - TON Center transactionlarni ko'rish (FAQAT development rejimida)
 if (process.env.NODE_ENV !== 'production') {
     app.get('/api/debug/toncenter', async (req, res) => {
@@ -1032,75 +933,52 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             });
         }
         
-        // Transactionlarni tekshirish (Avval xRocket, keyin TON Center)
+        // Transactionlarni tekshirish (FAQAT TON Center orqali)
         let paymentTx = null;
         
-        // 1. xRocket API dan tekshirish
+        // TON Center dan tekshirish
         try {
-            const xrTransactions = await getXRocketTransactions(20);
-            console.log(`🔍 xRocket transactions: ${xrTransactions.length} ta`);
+            console.log(`🔍 TON Center: ${PAYMENT_ADDRESS} uchun transactionlar olinmoqda...`);
+            const tonTransactions = await getTransactions(PAYMENT_ADDRESS, 20);
+            console.log(`🔍 TON Center transactions: ${tonTransactions.length} ta`);
             
-            paymentTx = xrTransactions.find(tx => {
-                const amount = parseFloat(tx.amount) || 0;
-                const status = tx.status?.toLowerCase();
-                // Multiple success statuses
-                const isSuccessStatus = ['completed', 'success', 'done', 'confirmed'].includes(status);
-                console.log(`   Tx check: amount=${amount}, status=${status}, isSuccess=${isSuccessStatus}`);
-                return amount >= REQUIRED_AMOUNT && isSuccessStatus;
+            // Barcha transactionlarni log qilish
+            console.log(`🔍 Backend: Analyzing ${tonTransactions.length} TON Center transactions`);
+            tonTransactions.forEach((tx, i) => {
+                const toAddress = tx.to || tx.in_msg?.destination;
+                const fromAddress = tx.from || tx.in_msg?.source;
+                const value = tx.value || tx.in_msg?.value;
+                console.log(`   [${i}] Raw tx:`, JSON.stringify({
+                    to: tx.to,
+                    value: tx.value,
+                    in_msg_dest: tx.in_msg?.destination,
+                    in_msg_value: tx.in_msg?.value
+                }));
+                console.log(`   [${i}] Parsed: From=${fromAddress?.slice(0, 15)}... To=${toAddress?.slice(0, 15)}... Value=${value}`);
+            });
+            
+            paymentTx = tonTransactions.find(tx => {
+                const toAddress = tx.to || tx.in_msg?.destination;
+                const value = tx.value || tx.in_msg?.value;
+                if (!toAddress || !value) {
+                    console.log(`   ❌ Skipping tx: missing toAddress=${!!toAddress} or value=${!!value}`);
+                    return false;
+                }
+                const tonAmount = Number(BigInt(value)) / 1e9;
+                // Use Address library for proper comparison
+                const isAddressMatch = areAddressesEqual(toAddress, PAYMENT_ADDRESS);
+                const isMatch = isAddressMatch && tonAmount >= REQUIRED_AMOUNT;
+                console.log(`   🔍 Checking: to=${toAddress?.slice(0, 20)}... amount=${tonAmount} TON, addressMatch=${isAddressMatch}, match=${isMatch}`);
+                return isMatch;
             });
             
             if (paymentTx) {
-                console.log(`✅ xRocket da to'lov topildi: ${paymentTx.id}`);
+                console.log(`✅ TON Center da to'lov topildi: ${paymentTx.transaction_id?.hash}`);
+            } else {
+                console.log(`❌ TON Center da to'lov topilmadi`);
             }
-        } catch (xrError) {
-            console.log('⚠️ xRocket tekshiruvda xato:', xrError.message);
-        }
-        
-        // 2. Agar xRocket da topilmasa, TON Center dan tekshirish
-        if (!paymentTx) {
-            try {
-                console.log(`🔍 TON Center: ${PAYMENT_ADDRESS} uchun transactionlar olinmoqda...`);
-                const tonTransactions = await getTransactions(PAYMENT_ADDRESS, 20);
-                console.log(`🔍 TON Center transactions: ${tonTransactions.length} ta`);
-                
-                // Barcha transactionlarni log qilish
-                console.log(`🔍 Backend: Analyzing ${tonTransactions.length} TON Center transactions`);
-                tonTransactions.forEach((tx, i) => {
-                    const toAddress = tx.to || tx.in_msg?.destination;
-                    const fromAddress = tx.from || tx.in_msg?.source;
-                    const value = tx.value || tx.in_msg?.value;
-                    console.log(`   [${i}] Raw tx:`, JSON.stringify({
-                        to: tx.to,
-                        value: tx.value,
-                        in_msg_dest: tx.in_msg?.destination,
-                        in_msg_value: tx.in_msg?.value
-                    }));
-                    console.log(`   [${i}] Parsed: From=${fromAddress?.slice(0, 15)}... To=${toAddress?.slice(0, 15)}... Value=${value}`);
-                });
-                
-                paymentTx = tonTransactions.find(tx => {
-                    const toAddress = tx.to || tx.in_msg?.destination;
-                    const value = tx.value || tx.in_msg?.value;
-                    if (!toAddress || !value) {
-                        console.log(`   ❌ Skipping tx: missing toAddress=${!!toAddress} or value=${!!value}`);
-                        return false;
-                    }
-                    const tonAmount = Number(BigInt(value)) / 1e9;
-                    // Use Address library for proper comparison
-                    const isAddressMatch = areAddressesEqual(toAddress, PAYMENT_ADDRESS);
-                    const isMatch = isAddressMatch && tonAmount >= REQUIRED_AMOUNT;
-                    console.log(`   🔍 Checking: to=${toAddress?.slice(0, 20)}... amount=${tonAmount} TON, addressMatch=${isAddressMatch}, match=${isMatch}`);
-                    return isMatch;
-                });
-                
-                if (paymentTx) {
-                    console.log(`✅ TON Center da to'lov topildi: ${paymentTx.transaction_id?.hash}`);
-                } else {
-                    console.log(`❌ TON Center da to'lov topilmadi`);
-                }
-            } catch (tonError) {
-                console.log('⚠️ TON Center tekshiruvda xato:', tonError.message);
-            }
+        } catch (tonError) {
+            console.log('⚠️ TON Center tekshiruvda xato:', tonError.message);
         }
         
         // Tekshirish natijalarini qayta ishlash
@@ -1188,28 +1066,35 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
         
         const REQUIRED_AMOUNT = 1;
         
-        // xRocket API bilan transactionlarni tekshirish
-        const transactions = await getXRocketTransactions(30);
-        
-        console.log(`🔍 xRocket confirm-payment: ${transactions.length} ta transaction`);
-        
-        const paymentTx = transactions.find(tx => {
-            const amount = parseFloat(tx.amount) || 0;
-            const status = tx.status?.toLowerCase();
-            const isSuccessStatus = ['completed', 'success', 'done', 'confirmed'].includes(status);
+        // TON Center dan transactionlarni tekshirish
+        let paymentTx = null;
+        try {
+            const tonTransactions = await getTransactions(PAYMENT_ADDRESS, 30);
+            console.log(`🔍 TON Center confirm-payment: ${tonTransactions.length} ta transaction`);
             
-            console.log(`   Tx: ${tx.id}, Amount: ${amount}, Status: ${status}, isSuccess=${isSuccessStatus}`);
-            
-            return amount >= REQUIRED_AMOUNT && isSuccessStatus;
-        });
+            paymentTx = tonTransactions.find(tx => {
+                const toAddress = tx.to || tx.in_msg?.destination;
+                const value = tx.value || tx.in_msg?.value;
+                if (!toAddress || !value) return false;
+                
+                const tonAmount = Number(BigInt(value)) / 1e9;
+                const isAddressMatch = areAddressesEqual(toAddress, PAYMENT_ADDRESS);
+                
+                console.log(`   Tx check: amount=${tonAmount}, addressMatch=${isAddressMatch}`);
+                
+                return isAddressMatch && tonAmount >= REQUIRED_AMOUNT;
+            });
+        } catch (error) {
+            console.log('⚠️ TON Center tekshiruvda xato:', error.message);
+        }
         
         if (paymentTx) {
             // Yangi o'yin uchun statistikani reset qilish
             user.hasPaid = true;
             user.paidAt = new Date().toISOString();
             user.paidAmount = REQUIRED_AMOUNT;
-            user.paymentTxHash = paymentTx.id || null;
-            user.paidFromAddress = paymentTx.from?.address || null;
+            user.paymentTxHash = paymentTx.transaction_id?.hash || null;
+            user.paidFromAddress = paymentTx.from || paymentTx.in_msg?.source || null;
             
             // Barcha statistikani 0 ga tushirish (yangi o'yin)
             user.totalDeposited = 0;
@@ -1231,14 +1116,14 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
             userDB.set(userId, user);
             
             console.log(`✅ To'lov tasdiqlandi va o'yin reset qilindi: ${userId}`);
-            console.log(`   Tx: ${paymentTx.id}, Amount: ${paymentTx.amount} TON`);
+            console.log(`   Tx: ${paymentTx.transaction_id?.hash}`);
             
             res.json({
                 success: true,
                 hasPaid: true,
                 message: 'To\'lov tasdiqlandi! Yangi o\'yin boshlandi.',
                 reset: true,
-                txHash: paymentTx.id
+                txHash: paymentTx.transaction_id?.hash
             });
         } else {
             res.json({
