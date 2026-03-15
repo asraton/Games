@@ -6,7 +6,7 @@ const { mnemonicNew, mnemonicToWalletKey } = require('@ton/crypto');
 const axios = require('axios');
 
 // JSON file database
-const { userDB, shopDB } = require('./jsonDB');
+const { userDB } = require('./jsonDB');
 
 const app = express();
 app.use(cors());
@@ -522,169 +522,6 @@ app.post('/api/check-all-deposits', async (req, res) => {
         
     } catch (error) {
         console.error('Check all deposits error:', error);
-        res.status(500).json({ error: 'Server xatoligi' });
-    }
-});
-
-// Do'kon itemlarini olish
-app.get('/api/shop/items', async (req, res) => {
-    try {
-        const items = Object.values(shopDB.getAll()).filter(item => item.isActive);
-        
-        res.json({
-            success: true,
-            items: items
-        });
-    } catch (error) {
-        console.error('Get shop items error:', error);
-        res.status(500).json({ error: 'Server xatoligi' });
-    }
-});
-
-// Item sotib olish
-app.post('/api/shop/purchase', async (req, res) => {
-    try {
-        const { userId, itemId } = req.body;
-        
-        if (!userId || !itemId) {
-            return res.status(400).json({ error: 'userId va itemId kerak' });
-        }
-        
-        const user = userDB.get(userId);
-        const item = shopDB.get(itemId);
-        
-        if (!user) {
-            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
-        }
-        
-        if (!item || !item.isActive) {
-            return res.status(404).json({ error: 'Item topilmadi' });
-        }
-        
-        if (user.purchasedItems.includes(itemId)) {
-            return res.status(400).json({ error: 'Bu item allaqachon sotib olingan' });
-        }
-        
-        if (user.jettonBalance < item.price) {
-            return res.status(400).json({ 
-                error: 'Yetarli jetton yo\'q',
-                required: item.price,
-                current: user.jettonBalance
-            });
-        }
-        
-        user.jettonBalance -= item.price;
-        user.purchasedItems.push(itemId);
-        userDB.set(userId, user);
-        
-        purchaseDB.add({
-            userId,
-            itemId,
-            price: item.price,
-            purchasedAt: new Date().toISOString()
-        });
-        
-        res.json({
-            success: true,
-            message: `${item.name} sotib olindi!`,
-            remainingBalance: user.jettonBalance,
-            item: {
-                itemId: item.itemId,
-                name: item.name,
-                effect: item.effect,
-                effectValue: item.effectValue
-            }
-        });
-        
-    } catch (error) {
-        console.error('Purchase error:', error);
-        res.status(500).json({ error: 'Server xatoligi' });
-    }
-});
-
-// TON -> Jetton konvertatsiya
-app.post('/api/convert-ton', async (req, res) => {
-    try {
-        const { userId, tonAmount } = req.body;
-        
-        if (!userId || !tonAmount || tonAmount <= 0) {
-            return res.status(400).json({ error: 'userId va tonAmount kerak' });
-        }
-        
-        const user = userDB.get(userId);
-        
-        if (!user) {
-            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
-        }
-        
-        // REAL balansni tekshirish
-        const realBalance = await getRealTonBalance(user.depositWallet.address);
-        
-        // Mavjud TON miqdori (deposited - converted)
-        const availableTon = user.totalDeposited - user.totalConverted;
-        
-        // Agar real balance kamaygan bo'lsa (withdraw qilingan), yangilash kerak
-        if (realBalance < availableTon) {
-            const withdrawnAmount = availableTon - realBalance;
-            user.totalDeposited = Math.max(0, user.totalDeposited - withdrawnAmount);
-        }
-        
-        // Yangilangan available TON
-        const updatedAvailableTon = user.totalDeposited - user.totalConverted;
-        
-        if (tonAmount > updatedAvailableTon) {
-            return res.status(400).json({ 
-                error: 'Yetarli TON yo\'q',
-                required: tonAmount,
-                available: updatedAvailableTon,
-                realBalance: realBalance,
-                isReal: true
-            });
-        }
-        
-        const jettonAmount = Math.floor(tonAmount * 1000);
-        
-        // totalConverted ni yangilash
-        user.totalConverted += tonAmount;
-        user.jettonBalance += jettonAmount;
-        user.balance = user.totalDeposited - user.totalConverted;
-        userDB.set(userId, user);
-        
-        res.json({
-            success: true,
-            message: `${tonAmount} TON -> ${jettonAmount} Jetton konvertatsiya qilindi`,
-            tonDeposited: user.totalDeposited,
-            tonConverted: user.totalConverted,
-            tonAvailable: user.balance,
-            jettonBalance: user.jettonBalance,
-            isReal: true
-        });
-        
-    } catch (error) {
-        console.error('Convert TON error:', error);
-        res.status(500).json({ error: 'Server xatoligi' });
-    }
-});
-
-// User ning sotib olingan itemlarini olish
-app.get('/api/user/:userId/items', async (req, res) => {
-    try {
-        const user = userDB.get(req.params.userId);
-        if (!user) {
-            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
-        }
-        
-        const items = Object.values(shopDB.getAll()).filter(item => 
-            user.purchasedItems.includes(item.itemId)
-        );
-        
-        res.json({
-            success: true,
-            items: items
-        });
-        
-    } catch (error) {
-        console.error('Get user items error:', error);
         res.status(500).json({ error: 'Server xatoligi' });
     }
 });
@@ -1323,50 +1160,6 @@ app.get('/api/user/:userId/stats', async (req, res) => {
     }
 });
 
-// Default shop items yaratish
-async function createDefaultShopItems() {
-    const defaultItems = [
-        {
-            itemId: 'speed_boost',
-            name: '⚡ Tezlik +20%',
-            description: 'Tanga tezligi 20% oshadi',
-            price: 500,
-            icon: 'assets/speed.png',
-            effect: 'speed_boost',
-            effectValue: 20,
-            isActive: true
-        },
-        {
-            itemId: 'double_reward',
-            name: '💰 2x mukofot',
-            description: 'Har bir tanga uchun 2x asra',
-            price: 2000,
-            icon: 'assets/double.png',
-            effect: 'double_reward',
-            effectValue: 2,
-            isActive: true
-        },
-        {
-            itemId: 'bonus_magnet',
-            name: '🧲 Bonus magnit',
-            description: 'Bonuslar yaqinlashganda avtomatik yig\'iladi',
-            price: 3000,
-            icon: 'assets/magnet.png',
-            effect: 'bonus_magnet',
-            effectValue: 1,
-            isActive: true
-        }
-    ];
-    
-    for (const item of defaultItems) {
-        const existingItem = shopDB.get(item.itemId);
-        if (!existingItem) {
-            shopDB.set(item.itemId, item);
-            console.log(`Shop item yaratildi: ${item.name}`);
-        }
-    }
-}
-
 // O'yin ma'lumotlarini saqlash (asraScore, tonCount)
 app.post('/api/save-game/:userId', async (req, res) => {
     try {
@@ -1500,9 +1293,6 @@ app.listen(PORT, async () => {
     
     // Database migration
     await migrateDatabase();
-    
-    // Initialize default shop items
-    await createDefaultShopItems();
 });
 
 module.exports = app;

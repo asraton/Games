@@ -6,8 +6,6 @@ const crypto = require('crypto');
 // Lokalda ishlayotganda ./data, Railway da /app/data
 const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/app/data';
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
-const SHOP_ITEMS_FILE = path.join(DATA_DIR, 'shopItems.json');
-const PURCHASES_FILE = path.join(DATA_DIR, 'purchases.json');
 
 // Encryption key from environment variable (must be 32 bytes for AES-256)
 const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY || '';
@@ -30,8 +28,6 @@ function initFile(filePath, defaultData = {}) {
 }
 
 initFile(USERS_FILE, {});
-initFile(SHOP_ITEMS_FILE, {});
-initFile(PURCHASES_FILE, []);
 
 // Encrypt sensitive data (mnemonics, private keys)
 function encrypt(text) {
@@ -164,52 +160,8 @@ const userDB = {
     }
 };
 
-// Shop items operations
-const shopDB = {
-    get(itemId) {
-        const items = readData(SHOP_ITEMS_FILE) || {};
-        return items[itemId] || null;
-    },
-
-    getAll() {
-        return readData(SHOP_ITEMS_FILE) || {};
-    },
-
-    set(itemId, itemData) {
-        const items = readData(SHOP_ITEMS_FILE) || {};
-        items[itemId] = itemData;
-        return writeData(SHOP_ITEMS_FILE, items);
-    },
-
-    delete(itemId) {
-        const items = readData(SHOP_ITEMS_FILE) || {};
-        delete items[itemId];
-        return writeData(SHOP_ITEMS_FILE, items);
-    }
-};
-
-// Purchases operations
-const purchaseDB = {
-    getAll() {
-        return readData(PURCHASES_FILE) || [];
-    },
-
-    add(purchase) {
-        const purchases = readData(PURCHASES_FILE) || [];
-        purchases.push(purchase);
-        return writeData(PURCHASES_FILE, purchases);
-    },
-
-    getByUser(userId) {
-        const purchases = readData(PURCHASES_FILE) || [];
-        return purchases.filter(p => p.userId === userId);
-    }
-};
-
 module.exports = {
     userDB,
-    shopDB,
-    purchaseDB,
     DATA_DIR,
     encrypt,
     decrypt
