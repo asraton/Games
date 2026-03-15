@@ -546,7 +546,7 @@ app.get('/api/user/:userId/items', async (req, res) => {
 // REAL Withdraw - foydalanuvchi o'z walletiga pul yechib olish
 app.post('/api/withdraw', async (req, res) => {
     try {
-        const { userId, amount, toAddress } = req.body;
+        const { userId, amount, toAddress, testMode } = req.body;
         
         if (!userId || !amount || amount <= 0 || !toAddress) {
             return res.status(400).json({ 
@@ -560,8 +560,8 @@ app.post('/api/withdraw', async (req, res) => {
             return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
         }
         
-        // To'lov qilinganmi tekshirish
-        if (!user.hasPaid) {
+        // To'lov qilinganmi tekshirish (faqat test mode emasligida)
+        if (!testMode && !user.hasPaid) {
             return res.status(403).json({ 
                 error: 'Demo versiya',
                 message: 'TON yechib olish uchun avval 1 TON to\'lashingiz kerak',
@@ -571,7 +571,39 @@ app.post('/api/withdraw', async (req, res) => {
             });
         }
         
-        // Mavjud TON miqdorini hisoblash (deposited - converted)
+        // TEST MODE: gameData.tonCount dan yechish
+        if (testMode) {
+            const gameTon = user.gameData?.tonCount || 0;
+            if (gameTon < amount) {
+                return res.status(400).json({
+                    error: 'Yetarli TON yo\'q',
+                    required: amount,
+                    available: gameTon,
+                    message: 'O\'yinda yetarli TON yo\'q'
+                });
+            }
+            
+            // 1 TON qoldirish sharti
+            if (gameTon - amount < 1) {
+                return res.status(400).json({
+                    error: '1 TON qoldirish sharti',
+                    maxWithdraw: Math.max(0, gameTon - 1)
+                });
+            }
+            
+            // GameData dan TON ni kamaytirish
+            user.gameData.tonCount -= amount;
+            userDB.set(userId, user);
+            
+            return res.json({
+                success: true,
+                message: `${amount} TON yechib olindi (Test mode)`,
+                tonCount: user.gameData.tonCount,
+                testMode: true
+            });
+        }
+        
+        // REAL MODE: deposited TON dan yechish (asliy o'yin)
         const availableTon = user.totalDeposited - user.totalConverted;
         
         if (availableTon < amount) {
@@ -590,7 +622,7 @@ app.post('/api/withdraw', async (req, res) => {
             });
         }
         
-        // 1 TON qoldirish sharti - 1 tondan oshganda 1 ton qolib ketadi
+        // 1 TON qoldirish sharti
         const minRequiredBalance = 1;
         if (availableTon - amount < minRequiredBalance) {
             return res.status(400).json({

@@ -1335,7 +1335,8 @@
                             body: JSON.stringify({
                                 userId: userId,
                                 amount: amount,
-                                toAddress: connectedWalletAddress
+                                toAddress: connectedWalletAddress,
+                                testMode: TEST_MODE // Test rejimida hasPaid tekshiruvini o'tkazib yuboradi
                             })
                         });
                         const result = await res.json();
