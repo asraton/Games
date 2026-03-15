@@ -44,7 +44,7 @@
     border-radius: 16px;
     text-align: center;
     max-width: 95vw;
-    width: min(380px, 95vw);
+    width: min(520px, 95vw);
     max-height: 90vh;
     overflow-y: auto;
     border: 2px solid rgba(255, 215, 0, 0.4);
@@ -84,7 +84,7 @@
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
     width: 100%;
 }
 
@@ -104,10 +104,10 @@
 }
 
 .coin-item img {
-    width: 140px;
-    height: 140px;
+    width: 240px;
+    height: 240px;
     object-fit: contain;
-    margin-top: 4px;
+    margin-top: 2px;
 }
 
 .coin-name {
