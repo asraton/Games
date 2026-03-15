@@ -735,17 +735,23 @@ app.get('/api/check-payment/:userId', async (req, res) => {
         try {
             const transactions = await getTransactions(PAYMENT_ADDRESS, 20);
             
-            // Oxirgi 20 transaction ichidan user deposit walletidan 1 TON yuborilganini tekshirish
+            // Oxirgi 20 transaction ichidan PAYMENT_ADDRESS ga 1 TON yuborilganini tekshirish
+            // User ID kommentariyda bo'lishi kerak
             const paymentTx = transactions.find(tx => {
-                const fromAddress = tx.in_msg?.source;
+                const toAddress = tx.in_msg?.destination;
                 const value = tx.in_msg?.value;
-                if (!fromAddress || !value) return false;
+                const comment = tx.in_msg?.message_content?.body || tx.in_msg?.msg_data?.text || '';
+                
+                if (!toAddress || !value) return false;
                 
                 // value nanoton da keladi
                 const tonAmount = Number(BigInt(value)) / 1e9;
                 
-                // Userning deposit wallet manzilidan 1 TON yuborilganmi
-                return fromAddress === user.depositWallet.address && tonAmount >= REQUIRED_AMOUNT;
+                // PAYMENT_ADDRESS ga yetib kelganmi va miqdor yetarlimi
+                // Va kommentariyda userId bormi (text da)
+                return toAddress === PAYMENT_ADDRESS && 
+                       tonAmount >= REQUIRED_AMOUNT &&
+                       (comment.includes(userId) || comment.includes(user.userId));
             });
             
             if (paymentTx) {
@@ -816,12 +822,16 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
         const transactions = await getTransactions(PAYMENT_ADDRESS, 30);
         
         const paymentTx = transactions.find(tx => {
-            const fromAddress = tx.in_msg?.source;
+            const toAddress = tx.in_msg?.destination;
             const value = tx.in_msg?.value;
-            if (!fromAddress || !value) return false;
+            const comment = tx.in_msg?.message_content?.body || tx.in_msg?.msg_data?.text || '';
+            
+            if (!toAddress || !value) return false;
             
             const tonAmount = Number(BigInt(value)) / 1e9;
-            return fromAddress === user.depositWallet.address && tonAmount >= REQUIRED_AMOUNT;
+            return toAddress === PAYMENT_ADDRESS && 
+                   tonAmount >= REQUIRED_AMOUNT &&
+                   (comment.includes(userId) || comment.includes(user.userId));
         });
         
         if (paymentTx) {
