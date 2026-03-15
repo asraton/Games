@@ -1005,7 +1005,7 @@
                 // QISQARTIRILGAN manzil ko'rsatiladi (ABC...XYZ format)
                 const shortAddress = shortenAddress(connectedWalletAddress);
                 walletAddressDisplay.innerHTML = `
-                    <strong style="color:#888">Ulangan:</strong> 
+                    <strong style="color:#888">Wallet:</strong> 
                     <span style="color:#fff; font-family:monospace;">${shortAddress}</span>
                 `;
                 walletAddressDisplay.style.display = 'block';
@@ -1295,16 +1295,16 @@
                 
                 // O'yindagi TON balansini olish (localStorage)
                 const gameTonBalance = tonCount;
-                const minKeepAmount = 1; // 1 TON qolishi kerak
-                const maxWithdrawAmount = Math.max(0, gameTonBalance - minKeepAmount); // 1 TON dan ortig'ini yechish mumkin
+                const minRequiredAmount = 10; // Minimum 10 TON kerak yechish uchun
+                const feeReserve = 1; // 1 TON qolishi kerak komissiya uchun
+                const maxWithdrawAmount = Math.max(0, gameTonBalance - feeReserve);
                 
-                if (maxWithdrawAmount <= 0) {
+                if (gameTonBalance < minRequiredAmount) {
                     modalBody.innerHTML = `
                         <div style="text-align:center;padding:16px;">
                             <p style="color:#ff6b6b;font-size:16px;margin-bottom:12px;">⚠️ Yetarli TON yo'q</p>
                             <p style="color:#fff;font-size:14px;margin-bottom:8px;">Sizda: ${gameTonBalance.toFixed(4)} TON</p>
-                            <p style="color:#888;font-size:12px;margin-bottom:16px;">Kamida 2 TON to'plang</p>
-                            <p style="color:#00d2ff;font-size:13px;margin-bottom:16px;">Yechish uchun kamida 1.1 TON kerak</p>
+                            <p style="color:#00d2ff;font-size:13px;margin-bottom:16px;">Yechish uchun kamida 10 TON kerak</p>
                             <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Ortga</button>
                         </div>
                     `;
@@ -1317,16 +1317,16 @@
                         <p style="color:#888;font-size:18px;margin-bottom:12px;margin-top:20px;">💸 TON yechish</p>
                         <p style="color:#ffd700;font-size:18px;margin-bottom:12px;">💰 O'yin balansingiz</p>
                         <p style="color:#00d2ff;font-size:32px;font-weight:bold;margin-bottom:8px;">${gameTonBalance.toFixed(4)} TON</p>
-                        <p style="color:#888;font-size:11px;margin-bottom:16px;">1 TON qoladi | Yechish mumkin: ${maxWithdrawAmount.toFixed(4)} TON</p>
+                        <p style="color:#888;font-size:11px;margin-bottom:16px;">1 TON blokcheyn zaxirasi komissiyasi uchun qoladi | Yechish mumkin: ${maxWithdrawAmount.toFixed(4)} TON</p>
                         
-                        <p style="color:#888;font-size:11px;margin-bottom:4px;">Yechib olish manzili:</p>
+                        <p style="color:#888;font-size:11px;margin-bottom:4px;">Yechib olish manzili: asra coin botga ulangan hamyon manzilingiz</p>
                         <p style="color:#fff;font-size:12px;margin-bottom:16px;word-break:break-all;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;">${connectedWalletAddress}</p>
                         
                         <div class="withdraw-input-row" style="margin:16px 0;">
-                            <input type="number" id="withdraw-amount" placeholder="Miqdor (TON)" min="0.1" max="${maxWithdrawAmount}" step="0.1" style="flex:1;">
+                            <input type="number" id="withdraw-amount" placeholder="Min 1 TON" min="1" max="${maxWithdrawAmount}" step="0.1" style="flex:1;">
                             <button id="max-btn" style="white-space:nowrap;">MAX</button>
                         </div>
-                        <p style="color:#888;font-size:10px;margin-bottom:16px;">Min: 0.1 TON | Max: ${maxWithdrawAmount.toFixed(4)} TON (1 TON qoladi)</p>
+                        <p style="color:#888;font-size:10px;margin-bottom:16px;">Min: 1 TON | Max: ${maxWithdrawAmount.toFixed(4)} TON (1 TON blokcheyn zaxirasi uchun qoladi)</p>
                         
                         <button class="wallet-panel-btn withdraw" id="withdraw-submit" style="width:100%;margin-bottom:8px;">Yechib olish</button>
                         <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Ortga</button>
@@ -1342,9 +1342,9 @@
                 // Yechish tugmasi
                 document.getElementById('withdraw-submit').addEventListener('click', async () => {
                     const amount = parseFloat(document.getElementById('withdraw-amount').value);
-                    if (!amount || amount < 0.1) {
+                    if (!amount || amount < 1) {
                         Swal.fire({
-                            text: 'Minimum 0.1 TON',
+                            text: 'Minimum 1 TON',
                             icon: 'warning',
                             timer: 1500,
                             showConfirmButton: false,
