@@ -103,7 +103,8 @@
         }
 
         #stop-btn {
-            background: linear-gradient(135deg, #2ed573, #1e90ff);
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: cover;
             border: 2px solid rgba(255, 255, 255, 0.4);
             color: white;
             padding: clamp(12px, 2vh, 15px) clamp(35px, 4vw, 50px);
@@ -122,7 +123,9 @@
         }
 
         #stop-btn.stop-mode {
-            background: linear-gradient(135deg, #ff4757, #ff6b6b);
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: cover;
+            filter: hue-rotate(140deg) brightness(0.9);
             border: 2px solid rgba(255, 255, 255, 0.4);
             box-shadow: 0 4px 20px rgba(255, 71, 87, 0.4), 0 0 30px rgba(255, 71, 87, 0.2);
         }
@@ -299,7 +302,8 @@
         .wallet-panel-btn {
             display: block;
             width: 100%;
-            background: linear-gradient(135deg, #4a4a4a, #2d2d2d);
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: cover;
             border: 1px solid rgba(255, 255, 255, 0.2);
             color: #e0e0e0;
             padding: 12px 16px;
@@ -389,7 +393,8 @@
         }
 
         .close-modal {
-            background: linear-gradient(135deg, #2ed573, #1e90ff);
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: cover;
             border: 2px solid rgba(255, 255, 255, 0.4);
             color: white;
             padding: 12px 20px;
@@ -429,7 +434,9 @@
         }
         
         #max-btn {
-            background: linear-gradient(135deg, #ff4757, #ff6b6b);
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: cover;
+            filter: hue-rotate(280deg);
             border: 2px solid rgba(255, 255, 255, 0.4);
             color: white;
             padding: 10px 14px;
@@ -457,7 +464,9 @@
         }
 
         #withdraw-submit {
-            background: linear-gradient(135deg, #ff9500, #ff6b00);
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: cover;
+            filter: hue-rotate(30deg) brightness(1.1);
             border: 2px solid rgba(255, 255, 255, 0.4);
             color: white;
             padding: 12px 24px;
@@ -490,7 +499,7 @@
 
         <div class="wallet-section">
             <button id="w-btn" title="Hamyon">
-                <img src="/assets/wallet.svg" alt="Wallet">
+                <img src="/assets/Wallet.png" alt="Wallet" style="width: 44px; height: 44px;">
             </button>
             <div id="wallet-panel">
                 <div id="wallet-address-display" class="wallet-address" style="display:none"></div>
@@ -517,7 +526,7 @@
     </div>
 
     <div id="coin" class="game-coin">
-        <img src="/assets/ASRA.png" alt="ASRA">
+        <img src="/assets/Gunmetal.png" alt="ASRA">
     </div>
 
     <script>
