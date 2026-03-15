@@ -325,7 +325,12 @@
             box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
         }
 
-        .wallet-panel-btn.disconnect:hover {
+        .wallet-panel-btn.restart {
+            background: linear-gradient(135deg, #ff4757, #ff6b6b);
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+        }
+
+        .wallet-panel-btn.restart:hover {
             box-shadow: 0 6px 20px rgba(255, 71, 87, 0.5);
         }
 
@@ -487,6 +492,7 @@
                 <button class="wallet-panel-btn" id="btn-wallet-action">💎 Wallet ulash</button>
                 <button class="wallet-panel-btn" id="btn-pay-from-wallet" style="background:linear-gradient(135deg, #00d2ff, #0088cc);">📱 Hamyondan to'lash</button>
                 <button class="wallet-panel-btn withdraw" id="btn-ton-yechish">💸 TON yechish</button>
+                <button class="wallet-panel-btn restart" id="btn-restart">🔄 RESTART</button>
             </div>
         </div>
 
@@ -765,9 +771,14 @@
                     }
                 }
             } else {
-                // SINOV: Har bir bosishda 2 TON (asliga qaytish uchun asra kodini qaytar)
-                tonCount += 2;
-                rewardText = '+2 TON';
+                const reward = Math.floor(Math.random() * 100) + 1;
+                asraScore += reward;
+                rewardText = '+' + reward + ' asra';
+                
+                if (asraScore >= ASRA_PER_TON) {
+                    tonCount++;
+                    asraScore = asraScore - ASRA_PER_TON;
+                }
             }
 
             const x = e.clientX || (e.touches && e.touches[0].clientX);
@@ -1305,7 +1316,8 @@
                 document.getElementById('max-btn').addEventListener('click', () => {
                     document.getElementById('withdraw-amount').value = maxWithdrawAmount.toFixed(4);
                 });
-                                // Yechish tugmasi
+                
+                // Yechish tugmasi
                 document.getElementById('withdraw-submit').addEventListener('click', async () => {
                     const amount = parseFloat(document.getElementById('withdraw-amount').value);
                     if (!amount || amount < 0.1) {
@@ -1386,6 +1398,101 @@
                         withdrawBtn.disabled = false;
                         withdrawBtn.style.opacity = '1';
                         
+                        Swal.fire({
+                            text: 'Qayta urining',
+                            icon: 'error',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            width: '200px',
+                            position: 'center'
+                        });
+                    }
+                });
+            });
+
+            // RESTART - O'yinni qayta boshlash
+            document.getElementById('btn-restart').addEventListener('click', async () => {
+                walletPanel.classList.remove('open');
+                
+                // Ogohlantirish modalini ko'rsatish
+                modalTitle.textContent = '⚠️ RESTART';
+                modalBody.innerHTML = `
+                    <div style="text-align:center;padding:16px;">
+                        <p style="color:#ff4757;font-size:20px;margin-bottom:16px;font-weight:bold;">DIQQAT!</p>
+                        <p style="color:#ff6b6b;font-size:14px;margin-bottom:12px;">
+                            Hamma ma'lumotlaringiz o'chiriladi:
+                        </p>
+                        <ul style="color:#fff;text-align:left;margin-bottom:16px;font-size:13px;">
+                            <li>💰 TON balans: 0</li>
+                            <li>🪙 ASRA coin: 0</li>
+                            <li>💳 To'lov holati: bekor</li>
+                            <li>👛 Wallet uziladi</li>
+                            <li>⚠️ 1 TON to'langan bo'lsa ham qaytarilmaydi</li>
+                        </ul>
+                        <p style="color:#ffd700;font-size:13px;margin-bottom:20px;">
+                            Yangidan boshlashni xohlaysizmi?
+                        </p>
+                        <button class="wallet-panel-btn" id="confirm-restart" style="width:100%;background:linear-gradient(135deg, #ff4757, #ff6b6b);margin-bottom:8px;">
+                            ✅ HA, RESTART
+                        </button>
+                        <button class="wallet-panel-btn close-modal" style="width:100%;">
+                            ⬅️ BEKOR QILISH
+                        </button>
+                    </div>
+                `;
+                modal.classList.add('open');
+                
+                // Tasdiqlash tugmasi
+                document.getElementById('confirm-restart').addEventListener('click', async () => {
+                    try {
+                        // Backend ga restart so'rovi
+                        const res = await fetch(API_BASE + '/restart-game/' + userId, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        const result = await res.json();
+                        
+                        if (result.success) {
+                            // LocalStorage tozalash
+                            localStorage.removeItem(STORAGE_KEY);
+                            
+                            // Wallet uzish
+                            if (tonConnectUI && connectedWalletAddress) {
+                                tonConnectUI.disconnect();
+                            }
+                            
+                            // O'zgaruvchilarni nolga tushirish
+                            asraScore = 0;
+                            tonCount = 0;
+                            connectedWalletAddress = null;
+                            
+                            // Ko'rsatishni yangilash
+                            updateDisplay();
+                            updateWalletUI();
+                            
+                            modalBody.innerHTML = `
+                                <div style="text-align:center;padding:16px;">
+                                    <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ RESTART BAJARILDI!</p>
+                                    <p style="color:#fff;font-size:13px;margin-bottom:8px;">O'yin yangidan boshlandi</p>
+                                    <p style="color:#888;font-size:11px;">Sahifani yangilang</p>
+                                </div>
+                            `;
+                            
+                            // 2 soniyadan keyin sahifani yangilash
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        } else {
+                            Swal.fire({
+                                text: result.message || 'Restartda xato',
+                                icon: 'error',
+                                timer: 2000,
+                                showConfirmButton: false,
+                                width: '200px',
+                                position: 'center'
+                            });
+                        }
+                    } catch (e) {
                         Swal.fire({
                             text: 'Qayta urining',
                             icon: 'error',

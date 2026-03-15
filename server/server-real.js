@@ -299,15 +299,93 @@ app.get('/api/user/:userId', async (req, res) => {
                 realBalance: realBalance,
                 totalDeposited: user.totalDeposited,
                 totalConverted: user.totalConverted,
-                tonAvailable: user.totalDeposited - user.totalConverted,
-                jettonBalance: user.jettonBalance,
-                createdAt: user.createdAt,
-                lastDepositAt: user.lastDepositAt
-            }
+            },
+        });
+    } catch (error) {
+        console.error('Get user error:', error);
+        res.status(500).json({ error: 'Server xatoligi' });
+    }
+});
+
+// Restart API endpoint for full game reset - FAQAT development rejimida
+if (process.env.NODE_ENV !== 'production') {
+    app.post('/api/restart', async (req, res) => {
+        try {
+            // Reset user data
+            userDB.clear();
+            
+            // Reset shop data
+            shopDB.clear();
+            
+            // Reset purchase data
+            purchaseDB.clear();
+            
+            res.json({ success: true });
+        } catch (error) {
+            console.error('Restart game error:', error);
+            res.status(500).json({ error: 'Server xatoligi' });
+        }
+    });
+}
+
+// Serverni ishga tushirishc restart endpoint - o'yinchini qayta boshlash
+app.post('/api/restart-game/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId kerak' });
+        }
+        
+        const user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+        }
+        
+        // User ma'lumotlarini to'liq reset qilish
+        // Yangi deposit wallet yaratish (eskisini o'chirib tashlash)
+        const newDepositWallet = await createDepositWallet();
+        
+        // User ma'lumotlarini yangilash
+        user.connectedWallet = null;
+        user.depositWallet = newDepositWallet;
+        user.balance = 0;
+        user.jettonBalance = 0;
+        user.totalDeposited = 0;
+        user.totalConverted = 0;
+        user.purchasedItems = [];
+        user.hasPaid = false;
+        user.paidAt = null;
+        user.paidAmount = 0;
+        user.paymentTxHash = null;
+        user.paidFromAddress = null;
+        user.demoAsraBalance = 0;
+        user.gameData = {
+            asraScore: 0,
+            tonCount: 0,
+            lastSaved: null
+        };
+        user.globalStats = {
+            totalClicksAllTime: 0,
+            totalCoinsCollected: 0,
+            totalTonEarned: 0,
+            gamesPlayed: 0,
+            firstPlayed: new Date().toISOString(),
+            lastPlayed: null
+        };
+        
+        userDB.set(userId, user);
+        
+        console.log(`✅ User restarted: ${userId}`);
+        
+        res.json({
+            success: true,
+            message: 'O\'yin qayta boshlandi',
+            newDepositAddress: newDepositWallet.address
         });
         
     } catch (error) {
-        console.error('Get user error:', error);
+        console.error('Restart user error:', error);
         res.status(500).json({ error: 'Server xatoligi' });
     }
 });
