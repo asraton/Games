@@ -151,16 +151,18 @@ async function createDepositWallet() {
 // REAL TON balansini tekshirish
 async function getRealTonBalance(address) {
     try {
-        const result = await toncenterRequest('getAddressBalance', { address });
-        if (result && result.ok) {
-            // result.result - nanoton da keladi
-            const nanoton = BigInt(result.result);
+        const result = await toncenterRequest('getAddressInformation', { address });
+        if (result && result.ok && result.result) {
+            // result.result.balance - nanoton da keladi
+            const nanoton = BigInt(result.result.balance || 0);
             const ton = Number(nanoton) / 1e9;
+            console.log(`💰 Balance check: ${address.slice(0, 15)}... = ${ton.toFixed(4)} TON`);
             return ton;
         }
+        console.log(`⚠️ Balance check failed for ${address.slice(0, 15)}...`);
         return 0;
     } catch (error) {
-        console.error('Balance check error:', error);
+        console.error('Balance check error:', error.message);
         return 0;
     }
 }
@@ -168,17 +170,20 @@ async function getRealTonBalance(address) {
 // REAL TON transactionlarini olish
 async function getTransactions(address, limit = 10) {
     try {
+        console.log(`🔍 TON Center: Getting transactions for ${address.slice(0, 15)}...`);
         const result = await toncenterRequest('getTransactions', { 
             address, 
             limit,
             archival: true 
         });
         if (result && result.ok) {
-            return result.result;
+            console.log(`✅ TON Center: ${result.result?.length || 0} transactions found`);
+            return result.result || [];
         }
+        console.log(`⚠️ TON Center: No transactions or error`);
         return [];
     } catch (error) {
-        console.error('Transactions fetch error:', error);
+        console.error('Transactions fetch error:', error.message);
         return [];
     }
 }
@@ -990,7 +995,11 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             
             paymentTx = xrTransactions.find(tx => {
                 const amount = parseFloat(tx.amount) || 0;
-                return amount >= REQUIRED_AMOUNT && tx.status === 'completed';
+                const status = tx.status?.toLowerCase();
+                // Multiple success statuses
+                const isSuccessStatus = ['completed', 'success', 'done', 'confirmed'].includes(status);
+                console.log(`   Tx check: amount=${amount}, status=${status}, isSuccess=${isSuccessStatus}`);
+                return amount >= REQUIRED_AMOUNT && isSuccessStatus;
             });
             
             if (paymentTx) {
@@ -1127,11 +1136,12 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
         
         const paymentTx = transactions.find(tx => {
             const amount = parseFloat(tx.amount) || 0;
-            const status = tx.status;
+            const status = tx.status?.toLowerCase();
+            const isSuccessStatus = ['completed', 'success', 'done', 'confirmed'].includes(status);
             
-            console.log(`   Tx: ${tx.id}, Amount: ${amount}, Status: ${status}`);
+            console.log(`   Tx: ${tx.id}, Amount: ${amount}, Status: ${status}, isSuccess=${isSuccessStatus}`);
             
-            return amount >= REQUIRED_AMOUNT && status === 'completed';
+            return amount >= REQUIRED_AMOUNT && isSuccessStatus;
         });
         
         if (paymentTx) {
