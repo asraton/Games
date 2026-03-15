@@ -1004,6 +1004,75 @@ async function createDefaultShopItems() {
     }
 }
 
+// O'yin ma'lumotlarini saqlash (asraScore, tonCount)
+app.post('/api/save-game/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { asraScore, tonCount } = req.body;
+        
+        if (!userId || asraScore === undefined || tonCount === undefined) {
+            return res.status(400).json({ error: 'userId, asraScore va tonCount kerak' });
+        }
+        
+        const user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+        }
+        
+        // O'yin ma'lumotlarini saqlash
+        user.gameData = {
+            asraScore: parseInt(asraScore) || 0,
+            tonCount: parseFloat(tonCount) || 0,
+            lastSaved: new Date().toISOString()
+        };
+        
+        userDB.set(userId, user);
+        
+        res.json({
+            success: true,
+            message: 'O\'yin ma\'lumotlari saqlandi'
+        });
+        
+    } catch (error) {
+        console.error('Save game error:', error);
+        res.status(500).json({ error: 'Server xatoligi' });
+    }
+});
+
+// O'yin ma'lumotlarini olish
+app.get('/api/load-game/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId kerak' });
+        }
+        
+        const user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+        }
+        
+        // O'yin ma'lumotlarini qaytarish
+        const gameData = user.gameData || {
+            asraScore: 0,
+            tonCount: 0,
+            lastSaved: null
+        };
+        
+        res.json({
+            success: true,
+            asraScore: gameData.asraScore || 0,
+            tonCount: gameData.tonCount || 0,
+            hasPaid: user.hasPaid || false
+        });
+        
+    } catch (error) {
+        console.error('Load game error:', error);
+        res.status(500).json({ error: 'Server xatoligi' });
+    }
+});
+
 // Serverni ishga tushirish
 const PORT = process.env.PORT || 3000;
 

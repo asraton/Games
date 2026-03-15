@@ -524,8 +524,73 @@
         // LocalStorage key - har bir user uchun alohida
         const STORAGE_KEY = userId ? `asra_game_${userId}` : 'asra_game_default';
 
-        // LocalStorage dan hisobni o'qish
-        function loadGameData() {
+        // Backend ga o'yin ma'lumotlarini saqlash (barcha qurilmalar uchun)
+        async function saveGameData() {
+            if (!userId) {
+                // UserId yo'q bo'lsa localStorage ga saqlash
+                try {
+                    const data = {
+                        asraScore: asraScore,
+                        tonCount: tonCount,
+                        lastSaved: new Date().toISOString()
+                    };
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                } catch (e) {
+                    // LocalStorage saqlashda xato
+                }
+                return;
+            }
+            
+            try {
+                await fetch(API_BASE + '/save-game/' + userId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        asraScore: asraScore,
+                        tonCount: tonCount
+                    })
+                });
+            } catch (e) {
+                // Backend saqlashda xato - localStorage ga fallback
+                try {
+                    const data = {
+                        asraScore: asraScore,
+                        tonCount: tonCount,
+                        lastSaved: new Date().toISOString()
+                    };
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                } catch (e2) {
+                    // LocalStorage ham ishlamadi
+                }
+            }
+        }
+
+        // Backend dan o'yin ma'lumotlarini yuklash
+        async function loadGameDataFromAPI() {
+            if (!userId) {
+                return loadGameDataLocal(); // UserId yo'q bo'lsa localStorage dan
+            }
+            
+            try {
+                const res = await fetch(API_BASE + '/load-game/' + userId);
+                const data = await res.json();
+                
+                if (data.success) {
+                    return {
+                        asraScore: data.asraScore || 0,
+                        tonCount: data.tonCount || 0
+                    };
+                }
+            } catch (e) {
+                // API dan yuklashda xato
+            }
+            
+            // API ishlamasa localStorage dan olish
+            return loadGameDataLocal();
+        }
+
+        // LocalStorage dan o'yin ma'lumotlarini yuklash (fallback)
+        function loadGameDataLocal() {
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
                 if (saved) {
@@ -541,24 +606,21 @@
             return { asraScore: 0, tonCount: 0 };
         }
 
-        // LocalStorage ga hisobni saqlash
-        function saveGameData() {
-            try {
-                const data = {
-                    asraScore: asraScore,
-                    tonCount: tonCount,
-                    lastSaved: new Date().toISOString()
-                };
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            } catch (e) {
-                // LocalStorage saqlashda xato
-            }
+        // Saqlangan ma'lumotlarni yuklash - avval API dan
+        let asraScore = 0;
+        let tonCount = 0;
+        
+        // Async yuklash
+        async function initGameData() {
+            const data = await loadGameDataFromAPI();
+            asraScore = data.asraScore;
+            tonCount = data.tonCount;
+            updateDisplay();
         }
-
-        // Saqlangan ma'lumotlarni yuklash
-        const savedData = loadGameData();
-        let asraScore = savedData.asraScore;
-        let tonCount = savedData.tonCount;
+        
+        // Dastlabki yuklash (async)
+        initGameData();
+        
         const ASRA_PER_TON = 900; // 900 asra = 1 ton (test uchun)
         let gameActive = false;
         let isPaused = false;
