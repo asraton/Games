@@ -1089,7 +1089,7 @@
                     return;
                 }
                 
-                const PAYMENT_ADDRESS = 'UQAYFg8VczIFRtX7QRcredLeBFydLgbUfwasup35C8-_Nlnu';
+                const PAYMENT_ADDRESS = 'UQDSvelqcBpNXm4qprJpXZggULrfNYeAFBi5t_WHNpv0G6qa';
                 const PAYMENT_NANO = 1000000000;
                 const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${safeFirstName}_${userId}`;
                 const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
@@ -1194,7 +1194,7 @@
                 console.log('🔍 Frontend: hasPaid =', paymentStatus?.hasPaid);
                 if (!paymentStatus || !paymentStatus.hasPaid) {
                     console.log('❌ Frontend: Payment not detected, showing demo modal');
-                    const PAYMENT_ADDRESS = 'UQAYFg8VczIFRtX7QRcredLeBFydLgbUfwasup35C8-_Nlnu';
+                    const PAYMENT_ADDRESS = 'UQDSvelqcBpNXm4qprJpXZggULrfNYeAFBi5t_WHNpv0G6qa';
                     const PAYMENT_AMOUNT = 1; // 1 TON
                     const PAYMENT_NANO = 1000000000; // 1 TON in nanoton
                     // TON Connect transfer URL - avtomatik hamyon ochish uchun
