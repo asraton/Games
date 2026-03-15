@@ -1331,6 +1331,13 @@
                         return;
                     }
                     
+                    // Loading holatini ko'rsatish
+                    const withdrawBtn = document.getElementById('withdraw-submit');
+                    const originalBtnText = withdrawBtn.innerHTML;
+                    withdrawBtn.innerHTML = '⏳ Yechib olinmoqda...';
+                    withdrawBtn.disabled = true;
+                    withdrawBtn.style.opacity = '0.7';
+                    
                     // Backend ga yechish so'rovi
                     try {
                         const res = await fetch(API_BASE + '/withdraw', {
@@ -1359,6 +1366,11 @@
                                 </div>
                             `;
                         } else {
+                            // Tugmani qayta tiklash
+                            withdrawBtn.innerHTML = originalBtnText;
+                            withdrawBtn.disabled = false;
+                            withdrawBtn.style.opacity = '1';
+                            
                             Swal.fire({
                                 text: result.message || 'Yechishda xato',
                                 icon: 'error',
@@ -1369,6 +1381,11 @@
                             });
                         }
                     } catch (e) {
+                        // Tugmani qayta tiklash
+                        withdrawBtn.innerHTML = originalBtnText;
+                        withdrawBtn.disabled = false;
+                        withdrawBtn.style.opacity = '1';
+                        
                         Swal.fire({
                             text: 'Qayta urining',
                             icon: 'error',
