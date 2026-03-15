@@ -317,60 +317,107 @@ app.post('/api/restart-game/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         
+        console.log(`🔄 RESTART REQUEST: ${userId}`);
+        
         if (!userId) {
+            console.log('❌ userId yoq');
             return res.status(400).json({ error: 'userId kerak' });
         }
         
-        const user = userDB.get(userId);
+        let user = userDB.get(userId);
+        
+        // Agar user yo'q bo'lsa, yangi yaratish
         if (!user) {
-            return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+            console.log(`🆕 User topilmadi, yangi yaratiladi: ${userId}`);
+            const depositWallet = await createDepositWallet();
+            user = {
+                userId,
+                connectedWallet: null,
+                depositWallet,
+                balance: 0,
+                jettonBalance: 0,
+                totalDeposited: 0,
+                totalConverted: 0,
+                purchasedItems: [],
+                createdAt: new Date().toISOString(),
+                lastDepositAt: null,
+                lastBalanceCheck: null,
+                hasPaid: false,
+                demoAsraBalance: 0,
+                paymentAddress: PAYMENT_ADDRESS || '',
+                globalStats: {
+                    totalClicksAllTime: 0,
+                    totalCoinsCollected: 0,
+                    totalTonEarned: 0,
+                    gamesPlayed: 0,
+                    firstPlayed: new Date().toISOString(),
+                    lastPlayed: null
+                },
+                gameData: {
+                    asraScore: 0,
+                    tonCount: 0,
+                    lastSaved: null
+                }
+            };
+        } else {
+            console.log(`✅ User topildi: ${userId}`);
+            console.log(`   Old state: tonCount=${user.gameData?.tonCount || 0}, asraScore=${user.gameData?.asraScore || 0}`);
+            
+            // Yangi deposit wallet yaratish
+            const newDepositWallet = await createDepositWallet();
+            
+            // User ma'lumotlarini to'liq reset qilish
+            user.connectedWallet = null;
+            user.depositWallet = newDepositWallet;
+            user.balance = 0;
+            user.jettonBalance = 0;
+            user.totalDeposited = 0;
+            user.totalConverted = 0;
+            user.purchasedItems = [];
+            user.hasPaid = false;
+            user.paidAt = null;
+            user.paidAmount = 0;
+            user.paymentTxHash = null;
+            user.paidFromAddress = null;
+            user.demoAsraBalance = 0;
+            user.gameData = {
+                asraScore: 0,
+                tonCount: 0,
+                lastSaved: null
+            };
+            user.globalStats = {
+                totalClicksAllTime: 0,
+                totalCoinsCollected: 0,
+                totalTonEarned: 0,
+                gamesPlayed: 0,
+                firstPlayed: new Date().toISOString(),
+                lastPlayed: null
+            };
         }
-        
-        // User ma'lumotlarini to'liq reset qilish
-        // Yangi deposit wallet yaratish (eskisini o'chirib tashlash)
-        const newDepositWallet = await createDepositWallet();
-        
-        // User ma'lumotlarini yangilash
-        user.connectedWallet = null;
-        user.depositWallet = newDepositWallet;
-        user.balance = 0;
-        user.jettonBalance = 0;
-        user.totalDeposited = 0;
-        user.totalConverted = 0;
-        user.purchasedItems = [];
-        user.hasPaid = false;
-        user.paidAt = null;
-        user.paidAmount = 0;
-        user.paymentTxHash = null;
-        user.paidFromAddress = null;
-        user.demoAsraBalance = 0;
-        user.gameData = {
-            asraScore: 0,
-            tonCount: 0,
-            lastSaved: null
-        };
-        user.globalStats = {
-            totalClicksAllTime: 0,
-            totalCoinsCollected: 0,
-            totalTonEarned: 0,
-            gamesPlayed: 0,
-            firstPlayed: new Date().toISOString(),
-            lastPlayed: null
-        };
         
         userDB.set(userId, user);
         
-        console.log(`✅ User restarted: ${userId}`);
+        console.log(`✅ User restarted successfully: ${userId}`);
+        console.log(`   New deposit address: ${user.depositWallet.address}`);
         
         res.json({
             success: true,
             message: 'O\'yin qayta boshlandi',
-            newDepositAddress: newDepositWallet.address
+            newDepositAddress: user.depositWallet.address,
+            resetData: {
+                tonCount: 0,
+                asraScore: 0,
+                hasPaid: false
+            }
         });
         
     } catch (error) {
-        console.error('Restart user error:', error);
-        res.status(500).json({ error: 'Server xatoligi' });
+        console.error('❌ Restart user error:', error);
+        console.error('Stack:', error.stack);
+        res.status(500).json({ 
+            error: 'Server xatoligi',
+            details: error.message 
+        });
     }
 });
 
