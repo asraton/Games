@@ -21,6 +21,18 @@ const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQAYFg8VczIFRtX7QRcredLe
 const XROCKET_API_TOKEN = process.env.XROCKET_API_TOKEN;
 const XROCKET_ENDPOINT = 'https://pay.xrocket.tg';
 
+// Address normalization - EQ va UQ formatlarni bir xil qilish
+function normalizeAddress(address) {
+    if (!address) return null;
+    // Barcha addressni lowercase va UQ formatga o'tkazish
+    let normalized = address.toLowerCase();
+    // EQ -> UQ almashtirish (bounceable -> non-bounceable)
+    if (normalized.startsWith('eq')) {
+        normalized = 'uq' + normalized.slice(2);
+    }
+    return normalized;
+}
+
 // TON client with API key
 const client = new TonClient({
     endpoint: TON_CENTER_ENDPOINT + '/jsonRPC',
@@ -1029,8 +1041,11 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                     const value = tx.in_msg?.value;
                     if (!toAddress || !value) return false;
                     const tonAmount = Number(BigInt(value)) / 1e9;
-                    const isMatch = toAddress === PAYMENT_ADDRESS && tonAmount >= REQUIRED_AMOUNT;
-                    console.log(`   Tekshirilmoqda: to=${toAddress?.slice(0, 30)}..., amount=${tonAmount} TON, match=${isMatch}`);
+                    // Normalize addresses for comparison
+                    const normalizedTo = normalizeAddress(toAddress);
+                    const normalizedPayment = normalizeAddress(PAYMENT_ADDRESS);
+                    const isMatch = normalizedTo === normalizedPayment && tonAmount >= REQUIRED_AMOUNT;
+                    console.log(`   Tekshirilmoqda: to=${toAddress?.slice(0, 30)}..., normalized=${normalizedTo?.slice(0, 30)}..., amount=${tonAmount} TON, match=${isMatch}`);
                     return isMatch;
                 });
                 
