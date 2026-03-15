@@ -816,6 +816,34 @@ if (process.env.NODE_ENV !== 'production') {
             res.status(500).json({ error: 'Server xatoligi' });
         }
     });
+    
+    // Debug endpoint - xRocket transactionlarni ko'rish
+    app.get('/api/debug/xrocket', async (req, res) => {
+        try {
+            const transactions = await getXRocketTransactions(20);
+            
+            res.json({
+                success: true,
+                count: transactions.length,
+                paymentAddress: PAYMENT_ADDRESS,
+                xrocketToken: XROCKET_API_TOKEN ? '✅ Mavjud' : '❌ Yo\'q',
+                transactions: transactions.map(tx => ({
+                    id: tx.id,
+                    amount: tx.amount,
+                    status: tx.status,
+                    from: tx.from?.address,
+                    to: tx.to?.address,
+                    createdAt: tx.createdAt
+                }))
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error.message,
+                paymentAddress: PAYMENT_ADDRESS
+            });
+        }
+    });
 }
 
 // To'lov holatini tekshirish
