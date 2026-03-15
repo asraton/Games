@@ -955,55 +955,44 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 console.log('⚠️ TON Center tekshiruvda xato:', tonError.message);
             }
         }
+        
+        // Tekshirish natijalarini qayta ishlash
+        if (paymentTx) {
+            // To'lov qilingan!
+            user.hasPaid = true;
+            user.paidAt = new Date().toISOString();
+            user.paidAmount = REQUIRED_AMOUNT;
+            user.paymentTxHash = paymentTx.id || paymentTx.hash || null;
+            user.paidFromAddress = paymentTx.from?.address || null;
             
-            if (paymentTx) {
-                // To'lov qilingan!
-                user.hasPaid = true;
-                user.paidAt = new Date().toISOString();
-                user.paidAmount = REQUIRED_AMOUNT;
-                user.paymentTxHash = paymentTx.id || paymentTx.hash || null;
-                user.paidFromAddress = paymentTx.from?.address || null;
-                
-                // Demo asralarni real balansga o'tkazish (yoki 0 ga tushirish)
-                user.demoAsraBalance = 0;
-                
-                userDB.set(userId, user);
-                
-                console.log(`✅ To'lov qilindi: ${userId}`);
-                console.log(`   Amount: ${paymentTx.amount} TON`);
-                console.log(`   Tx: ${paymentTx.id}`);
-                console.log(`   From: ${paymentTx.from?.address}`);
-                
-                return res.json({
-                    success: true,
-                    hasPaid: true,
-                    message: 'To\'lov qilindi! Endi haqiqiy o\'yni boshlashingiz mumkin.',
-                    resetRequired: true,
-                    txHash: paymentTx.id
-                });
-            }
+            // Demo asralarni real balansga o'tkazish (yoki 0 ga tushirish)
+            user.demoAsraBalance = 0;
             
-            // To'lov qilinmagan
-            res.json({
+            userDB.set(userId, user);
+            
+            console.log(`✅ To'lov qilindi: ${userId}`);
+            console.log(`   Amount: ${paymentTx.amount} TON`);
+            console.log(`   Tx: ${paymentTx.id}`);
+            console.log(`   From: ${paymentTx.from?.address}`);
+            
+            return res.json({
                 success: true,
-                hasPaid: false,
-                message: 'To\'lov kutilmoqda',
-                requiredAmount: REQUIRED_AMOUNT,
-                paymentAddress: PAYMENT_ADDRESS || '',
-                demoAsraBalance: user.demoAsraBalance || 0
-            });
-            
-        } catch (txError) {
-            console.error('xRocket transaction tekshirishda xato:', txError);
-            res.json({
-                success: true,
-                hasPaid: false,
-                message: 'To\'lov holatini tekshirishda xato',
-                requiredAmount: REQUIRED_AMOUNT,
-                paymentAddress: PAYMENT_ADDRESS || '',
-                demoAsraBalance: user.demoAsraBalance || 0
+                hasPaid: true,
+                message: 'To\'lov qilindi! Endi haqiqiy o\'yni boshlashingiz mumkin.',
+                resetRequired: true,
+                txHash: paymentTx.id
             });
         }
+        
+        // To'lov qilinmagan
+        res.json({
+            success: true,
+            hasPaid: false,
+            message: 'To\'lov kutilmoqda',
+            requiredAmount: REQUIRED_AMOUNT,
+            paymentAddress: PAYMENT_ADDRESS || '',
+            demoAsraBalance: user.demoAsraBalance || 0
+        });
         
     } catch (error) {
         console.error('Check payment error:', error);
