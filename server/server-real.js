@@ -736,11 +736,9 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             const transactions = await getTransactions(PAYMENT_ADDRESS, 20);
             
             // Oxirgi 20 transaction ichidan PAYMENT_ADDRESS ga 1 TON yuborilganini tekshirish
-            // User ID kommentariyda bo'lishi kerak
             const paymentTx = transactions.find(tx => {
                 const toAddress = tx.in_msg?.destination;
                 const value = tx.in_msg?.value;
-                const comment = tx.in_msg?.message_content?.body || tx.in_msg?.msg_data?.text || '';
                 
                 if (!toAddress || !value) return false;
                 
@@ -748,10 +746,7 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 const tonAmount = Number(BigInt(value)) / 1e9;
                 
                 // PAYMENT_ADDRESS ga yetib kelganmi va miqdor yetarlimi
-                // Va kommentariyda userId bormi (text da)
-                return toAddress === PAYMENT_ADDRESS && 
-                       tonAmount >= REQUIRED_AMOUNT &&
-                       (comment.includes(userId) || comment.includes(user.userId));
+                return toAddress === PAYMENT_ADDRESS && tonAmount >= REQUIRED_AMOUNT;
             });
             
             if (paymentTx) {
@@ -824,14 +819,11 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
         const paymentTx = transactions.find(tx => {
             const toAddress = tx.in_msg?.destination;
             const value = tx.in_msg?.value;
-            const comment = tx.in_msg?.message_content?.body || tx.in_msg?.msg_data?.text || '';
             
             if (!toAddress || !value) return false;
             
             const tonAmount = Number(BigInt(value)) / 1e9;
-            return toAddress === PAYMENT_ADDRESS && 
-                   tonAmount >= REQUIRED_AMOUNT &&
-                   (comment.includes(userId) || comment.includes(user.userId));
+            return toAddress === PAYMENT_ADDRESS && tonAmount >= REQUIRED_AMOUNT;
         });
         
         if (paymentTx) {
