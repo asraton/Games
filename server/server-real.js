@@ -1073,6 +1073,33 @@ app.get('/api/load-game/:userId', async (req, res) => {
     }
 });
 
+// Database migration - eski userlarni yangi formatga o'tkazish
+async function migrateDatabase() {
+    try {
+        console.log('🔄 Database migration boshlandi...');
+        const users = userDB.getAll();
+        let migratedCount = 0;
+        
+        for (const [userId, user] of Object.entries(users)) {
+            // Agar user da gameData yo'q bo'lsa, yaratish
+            if (!user.gameData) {
+                user.gameData = {
+                    asraScore: 0,
+                    tonCount: 0,
+                    lastSaved: null
+                };
+                userDB.set(userId, user);
+                migratedCount++;
+                console.log(`   ✅ ${userId} - gameData yaratildi`);
+            }
+        }
+        
+        console.log(`✅ Migration tugadi: ${migratedCount} user yangilandi`);
+    } catch (error) {
+        console.error('❌ Migration xato:', error);
+    }
+}
+
 // Serverni ishga tushirish
 const PORT = process.env.PORT || 3000;
 
@@ -1098,6 +1125,7 @@ app.listen(PORT, async () => {
     console.log('   ✅ Real TON transfer (withdraw)');
     console.log('   ✅ Transaction history');
     console.log('   ✅ JSON file database (persistent storage)');
+    console.log('   ✅ Cross-device game data sync');
     console.log('');
     console.log('📱 URLs:');
     console.log(`   Game: http://localhost:8080`);
@@ -1106,6 +1134,9 @@ app.listen(PORT, async () => {
         console.log(`   Debug: http://localhost:${PORT}/api/debug/wallet/:userId`);
     }
     console.log('');
+    
+    // Database migration
+    await migrateDatabase();
     
     // Initialize default shop items
     await createDefaultShopItems();
