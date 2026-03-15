@@ -1090,8 +1090,11 @@
                     // To'lov holatini tekshirishda xato
                 }
                 
-                // Agar to'lov qilinmagan bo'lsa - Demo mode
-                if (!paymentStatus || !paymentStatus.hasPaid) {
+                // TEST REJIMI: Demo rejimda ham TON yechishni yoqish
+                // Vaqtinchalik - faqat test uchun
+                const TEST_MODE = true; // Test tugagach false qilish
+                
+                if (!TEST_MODE && (!paymentStatus || !paymentStatus.hasPaid)) {
                     const PAYMENT_ADDRESS = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
                     const PAYMENT_AMOUNT = 1; // 1 TON
                     const PAYMENT_NANO = 1000000000; // 1 TON in nanoton
