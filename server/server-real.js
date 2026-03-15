@@ -15,7 +15,11 @@ app.use(express.json());
 // TON Center API config
 const TON_API_KEY = process.env.TON_API_KEY || '';
 const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
-const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || '';  // ⚠️ .env dan olinadi
+const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQAYFg8VczIFRtX7QRcredLeBFydLgbUfwasup35C8-_Nlnu';  // xRocket Wallet
+
+// xRocket API config
+const XROCKET_API_TOKEN = process.env.XROCKET_API_TOKEN || '42830f31bbe3397ca4d1e5a24';
+const XROCKET_ENDPOINT = 'https://pay.xrocket.tg';
 
 // TON client with API key
 const client = new TonClient({
@@ -23,18 +27,58 @@ const client = new TonClient({
     apiKey: TON_API_KEY
 });
 
-// TON Center HTTP API helper
-async function toncenterRequest(method, params = {}) {
+// xRocket API helper - to'lovlarni tekshirish
+async function xRocketRequest(method, endpoint, data = null) {
     try {
-        const url = `${TON_CENTER_ENDPOINT}/${method}`;
-        const response = await axios.get(url, {
-            params: { ...params, api_key: TON_API_KEY },
-            timeout: 30000
-        });
+        const url = `${XROCKET_ENDPOINT}${endpoint}`;
+        const headers = {
+            'Authorization': `Bearer ${XROCKET_API_TOKEN}`,
+            'Content-Type': 'application/json'
+        };
+        
+        let response;
+        if (data) {
+            response = await axios.post(url, data, { headers, timeout: 30000 });
+        } else {
+            response = await axios.get(url, { headers, timeout: 30000 });
+        }
+        
         return response.data;
     } catch (error) {
-        console.error('TON Center API error:', error.message);
+        console.error('xRocket API error:', error.message);
+        if (error.response) {
+            console.error('Response:', error.response.data);
+        }
         return null;
+    }
+}
+
+// xRocket orqali balansni tekshirish
+async function getXRocketBalance() {
+    try {
+        const result = await xRocketRequest('GET', '/app/stats');
+        if (result && result.success) {
+            return result.data?.balances || {};
+        }
+        return {};
+    } catch (error) {
+        console.error('xRocket balance check error:', error);
+        return {};
+    }
+}
+
+// xRocket orqali transactionlarni olish
+async function getXRocketTransactions(limit = 20) {
+    try {
+        // xRocket deposits ni olish
+        const result = await xRocketRequest('GET', `/app/deposits?limit=${limit}`);
+        if (result && result.success) {
+            return result.data?.deposits || [];
+        }
+        return [];
+    } catch (error) {
+        console.error('xRocket transactions fetch error:', error);
+        return [];
     }
 }
 
@@ -832,22 +876,22 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             });
         }
         
-        // Transactionlarni tekshirish
+        // Transactionlarni tekshirish (xRocket API)
         try {
-            const transactions = await getTransactions(PAYMENT_ADDRESS, 20);
+            const transactions = await getXRocketTransactions(20);
+            
+            console.log(`🔍 xRocket transactions tekshirilmoqda: ${transactions.length} ta`);
             
             // Oxirgi 20 transaction ichidan PAYMENT_ADDRESS ga 1 TON yuborilganini tekshirish
             const paymentTx = transactions.find(tx => {
-                const toAddress = tx.in_msg?.destination;
-                const value = tx.in_msg?.value;
+                const amount = parseFloat(tx.amount) || 0;
+                const status = tx.status;
+                const toAddress = tx.to?.address;
                 
-                if (!toAddress || !value) return false;
+                console.log(`   Tx: ${tx.id}, Amount: ${amount}, Status: ${status}, To: ${toAddress?.slice(0, 20)}...`);
                 
-                // value nanoton da keladi
-                const tonAmount = Number(BigInt(value)) / 1e9;
-                
-                // PAYMENT_ADDRESS ga yetib kelganmi va miqdor yetarlimi
-                return toAddress === PAYMENT_ADDRESS && tonAmount >= REQUIRED_AMOUNT;
+                // xRocket da status 'completed' bo'lishi kerak
+                return amount >= REQUIRED_AMOUNT && status === 'completed';
             });
             
             if (paymentTx) {
@@ -855,6 +899,8 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 user.hasPaid = true;
                 user.paidAt = new Date().toISOString();
                 user.paidAmount = REQUIRED_AMOUNT;
+                user.paymentTxHash = paymentTx.id || paymentTx.hash || null;
+                user.paidFromAddress = paymentTx.from?.address || null;
                 
                 // Demo asralarni real balansga o'tkazish (yoki 0 ga tushirish)
                 user.demoAsraBalance = 0;
@@ -862,15 +908,16 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 userDB.set(userId, user);
                 
                 console.log(`✅ To'lov qilindi: ${userId}`);
-                console.log(`   Amount: 1 TON`);
-                console.log(`   Tx: ${paymentTx.transaction_id?.hash}`);
+                console.log(`   Amount: ${paymentTx.amount} TON`);
+                console.log(`   Tx: ${paymentTx.id}`);
+                console.log(`   From: ${paymentTx.from?.address}`);
                 
                 return res.json({
                     success: true,
                     hasPaid: true,
                     message: 'To\'lov qilindi! Endi haqiqiy o\'yni boshlashingiz mumkin.',
                     resetRequired: true,
-                    txHash: paymentTx.transaction_id?.hash
+                    txHash: paymentTx.id
                 });
             }
             
@@ -885,7 +932,7 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             });
             
         } catch (txError) {
-            console.error('Transaction tekshirishda xato:', txError);
+            console.error('xRocket transaction tekshirishda xato:', txError);
             res.json({
                 success: true,
                 hasPaid: false,
@@ -943,17 +990,18 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
         
         const REQUIRED_AMOUNT = 1;
         
-        // Transactionlarni tekshirish
-        const transactions = await getTransactions(PAYMENT_ADDRESS, 30);
+        // xRocket API bilan transactionlarni tekshirish
+        const transactions = await getXRocketTransactions(30);
+        
+        console.log(`🔍 xRocket confirm-payment: ${transactions.length} ta transaction`);
         
         const paymentTx = transactions.find(tx => {
-            const toAddress = tx.in_msg?.destination;
-            const value = tx.in_msg?.value;
+            const amount = parseFloat(tx.amount) || 0;
+            const status = tx.status;
             
-            if (!toAddress || !value) return false;
+            console.log(`   Tx: ${tx.id}, Amount: ${amount}, Status: ${status}`);
             
-            const tonAmount = Number(BigInt(value)) / 1e9;
-            return toAddress === PAYMENT_ADDRESS && tonAmount >= REQUIRED_AMOUNT;
+            return amount >= REQUIRED_AMOUNT && status === 'completed';
         });
         
         if (paymentTx) {
@@ -961,6 +1009,8 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
             user.hasPaid = true;
             user.paidAt = new Date().toISOString();
             user.paidAmount = REQUIRED_AMOUNT;
+            user.paymentTxHash = paymentTx.id || null;
+            user.paidFromAddress = paymentTx.from?.address || null;
             
             // Barcha statistikani 0 ga tushirish (yangi o'yin)
             user.totalDeposited = 0;
@@ -982,13 +1032,14 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
             userDB.set(userId, user);
             
             console.log(`✅ To'lov tasdiqlandi va o'yin reset qilindi: ${userId}`);
+            console.log(`   Tx: ${paymentTx.id}, Amount: ${paymentTx.amount} TON`);
             
             res.json({
                 success: true,
                 hasPaid: true,
                 message: 'To\'lov tasdiqlandi! Yangi o\'yin boshlandi.',
                 reset: true,
-                txHash: paymentTx.transaction_id?.hash
+                txHash: paymentTx.id
             });
         } else {
             res.json({
