@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const { TonClient, WalletContractV4, internal, fromNano, toNano } = require('@ton/ton');
+const { TonClient, WalletContractV4, internal, fromNano, toNano, Address } = require('@ton/ton');
 const { mnemonicNew, mnemonicToWalletKey } = require('@ton/crypto');
 const axios = require('axios');
 
@@ -21,65 +21,27 @@ const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQAYFg8VczIFRtX7QRcredLe
 const XROCKET_API_TOKEN = process.env.XROCKET_API_TOKEN;
 const XROCKET_ENDPOINT = 'https://pay.xrocket.tg';
 
-// Address normalization - TON address ni parse qilib workchain+hash solishtirish
+// Address normalization - TON Address library orqali solishtirish
+function areAddressesEqual(addr1, addr2) {
+    if (!addr1 || !addr2) return false;
+    try {
+        // Ikkala manzilni ham TON Address obyektiga parse qilib solishtiramiz
+        const a1 = Address.parse(addr1);
+        const a2 = Address.parse(addr2);
+        return a1.equals(a2);
+    } catch (e) {
+        console.log(`⚠️ Address parse failed: ${addr1?.slice(0, 20)}... vs ${addr2?.slice(0, 20)}...`);
+        return false;
+    }
+}
+
+// Backward compatibility - normalizeAddress nomi saqlanib qoladi
 function normalizeAddress(address) {
     if (!address) return null;
     try {
-        // TON address format: [workchain]:[hex_hash]
-        // Yoki base64: EQ... (bounceable) yoki UQ... (non-bounceable)
-        
-        // 1. Agar allaqachon [workchain]:[hash] formatda bo'lsa
-        if (address.includes(':')) {
-            return address.toLowerCase().trim();
-        }
-        
-        // 2. Base64 formatni dekod qilish
-        const base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-        const base64UrlChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-/';
-        
-        // TON address specific base64url variant
-        let cleanAddr = address.trim();
-        
-        // TON addresses are typically 48 bytes base64 encoded
-        // They start with EQ (bounceable) or UQ (non-bounceable) for mainnet
-        // Or Ef/Uf for testnet
-        
-        // TON address structure in base64:
-        // 1 byte: flags (bounceable + workchain)
-        // 1 byte: workchain
-        // 32 bytes: hash
-        // 2 bytes: checksum
-        
-        // Decode base64url
-        const toBuffer = (base64) => {
-            // Add padding if needed
-            while (base64.length % 4) base64 += '=';
-            // Replace URL-safe chars with standard base64
-            base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
-            return Buffer.from(base64, 'base64');
-        };
-        
-        const buf = toBuffer(cleanAddr);
-        
-        if (buf.length !== 36) {
-            // Not a valid TON address length
-            return address.toLowerCase().trim();
-        }
-        
-        // Extract workchain and hash
-        // Byte 0: flags (0x11 = bounceable mainnet, 0x51 = non-bounceable mainnet)
-        // Byte 1: workchain (0x00 for workchain 0, 0xff for workchain -1)
-        // Bytes 2-33: 32-byte hash
-        // Bytes 34-35: 2-byte CRC16 checksum
-        
-        const workchain = buf[1] === 0xff ? -1 : buf[1];
-        const hash = buf.slice(2, 34).toString('hex');
-        
-        return `${workchain}:${hash}`;
-        
+        const addr = Address.parse(address);
+        return addr.toString({ bounceable: false }); // UQ format
     } catch (e) {
-        // Fallback to simple lowercase
-        console.log(`⚠️ Address normalization failed for ${address?.slice(0, 20)}..., using lowercase fallback`);
         return address.toLowerCase().trim();
     }
 }
@@ -1102,11 +1064,10 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                         return false;
                     }
                     const tonAmount = Number(BigInt(value)) / 1e9;
-                    // Normalize addresses for comparison
-                    const normalizedTo = normalizeAddress(toAddress);
-                    const normalizedPayment = normalizeAddress(PAYMENT_ADDRESS);
-                    const isMatch = normalizedTo === normalizedPayment && tonAmount >= REQUIRED_AMOUNT;
-                    console.log(`   🔍 Checking: to=${toAddress?.slice(0, 20)}... normalized=${normalizedTo?.slice(0, 20)}... amount=${tonAmount} TON, match=${isMatch}`);
+                    // Use Address library for proper comparison
+                    const isAddressMatch = areAddressesEqual(toAddress, PAYMENT_ADDRESS);
+                    const isMatch = isAddressMatch && tonAmount >= REQUIRED_AMOUNT;
+                    console.log(`   🔍 Checking: to=${toAddress?.slice(0, 20)}... amount=${tonAmount} TON, addressMatch=${isAddressMatch}, match=${isMatch}`);
                     return isMatch;
                 });
                 
