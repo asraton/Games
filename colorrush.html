@@ -2128,7 +2128,11 @@
                 Swal.fire({
                     html: `
                         <div style="text-align:center;font-family:inherit;padding:20px 0;">
-                            <img src="${coinInfo.img}" style="width:320px;height:320px;object-fit:contain;filter:drop-shadow(0 8px 16px rgba(0,0,0,0.7));">
+                            <div style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;">
+                                <span style="color:#fff;font-size:13px;font-weight:bold;">${coinInfo.name}</span>
+                                <span style="color:#ffd700;font-size:13px;font-weight:bold;">${price} TON</span>
+                            </div>
+                            <img src="${coinInfo.img}" style="width:360px;height:360px;object-fit:contain;filter:drop-shadow(0 8px 16px rgba(0,0,0,0.7));">
                         </div>
                     `,
                     showCancelButton: false,
