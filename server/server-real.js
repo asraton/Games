@@ -1785,11 +1785,21 @@ app.post('/api/shop/buy/:userId', async (req, res) => {
         }
         
         // UNLOCK REAL GAME: Buying any coin unlocks full game (same as 1 TON payment)
+        let unlockedRealGame = false;
         if (!user.hasPaid) {
             user.hasPaid = true;
             user.paidAt = new Date().toISOString();
             user.paidAmount = 1; // Treat as 1 TON payment equivalent
+            unlockedRealGame = true; // Signal to frontend this is first unlock
             console.log(`🔓 Real game unlocked via shop purchase: ${userId}`);
+            
+            // Reset game data (DEMO → REAL transition)
+            user.gameData = {
+                asraScore: 0,
+                tonCount: 0,
+                lastSaved: new Date().toISOString()
+            };
+            console.log(`🔄 Game data reset to 0 for first shop unlock: ${userId}`);
         }
         
         user.shopData = shopData;
@@ -1802,6 +1812,7 @@ app.post('/api/shop/buy/:userId', async (req, res) => {
             message: 'Coin purchased',
             coin: coin,
             price: coinData.price,
+            unlockedRealGame: unlockedRealGame, // Tell frontend if this unlocked real game
             gameState: {
                 asraScore: user.gameData.asraScore,
                 tonCount: user.gameData.tonCount

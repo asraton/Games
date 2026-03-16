@@ -2432,21 +2432,98 @@
                                     }]
                                 });
 
-                                // Successful payment
-                                shopData.purchased.push(coinType);
-                                shopData.purchaseTime[coinType] = new Date().getTime();
-                                shopData.selected = coinType;
-                                saveShopDataBackend();
-                                updateShopUI();
-
-                                Swal.fire({
-                                    text: `${coinInfo.name} purchased!`,
-                                    icon: 'success',
-                                    timer: 2000,
-                                    showConfirmButton: false,
-                                    width: '250px',
-                                    position: 'center'
-                                });
+                                // Successful payment - call backend buy endpoint
+                                try {
+                                    const buyResponse = await fetch(API_BASE + '/shop/buy/' + userId, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ coin: coinType })
+                                    });
+                                    const buyResult = await buyResponse.json();
+                                    
+                                    if (buyResult.success) {
+                                        // Update shop data from backend response
+                                        shopData.purchased = buyResult.gameState?.shopData?.purchased || [...shopData.purchased, coinType];
+                                        if (!shopData.purchased.includes(coinType)) {
+                                            shopData.purchased.push(coinType);
+                                        }
+                                        shopData.purchaseTime[coinType] = new Date().getTime();
+                                        shopData.selected = coinType;
+                                        updateShopUI();
+                                        
+                                        // Check if this unlocked real game (first purchase)
+                                        if (buyResult.unlockedRealGame) {
+                                            // Reset game scores to 0
+                                            asraScore = 0;
+                                            tonCount = 0;
+                                            updateDisplay();
+                                            
+                                            // Show unlock modal (auto-closes in 3 seconds)
+                                            const unlockModal = document.getElementById('wallet-modal');
+                                            const unlockModalBody = document.getElementById('modal-body');
+                                            const unlockModalTitle = document.getElementById('modal-title');
+                                            
+                                            unlockModalTitle.textContent = '';
+                                            unlockModalBody.innerHTML = `
+                                                <div style="text-align:center;padding:16px;">
+                                                    <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ Real game unlocked!</p>
+                                                    <p style="color:#fff;font-size:13px;">New game started. All scores reset to 0.</p>
+                                                    <p style="color:#888;font-size:11px;margin-top:8px;">Auto-closing...</p>
+                                                </div>
+                                            `;
+                                            unlockModal.classList.add('open');
+                                            
+                                            // Auto-close after 3 seconds
+                                            setTimeout(() => {
+                                                unlockModal.classList.remove('open');
+                                            }, 3000);
+                                            
+                                            stopGame();
+                                        } else {
+                                            // Normal purchase (not first unlock)
+                                            Swal.fire({
+                                                text: `${coinInfo.name} purchased!`,
+                                                icon: 'success',
+                                                timer: 2000,
+                                                showConfirmButton: false,
+                                                width: '250px',
+                                                position: 'center'
+                                            });
+                                        }
+                                    } else {
+                                        // Backend error - fallback to local update
+                                        shopData.purchased.push(coinType);
+                                        shopData.purchaseTime[coinType] = new Date().getTime();
+                                        shopData.selected = coinType;
+                                        saveShopDataBackend();
+                                        updateShopUI();
+                                        
+                                        Swal.fire({
+                                            text: `${coinInfo.name} purchased!`,
+                                            icon: 'success',
+                                            timer: 2000,
+                                            showConfirmButton: false,
+                                            width: '250px',
+                                            position: 'center'
+                                        });
+                                    }
+                                } catch (backendError) {
+                                    // Backend call failed - fallback to local update
+                                    shopData.purchased.push(coinType);
+                                    shopData.purchaseTime[coinType] = new Date().getTime();
+                                    shopData.selected = coinType;
+                                    saveShopDataBackend();
+                                    updateShopUI();
+                                    
+                                    Swal.fire({
+                                        text: `${coinInfo.name} purchased!`,
+                                        icon: 'success',
+                                        timer: 2000,
+                                        showConfirmButton: false,
+                                        width: '250px',
+                                        position: 'center'
+                                    });
+                                }
                             } catch (e) {
                                 Swal.fire({
                                     text: 'Payment cancelled',
