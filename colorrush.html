@@ -1877,6 +1877,9 @@
                                         // Confirmation error - but hasPaid is already true
                                     }
                                     
+                                    // Ensure modal is open before showing confirmation
+                                    modal.classList.add('open');
+                                    
                                     modalBody.innerHTML = `
                                         <div style="text-align:center;padding:16px;">
                                             <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ Payment confirmed!</p>
@@ -2458,25 +2461,30 @@
                                             tonCount = 0;
                                             updateDisplay();
                                             
-                                            // Show unlock modal (auto-closes in 3 seconds)
-                                            const unlockModal = document.getElementById('wallet-modal');
-                                            const unlockModalBody = document.getElementById('modal-body');
-                                            const unlockModalTitle = document.getElementById('modal-title');
+                                            // Close Swal first, then show unlock modal
+                                            Swal.close();
                                             
-                                            unlockModalTitle.textContent = '';
-                                            unlockModalBody.innerHTML = `
-                                                <div style="text-align:center;padding:16px;">
-                                                    <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ Real game unlocked!</p>
-                                                    <p style="color:#fff;font-size:13px;">New game started. All scores reset to 0.</p>
-                                                    <p style="color:#888;font-size:11px;margin-top:8px;">Auto-closing...</p>
-                                                </div>
-                                            `;
-                                            unlockModal.classList.add('open');
-                                            
-                                            // Auto-close after 3 seconds
+                                            // Show unlock modal after short delay (after Swal closes)
                                             setTimeout(() => {
-                                                unlockModal.classList.remove('open');
-                                            }, 3000);
+                                                const unlockModal = document.getElementById('wallet-modal');
+                                                const unlockModalBody = document.getElementById('modal-body');
+                                                const unlockModalTitle = document.getElementById('modal-title');
+                                                
+                                                unlockModalTitle.textContent = '';
+                                                unlockModalBody.innerHTML = `
+                                                    <div style="text-align:center;padding:16px;">
+                                                        <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ Real game unlocked!</p>
+                                                        <p style="color:#fff;font-size:13px;">New game started. All scores reset to 0.</p>
+                                                        <p style="color:#888;font-size:11px;margin-top:8px;">Auto-closing...</p>
+                                                    </div>
+                                                `;
+                                                unlockModal.classList.add('open');
+                                                
+                                                // Auto-close after 3 seconds
+                                                setTimeout(() => {
+                                                    unlockModal.classList.remove('open');
+                                                }, 3000);
+                                            }, 300); // Wait for Swal to close
                                             
                                             stopGame();
                                         } else {
