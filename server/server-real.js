@@ -885,12 +885,15 @@ app.get('/api/check-payment/:userId', async (req, res) => {
         
         // If already paid
         if (user.hasPaid) {
+            console.log(`✅ User ${userId} already hasPaid=true, returning immediately`);
             return res.json({
                 success: true,
                 hasPaid: true,
                 message: 'Payment made'
             });
         }
+        
+        console.log(`⚠️ User ${userId} hasPaid=${user.hasPaid}, checking blockchain...`);
         
         // Check transactions (ONLY via TON Center)
         let paymentTx = null;
@@ -1123,6 +1126,7 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
             
             console.log(`✅ Payment confirmed and game reset: ${userId}`);
             console.log(`   Tx: ${paymentTx.transaction_id?.hash}`);
+            console.log(`   hasPaid: ${user.hasPaid}`);
             
             res.json({
                 success: true,
