@@ -1,60 +1,60 @@
 const TelegramBot = require('node-telegram-bot-api');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-// GAME_URL - Railway URL (backend + frontend birga)
+// GAME_URL - Railway URL (backend + frontend together)
 const GAME_URL = (process.env.GAME_URL || 'https://asracoin.up.railway.app').trim();
-// WEBHOOK_URL - Backend URL, Telegram shu yerga yuboradi
+// WEBHOOK_URL - Backend URL, Telegram sends updates here
 const WEBHOOK_URL = (process.env.WEBHOOK_URL || 'https://asracoin.up.railway.app/bot-webhook').trim();
 
 const useWebhook = process.env.USE_WEBHOOK === 'true';
 
 function initBot(app) {
     if (!TOKEN) {
-        console.error('❌ TELEGRAM_BOT_TOKEN topilmadi!');
+        console.error('❌ TELEGRAM_BOT_TOKEN not found!');
         return null;
     }
 
     let bot;
     if (useWebhook && app) {
-        console.log('🔗 Webhook rejimi');
+        console.log('🔗 Webhook mode');
         bot = new TelegramBot(TOKEN);
         app.post('/bot-webhook', (req, res) => {
             bot.processUpdate(req.body);
             res.sendStatus(200);
         });
     } else {
-        console.log('📡 Polling rejimi');
+        console.log('📡 Polling mode');
         bot = new TelegramBot(TOKEN, { polling: true });
     }
 
     if (useWebhook && WEBHOOK_URL) {
-        bot.setWebHook(WEBHOOK_URL).catch(err => console.error('Webhook xato:', err.message));
+        bot.setWebHook(WEBHOOK_URL).catch(err => console.error('Webhook error:', err.message));
     }
 
     console.log('🔗 GAME_URL:', GAME_URL);
 
     bot.getMe().then((botInfo) => {
-        console.log('✅ Bot ulangan:', botInfo.username);
-    }).catch((err) => console.error('❌ Bot ulanmadi:', err.message));
+        console.log('✅ Bot connected:', botInfo.username);
+    }).catch((err) => console.error('❌ Bot connection failed:', err.message));
 
     bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     const user = msg.from;
     
-    console.log('✅ /start qabul qilindi!');
+    console.log('✅ /start received!');
     console.log('   User:', user.first_name);
     console.log('   Chat ID:', chatId);
     
-    const welcomeMessage = `👋 Salom, ${user.first_name}!
+    const welcomeMessage = `👋 Hello, ${user.first_name}!
 
-🎮 *ASRA Coin o'yini xush kelibsiz!*
+🎮 *Welcome to ASRA Coin game!*
 
-💰 Bu o'yinda tangalarni bosib ASRA yig'ing
-💸 Yig'ilgan TONlarni yechib oling
+💰 Click coins to collect ASRA in this game
+💸 Withdraw collected TON
 
-⬇️ O'ynash uchun tugmani bosing:`;
+⬇️ Click the button to play:`;
 
-    // Foydalanuvchi ismi va familiyasini URL ga qo'shish
+    // Add user first and last name to URL
     const firstName = encodeURIComponent(user.first_name || '');
     const lastName = encodeURIComponent(user.last_name || '');
     const gameUrl = `${GAME_URL}?userId=${user.id}&firstName=${firstName}&lastName=${lastName}`;
@@ -63,7 +63,7 @@ function initBot(app) {
         reply_markup: {
             inline_keyboard: [[
                 {
-                    text: '🎮 O\'ynash',
+                    text: '🎮 Play',
                     web_app: { url: gameUrl }
                 }
             ]]
@@ -83,7 +83,7 @@ bot.on('error', (error) => {
     console.error('Bot error:', error.message);
 });
 
-console.log('🤖 Bot ishga tushdi');
+console.log('🤖 Bot started');
 return bot;
 }
 

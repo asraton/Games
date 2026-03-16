@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-// Railway Volume uchun ma'lumotlar papkasi
-// Lokalda ishlayotganda ./data, Railway da /app/data
+// Data directory for Railway Volume
+// When running locally ./data, on Railway /app/data
 const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/app/data';
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
@@ -14,7 +14,7 @@ const IV_LENGTH = 16; // AES block size
 console.log(`📁 JSON DB: Data directory = ${DATA_DIR}`);
 console.log(`🔐 Encryption: ${ENCRYPTION_KEY ? '✅ Enabled' : '❌ DISABLED - Set WALLET_ENCRYPTION_KEY'}`);
 
-// Ma'lumotlar papkasini yaratish
+// Create data directory
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     console.log(`✅ Created data directory: ${DATA_DIR}`);
