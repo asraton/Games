@@ -1615,6 +1615,10 @@
             // W button opens/closes panel
             wBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                // Stop game if active
+                if (gameActive) {
+                    stopGame();
+                }
                 walletPanel.classList.toggle('open');
             });
             document.addEventListener('click', () => walletPanel.classList.remove('open'));
@@ -2260,6 +2264,10 @@
 
             // Open/Close shop
             shopBtn.addEventListener('click', () => {
+                // Stop game if active - ensures fresh shop data on resume
+                if (gameActive) {
+                    stopGame();
+                }
                 shopModal.classList.add('open');
                 updateShopUI();
             });
@@ -2275,6 +2283,10 @@
 
             // Open/Close help
             helpBtn.addEventListener('click', () => {
+                // Stop game if active
+                if (gameActive) {
+                    stopGame();
+                }
                 helpModal.classList.add('open');
             });
 
