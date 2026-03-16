@@ -946,10 +946,33 @@
         const metaApi = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
         const API_BASE = metaApi || (window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '');
         
-        // userId - First from localStorage, then from Telegram (?userId=123)
+        // Offline warning function
+        function showOfflineWarning() {
+            if (gameActive) {
+                stopGame();
+                Swal.fire({
+                    title: 'Internet disconnected',
+                    text: 'Game paused. Please connect to internet to continue.',
+                    icon: 'warning',
+                    allowOutsideClick: false,
+                    confirmButtonText: 'Resume'
+                }).then(() => {
+                    if (navigator.onLine) {
+                        startNewGame();
+                    }
+                });
+            }
+        }
+        
+        // Monitor online/offline status
+        window.addEventListener('offline', () => {
+            console.log('📡 Internet disconnected');
+            showOfflineWarning();
+        });
+        
+        // userId - ONLY from Telegram URL (no localStorage)
         const urlParams = new URLSearchParams(window.location.search);
         const urlUserId = urlParams.get('userId') || urlParams.get('user_id') || '';
-        const storedUserId = localStorage.getItem('asra_current_userId');
         
         // Get userId from Telegram WebApp initData (in case URL loses it on restart)
         let tgUserId = '';
@@ -957,70 +980,22 @@
             tgUserId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
         }
         
-        // If userId in URL - save it, otherwise get from localStorage
-        const userId = urlUserId || storedUserId || tgUserId || '';
-        
-        // Save userId to localStorage (to persist across restarts)
-        if (userId) {
-            localStorage.setItem('asra_current_userId', userId);
-        }
+        // userId - ONLY from Telegram URL (no localStorage)
+        const userId = urlUserId || tgUserId || '';
         
         const urlFirstName = decodeURIComponent(urlParams.get('firstName') || '');
         const urlLastName = decodeURIComponent(urlParams.get('lastName') || '');
 
-
-        // LocalStorage key - separate for each user
-        const STORAGE_KEY = userId ? `asra_game_${userId}` : 'asra_game_default';
-        console.log('🔑 [INIT] STORAGE_KEY:', STORAGE_KEY);
-
-        // Debounce timer for saving game data
-        let saveDebounceTimer = null;
-        let lastSavedData = { asraScore: 0, tonCount: 0 };
-        
-        // Save game data to backend (for all devices)
-        async function saveGameData(force = false) {
-            // Debounce: only save every 5 seconds unless forced
-            if (!force && saveDebounceTimer) {
-                return; // Save already scheduled
-            }
-            
-            if (!force) {
-                saveDebounceTimer = setTimeout(() => {
-                    saveDebounceTimer = null;
-                    saveGameData(true); // Force save after delay
-                }, 5000);
-                return;
-            }
-            
-            // Only save if data actually changed
-            if (asraScore === lastSavedData.asraScore && tonCount === lastSavedData.tonCount) {
-                return;
-            }
-            
-            console.log('💾 [SAVE] Started. asraScore:', asraScore, 'tonCount:', tonCount);
-            
-            // Update last saved data
-            lastSavedData = { asraScore, tonCount };
-            
+        // Save game data to backend ONLY (no localStorage)
+        async function saveGameData() {
             if (!userId) {
-                console.log('⚠️ [SAVE] No userId, saving only to localStorage');
-                // If no userId - save only to localStorage
-                try {
-                    const data = {
-                        asraScore: asraScore,
-                        tonCount: tonCount,
-                        lastSaved: new Date().toISOString()
-                    };
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-                    console.log('✅ [SAVE] Saved to localStorage:', data);
-                } catch (e) {
-                    console.error('❌ [SAVE] localStorage error:', e);
-                }
+                console.log('⚠️ [SAVE] No userId, cannot save');
                 return;
             }
+            
+            console.log('💾 [SAVE] Saving to backend. asraScore:', asraScore, 'tonCount:', tonCount);
             
             try {
-                console.log('📡 [SAVE] Sending to backend:', API_BASE + '/save-game/' + userId);
                 const response = await fetch(API_BASE + '/save-game/' + userId, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1031,44 +1006,19 @@
                 });
                 console.log('✅ [SAVE] Backend response:', response.status);
             } catch (e) {
-                console.error('❌ [SAVE] Backend error, saving to localStorage:', e);
-                // Backend save error - fallback to localStorage
-                try {
-                    const data = {
-                        asraScore: asraScore,
-                        tonCount: tonCount,
-                        lastSaved: new Date().toISOString()
-                    };
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-                    console.log('✅ [SAVE] Saved to localStorage (fallback):', data);
-                } catch (e2) {
-                    console.error('❌ [SAVE] localStorage also failed:', e2);
-                }
+                console.error('❌ [SAVE] Backend error:', e);
+                // Show offline warning
+                showOfflineWarning();
             }
         }
 
-        // Force save immediately (for important events like withdrawal)
-        async function forceSaveGameData() {
-            if (saveDebounceTimer) {
-                clearTimeout(saveDebounceTimer);
-                saveDebounceTimer = null;
-            }
-            await saveGameData(true);
-        }
-
-        // Save before page unload
-        window.addEventListener('beforeunload', () => {
-            forceSaveGameData();
-        });
-
-        // Load game data from backend
+        // Load game data from backend ONLY (no localStorage)
         async function loadGameDataFromAPI() {
-            console.log('🔍 [LOAD] Started. userId:', userId);
-            console.log('🔑 [LOAD] STORAGE_KEY:', STORAGE_KEY);
+            console.log('🔍 [LOAD] Loading from backend. userId:', userId);
             
             if (!userId) {
-                console.log('⚠️ [LOAD] No userId, loading from localStorage');
-                return loadGameDataLocal();
+                console.log('⚠️ [LOAD] No userId, starting with 0');
+                return { asraScore: 0, tonCount: 0 };
             }
             
             try {
@@ -1078,46 +1028,22 @@
                 console.log('📦 [LOAD] Backend response:', data);
                 
                 if (res.status === 404 || data.error === 'User not found') {
-                    console.log('⚠️ [LOAD] User not found on backend, loading from localStorage...');
-                    const localData = loadGameDataLocal();
-                    
-                    // If localStorage has data, register user to backend
-                    if (localData.asraScore > 0 || localData.tonCount > 0) {
-                        console.log('📝 [LOAD] User not on backend but has localStorage data. Registering...');
-                        try {
-                            await fetch(API_BASE + '/user/register', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ userId })
-                            });
-                            // Save data to backend
-                            await saveGameDataToAPI(localData.asraScore, localData.tonCount);
-                        } catch (regErr) {
-                            console.error('❌ [LOAD] Registration error:', regErr);
-                        }
+                    console.log('⚠️ [LOAD] User not found on backend, starting fresh');
+                    // Register new user
+                    try {
+                        await fetch(API_BASE + '/user/register', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId })
+                        });
+                    } catch (regErr) {
+                        console.error('❌ [LOAD] Registration error:', regErr);
                     }
-                    return localData;
+                    return { asraScore: 0, tonCount: 0 };
                 }
                 
                 if (data.success) {
-                    // If backend has 0 but localStorage has data - migrate
-                    if (data.asraScore === 0 && data.tonCount === 0) {
-                        console.log('⚠️ [LOAD] Backend has 0, checking localStorage...');
-                        const localData = loadGameDataLocal();
-                        console.log('📦 [LOAD] LocalStorage data:', localData);
-                        if (localData.asraScore > 0 || localData.tonCount > 0) {
-                            console.log('🔄 [LOAD] Migration: localStorage -> backend');
-                            await saveGameDataToAPI(localData.asraScore, localData.tonCount);
-                            return localData;
-                        }
-                    }
                     console.log('✅ [LOAD] Loaded from backend:', data);
-                    // Save backend data to localStorage as backup
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                        asraScore: data.asraScore || 0,
-                        tonCount: data.tonCount || 0,
-                        lastSaved: new Date().toISOString()
-                    }));
                     return {
                         asraScore: data.asraScore || 0,
                         tonCount: data.tonCount || 0
@@ -1127,28 +1053,9 @@
                 }
             } catch (e) {
                 console.error('❌ [LOAD] Backend error:', e);
+                showOfflineWarning();
             }
             
-            console.log('📦 [LOAD] Switching to localStorage');
-            return loadGameDataLocal();
-        }
-
-        // Load game data from localStorage (fallback)
-        function loadGameDataLocal() {
-            try {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                console.log('📦 [LOAD-LOCAL] From localStorage:', STORAGE_KEY, saved);
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    console.log('✅ [LOAD-LOCAL] Data:', data);
-                    return {
-                        asraScore: data.asraScore || 0,
-                        tonCount: data.tonCount || 0
-                    };
-                }
-            } catch (e) {
-                // LocalStorage read error
-            }
             return { asraScore: 0, tonCount: 0 };
         }
 
@@ -1195,7 +1102,7 @@
             // Show ASRA in 4-digit format (0000-9999)
             asraDisplayElement.textContent = asraScore.toString().padStart(4, '0');
             
-            // Schedule save (debounced - only saves every 5 seconds)
+            // Save immediately to backend on every change
             saveGameData();
         }
 
@@ -2089,14 +1996,11 @@
                 }
             };
 
-            // LocalStorage key for shop (backup only)
-            const SHOP_STORAGE_KEY = userId ? `asra_shop_${userId}` : 'asra_shop_default';
-
-            // Load shop data from backend
+            // Load shop data from backend ONLY (no localStorage)
             async function loadShopDataFromBackend() {
                 if (!userId) {
-                    console.log('⚠️ No userId, loading from localStorage only');
-                    return loadShopDataLocal();
+                    console.log('⚠️ No userId, returning default shop data');
+                    return { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 };
                 }
                 
                 try {
@@ -2109,42 +2013,17 @@
                     }
                 } catch (e) {
                     console.error('❌ Failed to load shop from backend:', e);
+                    showOfflineWarning();
                 }
                 
-                // Fallback to localStorage
-                return loadShopDataLocal();
-            }
-
-            // Load from localStorage (fallback)
-            function loadShopDataLocal() {
-                try {
-                    const saved = localStorage.getItem(SHOP_STORAGE_KEY);
-                    if (saved) {
-                        const data = JSON.parse(saved);
-                        // Check: clear if older than 30 days
-                        if (data.purchased) {
-                            const now = new Date().getTime();
-                            const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-                            data.purchased = data.purchased.filter(coin => {
-                                const purchaseTime = data.purchaseTime && data.purchaseTime[coin];
-                                return purchaseTime && (now - purchaseTime < thirtyDays);
-                            });
-                        }
-                        return data;
-                    }
-                } catch (e) {
-                    console.error('Shop load error:', e);
-                }
+                // Return default if backend fails
                 return { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 };
             }
 
-            // Save shop data to backend
+            // Save shop data to backend ONLY (no localStorage)
             async function saveShopDataBackend() {
-                // Always save to localStorage as backup
-                saveShopDataLocal();
-                
                 if (!userId) {
-                    console.log('⚠️ No userId, saved only to localStorage');
+                    console.log('⚠️ No userId, cannot save shop data');
                     return;
                 }
                 
@@ -2163,15 +2042,7 @@
                     }
                 } catch (e) {
                     console.error('❌ Failed to save shop to backend:', e);
-                }
-            }
-
-            // Save to localStorage (backup)
-            function saveShopDataLocal() {
-                try {
-                    localStorage.setItem(SHOP_STORAGE_KEY, JSON.stringify(shopData));
-                } catch (e) {
-                    console.error('Shop save error:', e);
+                    showOfflineWarning();
                 }
             }
 
@@ -2560,12 +2431,11 @@
                 }
             };
 
-            // RESTART - clear shop data (local and backend)
+            // RESTART - clear shop data from backend only
             const originalRestartHandler = document.getElementById('btn-restart').onclick;
             document.getElementById('btn-restart').addEventListener('click', async () => {
-                // Clear shop data locally
+                // Clear shop data
                 shopData = { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 };
-                localStorage.removeItem(SHOP_STORAGE_KEY);
                 
                 // Clear shop data on backend
                 if (userId) {
