@@ -142,6 +142,16 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Config endpoint - return public configuration
+app.get('/api/config', (req, res) => {
+    res.json({
+        success: true,
+        paymentAddress: PAYMENT_ADDRESS,
+        paymentAmount: 1, // 1 TON
+        paymentNano: 1000000000 // 1 TON in nanoton
+    });
+});
+
 // User registration
 app.post('/api/user/register', async (req, res) => {
     try {
@@ -1215,6 +1225,11 @@ app.get('/api/load-game/:userId', async (req, res) => {
             tonCount: 0,
             lastSaved: null
         };
+        
+        // Disable caching - always return fresh data
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
         
         res.json({
             success: true,
