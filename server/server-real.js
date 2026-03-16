@@ -391,6 +391,12 @@ app.post('/api/restart-game/:userId', async (req, res) => {
             user.paidFromAddress = null;
             user.paymentResetAt = new Date().toISOString(); // Track reset time - ignore old payments
             user.demoAsraBalance = 0;
+            user.shopData = {
+                purchased: [],
+                selected: 'gunmetal',
+                purchaseTime: {},
+                asraProUsed: 0
+            };
             user.gameData = {
                 asraScore: 0,
                 tonCount: 0,
