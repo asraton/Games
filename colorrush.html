@@ -1797,7 +1797,7 @@
                 try {
                     console.log('🔍 Frontend: Checking payment for userId:', userId);
                     console.log('🔍 Frontend: API_BASE =', API_BASE);
-                    const res = await fetch(API_BASE + '/api/check-payment/' + userId);
+                    const res = await fetch(API_BASE + '/check-payment/' + userId);
                     console.log('🔍 Frontend: Response status:', res.status);
                     if (!res.ok) {
                         throw new Error('HTTP error! status: ' + res.status);
@@ -1856,14 +1856,14 @@
                     const startAutoCheck = () => {
                         autoCheckInterval = setInterval(async () => {
                             try {
-                                const res = await fetch(API_BASE + '/api/check-payment/' + userId);
+                                const res = await fetch(API_BASE + '/check-payment/' + userId);
                                 const data = await res.json();
                                 if (data.hasPaid) {
                                     clearInterval(autoCheckInterval);
                                     
                                     // Confirm payment on backend
                                     try {
-                                        await fetch(API_BASE + '/api/confirm-payment/' + userId, {
+                                        await fetch(API_BASE + '/confirm-payment/' + userId, {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' }
                                         });
