@@ -1281,6 +1281,11 @@
                     asraScore = data.gameState.asraScore;
                     tonCount = data.gameState.tonCount;
                     
+                    // Show actual reward number with + or - sign
+                    const isNegative = data.type === 'penalty';
+                    const rewardText = isNegative ? data.reward + ' asra' : '+' + data.reward + ' asra';
+                    showFloatText(x, y - 50, rewardText, isNegative);
+                    
                     // Update display
                     updateDisplay();
                     
