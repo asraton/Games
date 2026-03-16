@@ -1251,29 +1251,37 @@
             const x = e.clientX || (e.touches && e.touches[0].clientX);
             const y = e.clientY || (e.touches && e.touches[0].clientY);
             
-            // Send to server - SERVER calculates reward (Industry Standard)
-            try {
-                const response = await fetch(API_BASE + '/game/catch/' + userId, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        coinColor: currentCoinColor,
-                        timestamp: Date.now()
-                    })
-                });
-                
-                const data = await response.json();
-                
+            // OPTIMIZED: Coin disappears immediately (don't wait for server)
+            const coinImg = coin.querySelector('img');
+            pulseColors.forEach(c => coinImg.classList.remove(c));
+            
+            coin.classList.add('coin-shrink');
+            setTimeout(() => {
+                coin.style.display = 'none';
+                coin.classList.remove('coin-shrink');
+                coinVisible = false;
+                showCoin();
+            }, 200);
+            
+            // Show temporary animation immediately
+            showFloatText(x, y - 50, '+... asra', false);
+            
+            // Send to server in BACKGROUND - don't wait
+            fetch(API_BASE + '/game/catch/' + userId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    coinColor: currentCoinColor,
+                    timestamp: Date.now()
+                })
+            }).then(response => response.json())
+              .then(data => {
                 if (data.success) {
-                    // Server returns new game state
+                    // Update from server response
                     asraScore = data.gameState.asraScore;
                     tonCount = data.gameState.tonCount;
                     
-                    // Show reward animation
-                    const isNegative = data.type === 'penalty';
-                    const rewardText = data.reward > 0 ? '+' + data.reward + ' asra' : data.reward + ' asra';
-                    showFloatText(x, y - 50, rewardText, isNegative);
-                    
+                    // Update display
                     updateDisplay();
                     
                     // Check ASRA PRO limit
@@ -1288,22 +1296,9 @@
                         });
                     }
                 }
-            } catch (err) {
+            }).catch(err => {
                 console.error('❌ Catch coin error:', err);
-            }
-            
-            // Remove animation classes
-            const coinImg = coin.querySelector('img');
-            pulseColors.forEach(c => coinImg.classList.remove(c));
-            
-            // Coin disappears and new one appears
-            coin.classList.add('coin-shrink');
-            setTimeout(() => {
-                coin.style.display = 'none';
-                coin.classList.remove('coin-shrink');
-                coinVisible = false;
-                showCoin();
-            }, 200);
+            });
         }
 
         // INDUSTRY STANDARD: Start game session on server
