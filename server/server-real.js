@@ -1034,12 +1034,52 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
         }
         
         if (paymentTx) {
-            // Reset stats for new game
+            const txFromAddress = paymentTx.from || paymentTx.in_msg?.source || null;
+            const now = new Date().toISOString();
+            const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+            
+            // Check if user already paid
+            if (user.hasPaid && user.paidAt) {
+                const paidAtTime = new Date(user.paidAt).getTime();
+                const currentTime = new Date(now).getTime();
+                const timeDiff = currentTime - paidAtTime;
+                const isSameWallet = user.paidFromAddress && txFromAddress && 
+                                     areAddressesEqual(user.paidFromAddress, txFromAddress);
+                
+                // If same wallet and less than 30 days passed - just extend payment
+                if (isSameWallet && timeDiff < thirtyDaysMs) {
+                    user.paidAt = now; // Extend payment date
+                    user.paymentTxHash = paymentTx.transaction_id?.hash || null;
+                    userDB.set(userId, user);
+                    
+                    console.log(`✅ Payment extended: ${userId}`);
+                    console.log(`   Same wallet, ${Math.floor((thirtyDaysMs - timeDiff) / (24 * 60 * 60 * 1000))} days remaining`);
+                    
+                    return res.json({
+                        success: true,
+                        hasPaid: true,
+                        message: 'Payment extended! Your game data is preserved.',
+                        reset: false,
+                        extended: true,
+                        daysRemaining: Math.floor((thirtyDaysMs - timeDiff) / (24 * 60 * 60 * 1000)),
+                        txHash: paymentTx.transaction_id?.hash
+                    });
+                }
+                
+                // If different wallet OR 30+ days passed - new payment required
+                if (!isSameWallet) {
+                    console.log(`🆕 New wallet connected: ${userId}`);
+                } else {
+                    console.log(`📅 30 days passed, payment renewal: ${userId}`);
+                }
+            }
+            
+            // New payment or renewal - reset game data
             user.hasPaid = true;
-            user.paidAt = new Date().toISOString();
+            user.paidAt = now;
             user.paidAmount = REQUIRED_AMOUNT;
             user.paymentTxHash = paymentTx.transaction_id?.hash || null;
-            user.paidFromAddress = paymentTx.from || paymentTx.in_msg?.source || null;
+            user.paidFromAddress = txFromAddress;
             
             // Reset all stats to 0 (new game)
             user.totalDeposited = 0;
