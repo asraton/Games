@@ -1049,6 +1049,13 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
             user.demoAsraBalance = 0;
             user.purchasedItems = [];
             
+            // Reset game data (asraScore, tonCount) - BUG FIX
+            user.gameData = {
+                asraScore: 0,
+                tonCount: 0,
+                lastSaved: new Date().toISOString()
+            };
+            
             user.globalStats = {
                 totalClicksAllTime: 0,
                 totalCoinsCollected: 0,
