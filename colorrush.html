@@ -1720,7 +1720,7 @@
                 
                 // Check payment status
                 modalTitle.textContent = ''; // Title empty
-                let paymentStatus;
+                let paymentStatus = null;
                 try {
                     console.log('🔍 Frontend: Checking payment for userId:', userId);
                     const res = await fetch(API_BASE + '/check-payment/' + userId);
@@ -1728,11 +1728,16 @@
                     console.log('📦 Frontend: Payment status response:', paymentStatus);
                 } catch (e) {
                     console.error('❌ Frontend: Payment check error:', e);
+                    // If API fails, assume no payment (show demo modal)
+                    paymentStatus = { hasPaid: false, error: true };
                 }
                 
                 // Real mode: Payment check
                 console.log('🔍 Frontend: hasPaid =', paymentStatus?.hasPaid);
-                if (!paymentStatus || !paymentStatus.hasPaid) {
+                const needsPayment = !paymentStatus || !paymentStatus.hasPaid;
+                console.log('🔍 Frontend: needsPayment =', needsPayment);
+                
+                if (needsPayment) {
                     console.log('❌ Frontend: Payment not detected, showing demo modal');
                     // Get config (use cached or fetch new)
                     const config = configData || await loadConfig();
