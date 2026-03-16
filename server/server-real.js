@@ -389,6 +389,7 @@ app.post('/api/restart-game/:userId', async (req, res) => {
             user.paidAmount = 0;
             user.paymentTxHash = null;
             user.paidFromAddress = null;
+            user.paymentResetAt = new Date().toISOString(); // Track reset time - ignore old payments
             user.demoAsraBalance = 0;
             user.gameData = {
                 asraScore: 0,
@@ -922,15 +923,27 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             paymentTx = tonTransactions.find(tx => {
                 const toAddress = tx.to || tx.in_msg?.destination;
                 const value = tx.value || tx.in_msg?.value;
+                const txTime = tx.utime ? tx.utime * 1000 : 0; // Convert to milliseconds
+                
                 if (!toAddress || !value) {
                     console.log(`   ❌ Skipping tx: missing toAddress=${!!toAddress} or value=${!!value}`);
                     return false;
                 }
+                
+                // Check if transaction is after paymentResetAt (if set)
+                if (user.paymentResetAt && txTime > 0) {
+                    const resetTime = new Date(user.paymentResetAt).getTime();
+                    if (txTime < resetTime) {
+                        console.log(`   ⏰ Skipping tx: before reset time (${new Date(txTime).toISOString()} < ${user.paymentResetAt})`);
+                        return false;
+                    }
+                }
+                
                 const tonAmount = Number(BigInt(value)) / 1e9;
                 // Use Address library for proper comparison
                 const isAddressMatch = areAddressesEqual(toAddress, PAYMENT_ADDRESS);
                 const isMatch = isAddressMatch && tonAmount >= REQUIRED_AMOUNT;
-                console.log(`   🔍 Checking: to=${toAddress?.slice(0, 20)}... amount=${tonAmount} TON, addressMatch=${isAddressMatch}, match=${isMatch}`);
+                console.log(`   🔍 Checking: to=${toAddress?.slice(0, 20)}... amount=${tonAmount} TON, time=${new Date(txTime).toISOString()}, addressMatch=${isAddressMatch}, match=${isMatch}`);
                 return isMatch;
             });
             
@@ -1037,12 +1050,23 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
             paymentTx = tonTransactions.find(tx => {
                 const toAddress = tx.to || tx.in_msg?.destination;
                 const value = tx.value || tx.in_msg?.value;
+                const txTime = tx.utime ? tx.utime * 1000 : 0;
+                
                 if (!toAddress || !value) return false;
+                
+                // Check if transaction is after paymentResetAt (if set)
+                if (user.paymentResetAt && txTime > 0) {
+                    const resetTime = new Date(user.paymentResetAt).getTime();
+                    if (txTime < resetTime) {
+                        console.log(`   ⏰ confirm-payment: Skipping tx before reset time`);
+                        return false;
+                    }
+                }
                 
                 const tonAmount = Number(BigInt(value)) / 1e9;
                 const isAddressMatch = areAddressesEqual(toAddress, PAYMENT_ADDRESS);
                 
-                console.log(`   Tx check: amount=${tonAmount}, addressMatch=${isAddressMatch}`);
+                console.log(`   Tx check: amount=${tonAmount}, addressMatch=${isAddressMatch}, time=${new Date(txTime).toISOString()}`);
                 
                 return isAddressMatch && tonAmount >= REQUIRED_AMOUNT;
             });

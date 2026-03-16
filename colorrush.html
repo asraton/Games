@@ -2628,30 +2628,6 @@
                 }
             };
 
-            // RESTART - clear shop data from backend only
-            const originalRestartHandler = document.getElementById('btn-restart').onclick;
-            document.getElementById('btn-restart').addEventListener('click', async () => {
-                // Clear shop data
-                shopData = { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 };
-                
-                // Clear shop data on backend
-                if (userId) {
-                    try {
-                        await fetch(API_BASE + '/shop/' + userId, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(shopData)
-                        });
-                        console.log('✅ Shop data cleared on backend');
-                    } catch (e) {
-                        console.error('❌ Failed to clear shop on backend:', e);
-                    }
-                }
-                
-                stopAsraAutoPlay();
-                coinImg.src = '/assets/Gunmetal.png';
-            });
-
             // Update initial UI
             updateShopUI();
         });
