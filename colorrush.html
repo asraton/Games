@@ -1264,7 +1264,7 @@
             }, 200);
             
             // Show temporary animation immediately
-            showFloatText(x, y - 50, '+... asra', false);
+            showFloatText(x, y - 50, '+ASRA', false);
             
             // Send to server in BACKGROUND - don't wait
             fetch(API_BASE + '/game/catch/' + userId, {
@@ -1280,6 +1280,11 @@
                     // Update from server response
                     asraScore = data.gameState.asraScore;
                     tonCount = data.gameState.tonCount;
+                    
+                    // Show actual reward with correct number and color
+                    const isNegative = data.type === 'penalty';
+                    const rewardText = isNegative ? data.reward + ' asra' : '+' + data.reward + ' asra';
+                    showFloatText(x, y - 50, rewardText, isNegative);
                     
                     // Update display
                     updateDisplay();
