@@ -1229,6 +1229,90 @@ app.get('/api/load-game/:userId', async (req, res) => {
     }
 });
 
+// Get shop data
+app.get('/api/shop/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId required' });
+        }
+        
+        const user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Return shop data (purchased items with expiration)
+        const shopData = user.shopData || {
+            purchased: [],
+            selected: 'gunmetal',
+            purchaseTime: {},
+            asraProUsed: 0  // Track how much TON was earned with ASRA PRO
+        };
+        
+        // Filter out expired items (30 days)
+        const now = new Date().getTime();
+        const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+        
+        if (shopData.purchased && shopData.purchaseTime) {
+            shopData.purchased = shopData.purchased.filter(coin => {
+                const purchaseTime = shopData.purchaseTime[coin];
+                return purchaseTime && (now - purchaseTime < thirtyDays);
+            });
+        }
+        
+        res.json({
+            success: true,
+            shopData: shopData
+        });
+        
+    } catch (error) {
+        console.error('Get shop data error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Save shop data
+app.post('/api/shop/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { purchased, selected, purchaseTime, asraProUsed } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId required' });
+        }
+        
+        const user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Update shop data
+        user.shopData = {
+            purchased: purchased || [],
+            selected: selected || 'gunmetal',
+            purchaseTime: purchaseTime || {},
+            asraProUsed: asraProUsed || 0
+        };
+        
+        userDB.set(userId, user);
+        
+        console.log(`🛒 Shop data saved: ${userId}`);
+        console.log(`   Purchased: ${user.shopData.purchased.join(', ') || 'none'}`);
+        console.log(`   Selected: ${user.shopData.selected}`);
+        
+        res.json({
+            success: true,
+            message: 'Shop data saved'
+        });
+        
+    } catch (error) {
+        console.error('Save shop data error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // Database migration - migrate old users to new format
 async function migrateDatabase() {
     try {
@@ -1247,6 +1331,26 @@ async function migrateDatabase() {
                 userDB.set(userId, user);
                 migratedCount++;
                 console.log(`   ✅ ${userId} - gameData created`);
+            }
+            
+            // If user doesn't have shopData, create it
+            if (!user.shopData) {
+                user.shopData = {
+                    purchased: user.purchasedItems || [],
+                    selected: 'gunmetal',
+                    purchaseTime: {},
+                    asraProUsed: 0
+                };
+                // Migrate old purchasedItems to new format
+                if (user.purchasedItems && user.purchasedItems.length > 0) {
+                    const now = new Date().getTime();
+                    user.purchasedItems.forEach(coin => {
+                        user.shopData.purchaseTime[coin] = now;
+                    });
+                }
+                userDB.set(userId, user);
+                migratedCount++;
+                console.log(`   ✅ ${userId} - shopData created`);
             }
         }
         

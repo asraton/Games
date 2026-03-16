@@ -2050,24 +2050,45 @@
                 }
             };
 
-            // LocalStorage key for shop
+            // LocalStorage key for shop (backup only)
             const SHOP_STORAGE_KEY = userId ? `asra_shop_${userId}` : 'asra_shop_default';
 
-            // Load shop data
-            let shopData = loadShopData();
+            // Load shop data from backend
+            async function loadShopDataFromBackend() {
+                if (!userId) {
+                    console.log('⚠️ No userId, loading from localStorage only');
+                    return loadShopDataLocal();
+                }
+                
+                try {
+                    const response = await fetch(API_BASE + '/shop/' + userId);
+                    const result = await response.json();
+                    
+                    if (result.success && result.shopData) {
+                        console.log('✅ Shop data loaded from backend:', result.shopData);
+                        return result.shopData;
+                    }
+                } catch (e) {
+                    console.error('❌ Failed to load shop from backend:', e);
+                }
+                
+                // Fallback to localStorage
+                return loadShopDataLocal();
+            }
 
-            function loadShopData() {
+            // Load from localStorage (fallback)
+            function loadShopDataLocal() {
                 try {
                     const saved = localStorage.getItem(SHOP_STORAGE_KEY);
                     if (saved) {
                         const data = JSON.parse(saved);
-                        // Check: clear if older than 1 month
+                        // Check: clear if older than 30 days
                         if (data.purchased) {
                             const now = new Date().getTime();
-                            const oneMonth = 30 * 24 * 60 * 60 * 1000;
+                            const thirtyDays = 30 * 24 * 60 * 60 * 1000;
                             data.purchased = data.purchased.filter(coin => {
                                 const purchaseTime = data.purchaseTime && data.purchaseTime[coin];
-                                return purchaseTime && (now - purchaseTime < oneMonth);
+                                return purchaseTime && (now - purchaseTime < thirtyDays);
                             });
                         }
                         return data;
@@ -2075,16 +2096,54 @@
                 } catch (e) {
                     console.error('Shop load error:', e);
                 }
-                return { purchased: [], selected: 'gunmetal', purchaseTime: {} };
+                return { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 };
             }
 
-            function saveShopData() {
+            // Save shop data to backend
+            async function saveShopDataBackend() {
+                // Always save to localStorage as backup
+                saveShopDataLocal();
+                
+                if (!userId) {
+                    console.log('⚠️ No userId, saved only to localStorage');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(API_BASE + '/shop/' + userId, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(shopData)
+                    });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        console.log('✅ Shop data saved to backend');
+                    } else {
+                        console.error('❌ Backend save failed:', result.error);
+                    }
+                } catch (e) {
+                    console.error('❌ Failed to save shop to backend:', e);
+                }
+            }
+
+            // Save to localStorage (backup)
+            function saveShopDataLocal() {
                 try {
                     localStorage.setItem(SHOP_STORAGE_KEY, JSON.stringify(shopData));
                 } catch (e) {
                     console.error('Shop save error:', e);
                 }
             }
+
+            // Initialize shop data from backend
+            let shopData = { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 };
+            
+            // Load shop data on init
+            loadShopDataFromBackend().then(data => {
+                shopData = data;
+                updateShopUI();
+            });
 
             // Update Shop UI
             function updateShopUI() {
@@ -2161,7 +2220,7 @@
                         // Select
                         shopData.selected = coinType;
                     }
-                    saveShopData();
+                    saveShopDataBackend();
                     updateShopUI();
                     return;
                 }
@@ -2257,7 +2316,7 @@
                                 shopData.purchased.push(coinType);
                                 shopData.purchaseTime[coinType] = new Date().getTime();
                                 shopData.selected = coinType;
-                                saveShopData();
+                                saveShopDataBackend();
                                 updateShopUI();
 
                                 Swal.fire({
@@ -2300,8 +2359,17 @@
                     if (!gameActive || isPaused) return;
                     
                     // Reached 200 TON?
-                    if (tonCount - asraStartTon >= 200) {
+                    if (shopData.asraProUsed >= 200) {
                         stopAsraAutoPlay();
+                        asraIndicator.classList.remove('active');
+                        Swal.fire({
+                            text: 'ASRA PRO limit reached (200 TON)! Please purchase again.',
+                            icon: 'info',
+                            timer: 3000,
+                            showConfirmButton: false,
+                            width: '280px',
+                            position: 'center'
+                        });
                         return;
                     }
 
@@ -2313,6 +2381,9 @@
                         if (asraScore >= ASRA_PER_TON) {
                             tonCount++;
                             asraScore = asraScore - ASRA_PER_TON;
+                            // Track ASRA PRO usage (increment by 1 TON)
+                            shopData.asraProUsed = (shopData.asraProUsed || 0) + 1;
+                            saveShopDataBackend();
                         }
                         
                         updateDisplay();
@@ -2376,6 +2447,25 @@
             catchCoin = function(e) {
                 const selectedCoin = shopData.selected;
                 if (selectedCoin === 'asra' && shopData.purchased.includes('asra')) {
+                    // Check if ASRA PRO has reached 200 TON limit
+                    if (shopData.asraProUsed >= 200) {
+                        // Limit reached - fall back to normal coin rules
+                        Swal.fire({
+                            text: 'ASRA PRO limit reached (200 TON). Please purchase again to continue using.',
+                            icon: 'warning',
+                            timer: 3000,
+                            showConfirmButton: false,
+                            width: '280px',
+                            position: 'center'
+                        });
+                        // Reset to gunmetal
+                        shopData.selected = 'gunmetal';
+                        saveShopDataBackend();
+                        updateShopUI();
+                        originalCatchCoin(e);
+                        return;
+                    }
+                    
                     // ASRA PRO coin - no penalty, auto-play
                     e.preventDefault();
                     if (!gameActive || isPaused || !coinVisible) return;
@@ -2390,6 +2480,23 @@
                     if (asraScore >= ASRA_PER_TON) {
                         tonCount++;
                         asraScore = asraScore - ASRA_PER_TON;
+                        // Track ASRA PRO usage (increment by 1 TON)
+                        shopData.asraProUsed = (shopData.asraProUsed || 0) + 1;
+                        saveShopDataBackend();
+                        
+                        // Check if limit reached after this TON
+                        if (shopData.asraProUsed >= 200) {
+                            stopAsraAutoPlay();
+                            asraIndicator.classList.remove('active');
+                            Swal.fire({
+                                text: 'ASRA PRO limit reached (200 TON)! Please purchase again.',
+                                icon: 'info',
+                                timer: 3000,
+                                showConfirmButton: false,
+                                width: '280px',
+                                position: 'center'
+                            });
+                        }
                     }
 
                     const x = e.clientX || (e.touches && e.touches[0].clientX);
@@ -2414,12 +2521,27 @@
                 }
             };
 
-            // RESTART - clear shop data
+            // RESTART - clear shop data (local and backend)
             const originalRestartHandler = document.getElementById('btn-restart').onclick;
             document.getElementById('btn-restart').addEventListener('click', async () => {
-                // Clear shop data
-                shopData = { purchased: [], selected: 'gunmetal', purchaseTime: {} };
+                // Clear shop data locally
+                shopData = { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 };
                 localStorage.removeItem(SHOP_STORAGE_KEY);
+                
+                // Clear shop data on backend
+                if (userId) {
+                    try {
+                        await fetch(API_BASE + '/shop/' + userId, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(shopData)
+                        });
+                        console.log('✅ Shop data cleared on backend');
+                    } catch (e) {
+                        console.error('❌ Failed to clear shop on backend:', e);
+                    }
+                }
+                
                 stopAsraAutoPlay();
                 coinImg.src = '/assets/Gunmetal.png';
             });
