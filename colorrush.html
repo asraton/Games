@@ -755,6 +755,10 @@
         <div class="help-modal-content">
             <h3>Game Information</h3>
             
+            <div class="help-text" style="background:rgba(0,210,255,0.1);border:1px solid rgba(0,210,255,0.3);border-radius:8px;padding:12px;margin-bottom:15px;font-size:12px;color:#00d2ff;">
+                This is a real game with real rewards. Data comes from blockchain and server - some delay may occur based on your internet speed.
+            </div>
+            
             <div class="help-section-title">How to Play?</div>
             <div class="help-text">
                 Press START and quickly click on coins appearing on screen. Earn ASRA based on your selected coin price. Red glow behind coin = -100 ASRA penalty. 10,000 ASRA = 1 TON.
@@ -1787,7 +1791,8 @@
                 let paymentStatus = null;
                 try {
                     console.log('🔍 Frontend: Checking payment for userId:', userId);
-                    const res = await fetch(API_BASE + '/check-payment/' + userId);
+                    console.log('🔍 Frontend: API_BASE =', API_BASE);
+                    const res = await fetch(API_BASE + '/api/check-payment/' + userId);
                     paymentStatus = await res.json();
                     console.log('📦 Frontend: Payment status response:', paymentStatus);
                 } catch (e) {
@@ -1803,6 +1808,8 @@
                 
                 if (needsPayment) {
                     console.log('❌ Frontend: Payment not detected, showing demo modal');
+                    console.log('hasPaid:', paymentStatus?.hasPaid);
+                    console.log('needsPayment:', needsPayment);
                     // Get config (use cached or fetch new)
                     const config = configData || await loadConfig();
                     const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
@@ -1836,14 +1843,14 @@
                     const startAutoCheck = () => {
                         autoCheckInterval = setInterval(async () => {
                             try {
-                                const res = await fetch(API_BASE + '/check-payment/' + userId);
+                                const res = await fetch(API_BASE + '/api/check-payment/' + userId);
                                 const data = await res.json();
                                 if (data.hasPaid) {
                                     clearInterval(autoCheckInterval);
                                     
                                     // Confirm payment on backend
                                     try {
-                                        await fetch(API_BASE + '/confirm-payment/' + userId, {
+                                        await fetch(API_BASE + '/api/confirm-payment/' + userId, {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' }
                                         });
