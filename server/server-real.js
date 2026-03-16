@@ -1088,14 +1088,14 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
                 }
             }
             
-            // New payment or renewal - reset game data
+            // New payment or renewal - reset game data (demo → real game transition)
             user.hasPaid = true;
             user.paidAt = now;
             user.paidAmount = REQUIRED_AMOUNT;
             user.paymentTxHash = paymentTx.transaction_id?.hash || null;
             user.paidFromAddress = txFromAddress;
             
-            // Reset all stats to 0 (new game)
+            // DEMO → REAL GAME: Reset all stats to 0 (new game starts)
             user.totalDeposited = 0;
             user.totalConverted = 0;
             user.balance = 0;
@@ -1103,7 +1103,7 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
             user.demoAsraBalance = 0;
             user.purchasedItems = [];
             
-            // Reset game data (asraScore, tonCount) - BUG FIX
+            // Reset game data (asraScore, tonCount) - DEMO to REAL transition
             user.gameData = {
                 asraScore: 0,
                 tonCount: 0,
@@ -1127,7 +1127,7 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
             res.json({
                 success: true,
                 hasPaid: true,
-                message: 'Payment confirmed! New game started.',
+                message: 'Payment confirmed! Real game started. You can now withdraw TON when you earn enough.',
                 reset: true,
                 txHash: paymentTx.transaction_id?.hash
             });
