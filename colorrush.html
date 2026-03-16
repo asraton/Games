@@ -970,7 +970,7 @@
             showOfflineWarning();
         });
         
-        // userId - ONLY from Telegram URL (no localStorage)
+        // userId - from Telegram URL OR localStorage (for page refresh)
         const urlParams = new URLSearchParams(window.location.search);
         const urlUserId = urlParams.get('userId') || urlParams.get('user_id') || '';
         
@@ -980,21 +980,52 @@
             tgUserId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
         }
         
-        // userId - ONLY from Telegram URL (no localStorage)
-        const userId = urlUserId || tgUserId || '';
+        // Try to get userId from localStorage if not in URL (for page refresh recovery)
+        let storedUserId = '';
+        try {
+            storedUserId = localStorage.getItem('asra_userId') || '';
+        } catch (e) {
+            console.log('⚠️ localStorage not available');
+        }
+        
+        // userId - Priority: URL > Telegram WebApp > localStorage
+        const userId = urlUserId || tgUserId || storedUserId || '';
+        
+        // Save userId to localStorage for page refresh recovery
+        if (userId) {
+            try {
+                localStorage.setItem('asra_userId', userId);
+                console.log('💾 [INIT] userId saved to localStorage:', userId);
+            } catch (e) {
+                console.log('⚠️ Cannot save to localStorage');
+            }
+        }
         
         const urlFirstName = decodeURIComponent(urlParams.get('firstName') || '');
         const urlLastName = decodeURIComponent(urlParams.get('lastName') || '');
 
-        // Save game data to backend ONLY (no localStorage)
+        // Save game data to backend AND localStorage (for backup)
         async function saveGameData() {
             if (!userId) {
                 console.log('⚠️ [SAVE] No userId, cannot save');
                 return;
             }
             
-            console.log('💾 [SAVE] Saving to backend. asraScore:', asraScore, 'tonCount:', tonCount);
+            console.log('💾 [SAVE] Saving. asraScore:', asraScore, 'tonCount:', tonCount);
             
+            // Always save to localStorage first (as backup)
+            try {
+                localStorage.setItem('asra_score_' + userId, JSON.stringify({
+                    asraScore: asraScore,
+                    tonCount: tonCount,
+                    savedAt: new Date().toISOString()
+                }));
+                console.log('✅ [SAVE] Saved to localStorage');
+            } catch (e) {
+                console.error('❌ [SAVE] localStorage error:', e);
+            }
+            
+            // Then save to backend
             try {
                 const response = await fetch(API_BASE + '/save-game/' + userId, {
                     method: 'POST',
@@ -1007,24 +1038,20 @@
                 console.log('✅ [SAVE] Backend response:', response.status);
             } catch (e) {
                 console.error('❌ [SAVE] Backend error:', e);
-                // Show offline warning
                 showOfflineWarning();
             }
         }
 
-        // Load game data from backend ONLY (no localStorage)
-        async function loadGameDataFromAPI(timestamp = Date.now()) {
-            console.log('🔍 [LOAD] Loading from backend. userId:', userId);
-            
+        // INDUSTRY STANDARD: Load game state from server
+        async function loadGameState() {
             if (!userId) {
                 console.log('⚠️ [LOAD] No userId, starting with 0');
                 return { asraScore: 0, tonCount: 0 };
             }
             
             try {
-                // Add cache-busting parameter
-                const url = API_BASE + '/load-game/' + userId + '?_=' + timestamp;
-                console.log('📡 [LOAD] Loading from backend:', url);
+                const url = API_BASE + '/game/state/' + userId + '?_=' + Date.now();
+                console.log('📡 [LOAD] Loading from server:', url);
                 
                 const res = await fetch(url, {
                     method: 'GET',
@@ -1033,46 +1060,32 @@
                         'Pragma': 'no-cache'
                     }
                 });
-                const data = await res.json();
-                console.log('📦 [LOAD] Backend response:', data);
                 
-                if (res.status === 404 || data.error === 'User not found') {
-                    console.log('⚠️ [LOAD] User not found on backend, starting fresh');
-                    // Register new user
-                    try {
-                        await fetch(API_BASE + '/user/register', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId })
-                        });
-                    } catch (regErr) {
-                        console.error('❌ [LOAD] Registration error:', regErr);
-                    }
-                    return { asraScore: 0, tonCount: 0 };
-                }
+                const data = await res.json();
+                console.log('📦 [LOAD] Server response:', data);
                 
                 if (data.success) {
-                    console.log('✅ [LOAD] Loaded from backend:', data);
+                    console.log('✅ [LOAD] Loaded from server:', data.gameState);
                     return {
-                        asraScore: data.asraScore || 0,
-                        tonCount: data.tonCount || 0
+                        asraScore: data.gameState.asraScore || 0,
+                        tonCount: data.gameState.tonCount || 0
                     };
                 } else {
-                    console.log('❌ [LOAD] Backend unsuccessful:', data);
+                    console.log('❌ [LOAD] Server error:', data.error);
                 }
             } catch (e) {
-                console.error('❌ [LOAD] Backend error:', e);
+                console.error('❌ [LOAD] Error:', e);
                 showOfflineWarning();
             }
             
             return { asraScore: 0, tonCount: 0 };
         }
 
-        // Load saved data - first from API
+        // Load saved data from server
         let asraScore = 0;
         let tonCount = 0;
-        let dataLoaded = false; // Track if data loaded from backend
-        let isLoadingData = true; // Loading state
+        let dataLoaded = false;
+        let isLoadingData = true;
         
         // Create loading overlay
         const loadingOverlay = document.createElement('div');
@@ -1106,14 +1119,12 @@
         `;
         document.body.appendChild(loadingOverlay);
         
-        // Async load
+        // Initialize game data
         async function initGameData() {
-            console.log('🔄 [INIT] Loading game data from backend...');
+            console.log('🔄 [INIT] Loading game data from server...');
             isLoadingData = true;
             
-            // Add cache-busting timestamp
-            const timestamp = Date.now();
-            const data = await loadGameDataFromAPI(timestamp);
+            const data = await loadGameState();
             
             asraScore = data.asraScore;
             tonCount = data.tonCount;
@@ -1128,7 +1139,7 @@
             updateDisplay();
         }
         
-        // Initial load (async)
+        // Initial load
         initGameData();
         
         const ASRA_PER_TON = 10000; // 10000 asra = 1 ton
@@ -1158,10 +1169,8 @@
             // Show ASRA in 4-digit format (0000-9999)
             asraDisplayElement.textContent = asraScore.toString().padStart(4, '0');
             
-            // Save immediately to backend on every change (only after data loaded)
-            if (dataLoaded) {
-                saveGameData();
-            }
+            // Note: In industry standard, saves happen via /api/game/catch
+            // Not via updateDisplay to prevent duplicate saves
         }
 
         function calculateSpeed() {
@@ -1232,50 +1241,62 @@
             setTimeout(() => floatEl.remove(), 1000);
         }
 
-        function catchCoin(e) {
+        // INDUSTRY STANDARD: Frontend sends coin catch to server, server calculates reward
+        async function catchCoin(e) {
             e.preventDefault();
             if (!gameActive || isPaused || !coinVisible) return;
-
-            clearTimeout(coinTimeout);
-
-            const isRed = currentCoinColor === 'pulse-red';
-            let rewardText;
             
-            if (isRed) {
-                asraScore -= 100;
-                rewardText = '-100 asra';
-                
-                if (asraScore < 0) {
-                    if (tonCount > 0) {
-                        tonCount--;
-                        asraScore = ASRA_PER_TON + asraScore;
-                    } else {
-                        asraScore = 0;
-                    }
-                }
-            } else {
-                const reward = Math.floor(Math.random() * 100) + 1;
-                asraScore += reward;
-                rewardText = '+' + reward + ' asra';
-                
-                if (asraScore >= ASRA_PER_TON) {
-                    tonCount++;
-                    asraScore = asraScore - ASRA_PER_TON;
-                }
-            }
-
+            clearTimeout(coinTimeout);
+            
             const x = e.clientX || (e.touches && e.touches[0].clientX);
             const y = e.clientY || (e.touches && e.touches[0].clientY);
-
-            if (x && y) showFloatText(x, y - 50, rewardText, isRed);
-
-            updateDisplay();
             
-            // Remove ALL animation classes
+            // Send to server - SERVER calculates reward (Industry Standard)
+            try {
+                const response = await fetch(API_BASE + '/game/catch/' + userId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        coinColor: currentCoinColor,
+                        timestamp: Date.now()
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Server returns new game state
+                    asraScore = data.gameState.asraScore;
+                    tonCount = data.gameState.tonCount;
+                    
+                    // Show reward animation
+                    const isNegative = data.type === 'penalty';
+                    const rewardText = data.reward > 0 ? '+' + data.reward + ' asra' : data.reward + ' asra';
+                    showFloatText(x, y - 50, rewardText, isNegative);
+                    
+                    updateDisplay();
+                    
+                    // Check ASRA PRO limit
+                    if (data.limitReached) {
+                        Swal.fire({
+                            text: 'ASRA PRO limit reached (200 TON). Please purchase again.',
+                            icon: 'warning',
+                            timer: 3000,
+                            showConfirmButton: false,
+                            width: '280px',
+                            position: 'center'
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('❌ Catch coin error:', err);
+            }
+            
+            // Remove animation classes
             const coinImg = coin.querySelector('img');
             pulseColors.forEach(c => coinImg.classList.remove(c));
             
-            // Coin disappears with effect and new one appears
+            // Coin disappears and new one appears
             coin.classList.add('coin-shrink');
             setTimeout(() => {
                 coin.style.display = 'none';
@@ -1285,42 +1306,68 @@
             }, 200);
         }
 
-        function startNewGame() {
-            // Doesn't start new game, just continues - scores are saved
-            gameActive = true;
-            isPaused = false;
-
-            updateDisplay();
-
-            stopBtn.textContent = 'STOP';
-            stopBtn.style.color = '#ff4757';
-            stopBtn.classList.add('stop-mode');
-
-            showCoin();
+        // INDUSTRY STANDARD: Start game session on server
+        async function startNewGame() {
+            if (!userId) {
+                console.log('⚠️ No userId, cannot start game');
+                return;
+            }
+            
+            try {
+                const response = await fetch(API_BASE + '/game/start/' + userId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update local state from server
+                    asraScore = data.gameState.asraScore;
+                    tonCount = data.gameState.tonCount;
+                    
+                    gameActive = true;
+                    isPaused = false;
+                    
+                    updateDisplay();
+                    
+                    stopBtn.textContent = 'STOP';
+                    stopBtn.style.color = '#ff4757';
+                    stopBtn.classList.add('stop-mode');
+                    
+                    showCoin();
+                }
+            } catch (err) {
+                console.error('❌ Start game error:', err);
+            }
         }
 
-        function resumeGame() {
-            gameActive = true;
-            isPaused = false;
-
-            updateDisplay();
-
-            stopBtn.textContent = 'STOP';
-            stopBtn.style.color = '#ff4757';
-            stopBtn.classList.add('stop-mode');
-
-            showCoin();
-        }
-
-        function stopGame() {
+        // INDUSTRY STANDARD: Stop game session on server
+        async function stopGame() {
             isPaused = true;
             gameActive = false;
             clearTimeout(coinTimeout);
             coin.style.display = 'none';
-
+            
             stopBtn.textContent = 'START';
             stopBtn.style.color = '#00ff00';
             stopBtn.classList.remove('stop-mode');
+            
+            // Notify server
+            if (userId) {
+                try {
+                    await fetch(API_BASE + '/game/stop/' + userId, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                } catch (err) {
+                    console.error('❌ Stop game error:', err);
+                }
+            }
+        }
+
+        async function resumeGame() {
+            await startNewGame();
         }
 
         let isFirstStart = true;
@@ -1386,25 +1433,26 @@
             return div.innerHTML;
         }
         
-        // Save data before page unload/refresh
-        window.addEventListener('beforeunload', (e) => {
-            if (dataLoaded && userId) {
-                console.log('💾 [UNLOAD] Saving data before page unload...');
-                // Use synchronous XMLHttpRequest to ensure data is saved
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', API_BASE + '/save-game/' + userId, false); // false = synchronous
-                xhr.setRequestHeader('Content-Type', 'application/json');
-                try {
-                    xhr.send(JSON.stringify({
-                        asraScore: asraScore,
-                        tonCount: tonCount
-                    }));
-                    console.log('✅ [UNLOAD] Data saved before unload');
-                } catch (err) {
-                    console.error('❌ [UNLOAD] Failed to save:', err);
-                }
+        // INDUSTRY STANDARD: Stop game when page unloads
+        window.addEventListener('beforeunload', () => {
+            if (userId && gameActive) {
+                // Just notify server that game stopped
+                // Data is already saved via /api/game/catch
+                navigator.sendBeacon(API_BASE + '/game/stop/' + userId, '');
             }
         });
+        
+        // Sync with server periodically (every 30 seconds)
+        setInterval(() => {
+            if (dataLoaded && userId && !gameActive) {
+                // Refresh game state when not playing
+                loadGameState().then(data => {
+                    asraScore = data.asraScore;
+                    tonCount = data.tonCount;
+                    updateDisplay();
+                });
+            }
+        }, 30000);
         
         // First read name from URL (comes from Telegram WebApp)
         let firstName = urlFirstName;

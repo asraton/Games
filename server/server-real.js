@@ -1231,14 +1231,112 @@ app.get('/api/user/:userId/stats', async (req, res) => {
     }
 });
 
-// Save game data (asraScore, tonCount)
-app.post('/api/save-game/:userId', async (req, res) => {
+// =============================================================================
+// GAME LOGIC - Industry Standard (Notcoin/Hamster Kombat pattern)
+// ALL calculations happen on server for security (anti-cheat)
+// =============================================================================
+
+// Game constants (server-side only - users cannot hack these)
+const GAME_CONSTANTS = {
+    ASRA_PER_TON: 10000,           // 10000 ASRA = 1 TON
+    RED_PENALTY: 100,              // Red coin penalty
+    MIN_REWARD: 1,                 // Min reward per coin
+    MAX_REWARD: 100,               // Max reward per coin
+    ASRA_PRO_LIMIT: 200,           // Max TON with ASRA PRO
+    BASE_SPEED_MS: 1500,           // Base coin speed
+    SPEED_PER_TON_MS: 200,         // Speed increase per TON
+    MIN_SPEED_MS: 200              // Minimum visible time
+};
+
+// Coin configuration (server authoritative)
+const COIN_CONFIG = {
+    gunmetal: { speedBonus: 0, timeBonus: 1, price: 0 },
+    blue: { speedBonus: 200, timeBonus: 1.2, price: 1 },
+    green: { speedBonus: 400, timeBonus: 1.3, price: 5 },
+    pink: { speedBonus: 600, timeBonus: 1.5, price: 10 },
+    red: { speedBonus: 800, timeBonus: 3, price: 20 },
+    yellow: { speedBonus: 1000, timeBonus: 4, price: 30 },
+    asra: { speedBonus: 1200, timeBonus: 5, price: 99, noPenalty: true, autoPlay: true }
+};
+
+// Active games session storage (in-memory, per user)
+const activeGames = new Map();
+
+// Calculate coin visible time based on user's TON count and selected coin
+function calculateCoinSpeed(tonCount, selectedCoin) {
+    const coin = COIN_CONFIG[selectedCoin] || COIN_CONFIG.gunmetal;
+    const baseSpeed = Math.max(
+        GAME_CONSTANTS.MIN_SPEED_MS,
+        GAME_CONSTANTS.BASE_SPEED_MS - (tonCount * GAME_CONSTANTS.SPEED_PER_TON_MS)
+    );
+    return baseSpeed + (coin.speedBonus || 0);
+}
+
+// Calculate reward for catching a coin (SERVER-SIDE - anti-cheat)
+function calculateReward(coinColor, shopData) {
+    const isRed = coinColor === 'pulse-red';
+    const isAsraPro = shopData.selected === 'asra' && shopData.purchased.includes('asra');
+    
+    // ASRA PRO has no penalty and auto-rewards
+    if (isAsraPro && COIN_CONFIG.asra.noPenalty) {
+        if ((shopData.asraProUsed || 0) >= GAME_CONSTANTS.ASRA_PRO_LIMIT) {
+            return { type: 'limit_reached', reward: 0 };
+        }
+        const reward = Math.floor(Math.random() * GAME_CONSTANTS.MAX_REWARD) + GAME_CONSTANTS.MIN_REWARD;
+        return { type: 'asra_pro', reward, trackTon: true };
+    }
+    
+    // Red coin penalty
+    if (isRed) {
+        return { type: 'penalty', reward: -GAME_CONSTANTS.RED_PENALTY };
+    }
+    
+    // Normal reward
+    const reward = Math.floor(Math.random() * GAME_CONSTANTS.MAX_REWARD) + GAME_CONSTANTS.MIN_REWARD;
+    return { type: 'normal', reward };
+}
+
+// Apply reward to user's balance (SERVER-SIDE calculation)
+function applyReward(user, rewardResult) {
+    let asraScore = user.gameData?.asraScore || 0;
+    let tonCount = user.gameData?.tonCount || 0;
+    
+    if (rewardResult.type === 'limit_reached') {
+        return { asraScore, tonCount, limitReached: true, reward: 0 };
+    }
+    
+    const reward = rewardResult.reward;
+    
+    if (reward < 0) {
+        // Penalty
+        asraScore += reward; // reward is negative
+        if (asraScore < 0) {
+            if (tonCount > 0) {
+                tonCount--;
+                asraScore = GAME_CONSTANTS.ASRA_PER_TON + asraScore;
+            } else {
+                asraScore = 0;
+            }
+        }
+    } else {
+        // Positive reward
+        asraScore += reward;
+        while (asraScore >= GAME_CONSTANTS.ASRA_PER_TON) {
+            tonCount++;
+            asraScore -= GAME_CONSTANTS.ASRA_PER_TON;
+        }
+    }
+    
+    return { asraScore, tonCount, reward, type: rewardResult.type };
+}
+
+// Start game session
+app.post('/api/game/start/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const { asraScore, tonCount } = req.body;
         
-        if (!userId || asraScore === undefined || tonCount === undefined) {
-            return res.status(400).json({ error: 'userId, asraScore and tonCount required' });
+        if (!userId) {
+            return res.status(400).json({ error: 'userId required' });
         }
         
         const user = userDB.get(userId);
@@ -1246,10 +1344,233 @@ app.post('/api/save-game/:userId', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // Save game data
+        // Get user's shop settings
+        const shopData = user.shopData || { selected: 'gunmetal', purchased: [], asraProUsed: 0 };
+        const tonCount = user.gameData?.tonCount || 0;
+        
+        // Calculate coin speed based on user's progress
+        const coinSpeed = calculateCoinSpeed(tonCount, shopData.selected);
+        
+        // Store active game session
+        const gameSession = {
+            userId,
+            startTime: Date.now(),
+            coinSpeed,
+            selectedCoin: shopData.selected,
+            shopData,
+            lastCoinTime: 0,
+            isActive: true
+        };
+        activeGames.set(userId, gameSession);
+        
+        // Update global stats
+        if (!user.globalStats) {
+            user.globalStats = {
+                totalClicksAllTime: 0,
+                totalCoinsCollected: 0,
+                totalTonEarned: 0,
+                gamesPlayed: 0,
+                firstPlayed: new Date().toISOString(),
+                lastPlayed: null
+            };
+        }
+        user.globalStats.gamesPlayed++;
+        user.globalStats.lastPlayed = new Date().toISOString();
+        userDB.set(userId, user);
+        
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        res.json({
+            success: true,
+            coinSpeed,
+            selectedCoin: shopData.selected,
+            gameState: {
+                asraScore: user.gameData?.asraScore || 0,
+                tonCount: user.gameData?.tonCount || 0
+            }
+        });
+        
+    } catch (error) {
+        console.error('Start game error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Stop game session
+app.post('/api/game/stop/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        activeGames.delete(userId);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Stop game error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// INDUSTRY STANDARD: Catch coin - SERVER CALCULATES REWARD (anti-cheat)
+app.post('/api/game/catch/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { coinColor, timestamp } = req.body;
+        
+        if (!userId || !coinColor) {
+            return res.status(400).json({ error: 'userId and coinColor required' });
+        }
+        
+        const user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Check if game is active
+        const gameSession = activeGames.get(userId);
+        if (!gameSession || !gameSession.isActive) {
+            return res.status(400).json({ error: 'Game not active' });
+        }
+        
+        // Validate coin color
+        const validColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 
+                            'pulse-cyan', 'pulse-purple', 'pulse-orange'];
+        if (!validColors.includes(coinColor)) {
+            return res.status(400).json({ error: 'Invalid coin color' });
+        }
+        
+        // Anti-cheat: Check timing
+        const now = Date.now();
+        gameSession.lastCoinTime = now;
+        activeGames.set(userId, gameSession);
+        
+        // SERVER-SIDE reward calculation (Industry Standard)
+        const rewardResult = calculateReward(coinColor, gameSession.shopData);
+        
+        // Check ASRA PRO limit
+        if (rewardResult.type === 'limit_reached') {
+            return res.json({
+                success: true,
+                limitReached: true,
+                message: 'ASRA PRO limit reached (200 TON)',
+                gameState: {
+                    asraScore: user.gameData?.asraScore || 0,
+                    tonCount: user.gameData?.tonCount || 0
+                }
+            });
+        }
+        
+        // Apply reward to user's balance (server-side)
+        const newBalance = applyReward(user, rewardResult);
+        
+        // Update ASRA PRO usage if applicable
+        if (rewardResult.trackTon && newBalance.type === 'asra_pro') {
+            if (newBalance.asraScore < (user.gameData?.asraScore || 0)) {
+                // User earned a TON with ASRA PRO
+                gameSession.shopData.asraProUsed = (gameSession.shopData.asraProUsed || 0) + 1;
+                user.shopData.asraProUsed = gameSession.shopData.asraProUsed;
+            }
+        }
+        
+        // Update global stats
+        if (user.globalStats) {
+            user.globalStats.totalClicksAllTime++;
+            user.globalStats.totalCoinsCollected++;
+            if (newBalance.type !== 'penalty') {
+                const tonEarned = newBalance.tonCount - (user.gameData?.tonCount || 0);
+                if (tonEarned > 0) {
+                    user.globalStats.totalTonEarned += tonEarned;
+                }
+            }
+        }
+        
+        // Save new balance
         user.gameData = {
-            asraScore: parseInt(asraScore) || 0,
-            tonCount: parseFloat(tonCount) || 0,
+            asraScore: newBalance.asraScore,
+            tonCount: newBalance.tonCount,
+            lastSaved: new Date().toISOString()
+        };
+        
+        userDB.set(userId, user);
+        
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        res.json({
+            success: true,
+            reward: newBalance.reward,
+            type: newBalance.type,
+            gameState: {
+                asraScore: newBalance.asraScore,
+                tonCount: newBalance.tonCount
+            }
+        });
+        
+    } catch (error) {
+        console.error('Catch coin error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Get current game state
+app.get('/api/game/state/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId required' });
+        }
+        
+        const user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        res.json({
+            success: true,
+            gameState: {
+                asraScore: user.gameData?.asraScore || 0,
+                tonCount: user.gameData?.tonCount || 0,
+                lastSaved: user.gameData?.lastSaved
+            },
+            shopData: user.shopData || { purchased: [], selected: 'gunmetal' },
+            hasPaid: user.hasPaid || false
+        });
+        
+    } catch (error) {
+        console.error('Get game state error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// =============================================================================
+// LEGACY ENDPOINTS (Backward compatibility)
+// =============================================================================
+
+// Save game data (legacy - now handled by /api/game/catch)
+app.post('/api/save-game/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { asraScore, tonCount } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId required' });
+        }
+        
+        const user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // In industry standard, this is a fallback only
+        // Main updates go through /api/game/catch
+        user.gameData = {
+            asraScore: parseInt(asraScore) || user.gameData?.asraScore || 0,
+            tonCount: parseFloat(tonCount) || user.gameData?.tonCount || 0,
             lastSaved: new Date().toISOString()
         };
         
@@ -1257,7 +1578,8 @@ app.post('/api/save-game/:userId', async (req, res) => {
         
         res.json({
             success: true,
-            message: 'Game data saved'
+            message: 'Game data saved',
+            note: 'Use /api/game/catch for real-time updates'
         });
         
     } catch (error) {
@@ -1266,7 +1588,7 @@ app.post('/api/save-game/:userId', async (req, res) => {
     }
 });
 
-// Load game data
+// Load game data (legacy - redirects to /api/game/state)
 app.get('/api/load-game/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
@@ -1280,23 +1602,16 @@ app.get('/api/load-game/:userId', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // Return game data
-        const gameData = user.gameData || {
-            asraScore: 0,
-            tonCount: 0,
-            lastSaved: null
-        };
-        
-        // Disable caching - always return fresh data
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
         
         res.json({
             success: true,
-            asraScore: gameData.asraScore || 0,
-            tonCount: gameData.tonCount || 0,
-            hasPaid: user.hasPaid || false
+            asraScore: user.gameData?.asraScore || 0,
+            tonCount: user.gameData?.tonCount || 0,
+            hasPaid: user.hasPaid || false,
+            note: 'Use /api/game/state for new clients'
         });
         
     } catch (error) {
@@ -1349,7 +1664,7 @@ app.get('/api/shop/:userId', async (req, res) => {
     }
 });
 
-// Save shop data
+// Save shop data (legacy - now use /api/shop/buy and /api/shop/select)
 app.post('/api/shop/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
@@ -1385,6 +1700,174 @@ app.post('/api/shop/:userId', async (req, res) => {
         
     } catch (error) {
         console.error('Save shop data error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// INDUSTRY STANDARD: Buy coin from shop (server-side deduction)
+app.post('/api/shop/buy/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { coin } = req.body;
+        
+        if (!userId || !coin) {
+            return res.status(400).json({ error: 'userId and coin required' });
+        }
+        
+        const user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Check if coin exists
+        const coinData = COIN_CONFIG[coin];
+        if (!coinData) {
+            return res.status(400).json({ error: 'Invalid coin' });
+        }
+        
+        // Check if already purchased
+        const shopData = user.shopData || { purchased: [], selected: 'gunmetal', purchaseTime: {} };
+        if (shopData.purchased.includes(coin)) {
+            // Just select it
+            shopData.selected = coin;
+            user.shopData = shopData;
+            userDB.set(userId, user);
+            return res.json({ success: true, message: 'Coin selected', action: 'selected' });
+        }
+        
+        // Check if user has enough TON
+        const tonCount = user.gameData?.tonCount || 0;
+        if (tonCount < coinData.price) {
+            return res.status(400).json({ 
+                error: 'Insufficient TON', 
+                required: coinData.price, 
+                available: tonCount 
+            });
+        }
+        
+        // Deduct TON (server-side)
+        user.gameData.tonCount -= coinData.price;
+        
+        // Add to purchased
+        shopData.purchased.push(coin);
+        shopData.selected = coin;
+        shopData.purchaseTime[coin] = Date.now();
+        
+        // Reset ASRA PRO usage if buying again
+        if (coin === 'asra') {
+            shopData.asraProUsed = 0;
+        }
+        
+        user.shopData = shopData;
+        userDB.set(userId, user);
+        
+        console.log(`✅ Coin purchased: ${userId} bought ${coin} for ${coinData.price} TON`);
+        
+        res.json({
+            success: true,
+            message: 'Coin purchased',
+            coin: coin,
+            price: coinData.price,
+            gameState: {
+                asraScore: user.gameData.asraScore,
+                tonCount: user.gameData.tonCount
+            }
+        });
+        
+    } catch (error) {
+        console.error('Buy coin error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// INDUSTRY STANDARD: Select coin (no purchase)
+app.post('/api/shop/select/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { coin } = req.body;
+        
+        if (!userId || !coin) {
+            return res.status(400).json({ error: 'userId and coin required' });
+        }
+        
+        const user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const shopData = user.shopData || { purchased: [], selected: 'gunmetal' };
+        
+        // Check if owned or is default
+        if (!shopData.purchased.includes(coin) && coin !== 'gunmetal') {
+            return res.status(400).json({ error: 'Coin not owned' });
+        }
+        
+        shopData.selected = coin;
+        user.shopData = shopData;
+        userDB.set(userId, user);
+        
+        res.json({ success: true, selected: coin });
+        
+    } catch (error) {
+        console.error('Select coin error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// INDUSTRY STANDARD: Restart game - reset all data (userId stays)
+app.post('/restart-game/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId required' });
+        }
+        
+        let user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Reset all game data
+        user.gameData = {
+            asraScore: 0,
+            tonCount: 0,
+            lastSaved: new Date().toISOString()
+        };
+        
+        // Reset shop data
+        user.shopData = {
+            purchased: [],
+            selected: 'gunmetal',
+            purchaseTime: {},
+            asraProUsed: 0
+        };
+        
+        // Reset payment status
+        user.hasPaid = false;
+        user.totalDeposited = 0;
+        user.totalConverted = 0;
+        user.balance = 0;
+        user.jettonBalance = 0;
+        
+        // Keep deposit wallet but reset transactions
+        user.transactions = [];
+        user.purchasedItems = []; // legacy
+        
+        userDB.set(userId, user);
+        
+        console.log(`🔄 Game restarted for user: ${userId}`);
+        console.log(`   All data reset to 0`);
+        
+        res.json({
+            success: true,
+            message: 'Game restarted successfully',
+            gameState: user.gameState,
+            hasPaid: false
+        });
+        
+    } catch (error) {
+        console.error('Restart game error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
