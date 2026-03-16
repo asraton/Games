@@ -454,6 +454,13 @@ app.post('/api/check-deposit/:userId', async (req, res) => {
             user.totalDeposited = realBalance;
             user.balance = user.totalDeposited - user.totalConverted;
             user.lastDepositAt = new Date().toISOString();
+            
+            // Extend payment period if user has paid (activity extends subscription)
+            if (user.hasPaid) {
+                user.paidAt = new Date().toISOString();
+                console.log(`📅 Payment period extended via deposit: ${userId}`);
+            }
+            
             userDB.set(req.params.userId, user);
             
             console.log(`✅ DEPOSIT: ${newDeposit.toFixed(4)} TON`);
@@ -507,6 +514,13 @@ app.post('/api/check-all-deposits', async (req, res) => {
                     user.totalDeposited = realBalance;
                     user.balance = user.totalDeposited - user.totalConverted;
                     user.lastDepositAt = new Date().toISOString();
+                    
+                    // Extend payment period if user has paid (activity extends subscription)
+                    if (user.hasPaid) {
+                        user.paidAt = new Date().toISOString();
+                        console.log(`📅 Payment period extended via auto-deposit: ${userId}`);
+                    }
+                    
                     userDB.set(userId, user);
                     
                     results.push({
