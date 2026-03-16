@@ -1062,12 +1062,16 @@
         // Load saved data - first from API
         let asraScore = 0;
         let tonCount = 0;
+        let dataLoaded = false; // Track if data loaded from backend
         
         // Async load
         async function initGameData() {
+            console.log('🔄 [INIT] Loading game data from backend...');
             const data = await loadGameDataFromAPI();
             asraScore = data.asraScore;
             tonCount = data.tonCount;
+            dataLoaded = true;
+            console.log('✅ [INIT] Data loaded:', { asraScore, tonCount });
             updateDisplay();
         }
         
@@ -1083,8 +1087,7 @@
         const asraDisplayElement = document.getElementById('asra-display');
         const stopBtn = document.getElementById('stop-btn');
 
-        // Show saved score
-        updateDisplay();
+        // NOTE: Don't call updateDisplay() here - wait for data to load
 
         const coin = document.getElementById('coin');
         let coinTimeout = null;
@@ -1102,8 +1105,10 @@
             // Show ASRA in 4-digit format (0000-9999)
             asraDisplayElement.textContent = asraScore.toString().padStart(4, '0');
             
-            // Save immediately to backend on every change
-            saveGameData();
+            // Save immediately to backend on every change (only after data loaded)
+            if (dataLoaded) {
+                saveGameData();
+            }
         }
 
         function calculateSpeed() {
@@ -1530,7 +1535,7 @@
             document.getElementById('btn-pay-from-wallet').addEventListener('click', () => {
                 const PAYMENT_ADDRESS = 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
                 const PAYMENT_NANO = 1000000000;
-                const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${safeFirstName}_${userId}`;
+                const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=ASRA_${userId}`;
                 const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
                 
                 modalTitle.textContent = '';
@@ -1637,7 +1642,7 @@
                     const PAYMENT_AMOUNT = 1; // 1 TON
                     const PAYMENT_NANO = 1000000000; // 1 TON in nanoton
                     // TON Connect transfer URL - for automatic wallet opening
-                    const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${safeFirstName}_${userId}`;
+                    const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=ASRA_${userId}`;
                     // QR code URL - dynamic creation
                     const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
                     
