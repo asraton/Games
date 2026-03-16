@@ -757,7 +757,7 @@
             
             <div class="help-section-title">How to Play?</div>
             <div class="help-text">
-                Press START and quickly click on coins appearing on screen. Earn 1-100 ASRA per coin. 10,000 ASRA = 1 TON.
+                Press START and quickly click on coins appearing on screen. Earn ASRA based on your selected coin price. Red glow behind coin = -100 ASRA penalty. 10,000 ASRA = 1 TON.
             </div>
             
             <div class="help-section-title">Be Careful!</div>
@@ -797,38 +797,51 @@
                     <tr style="background:rgba(0,210,255,0.2);">
                         <th style="padding:6px;border:1px solid rgba(0,210,255,0.3);text-align:left;color:#00d2ff;">Coin</th>
                         <th style="padding:6px;border:1px solid rgba(0,210,255,0.3);text-align:center;color:#00d2ff;">Price</th>
+                        <th style="padding:6px;border:1px solid rgba(0,210,255,0.3);text-align:center;color:#00d2ff;">Asra</th>
                         <th style="padding:6px;border:1px solid rgba(0,210,255,0.3);text-align:left;color:#00d2ff;">Description</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Gunmetal</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">Free</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+1</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Default coin, normal speed</td>
+                    </tr>
+                    <tr style="background:rgba(255,255,255,0.05);">
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Blue</td>
-                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">1 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">2 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+2</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down a bit</td>
                     </tr>
-                    <tr style="background:rgba(255,255,255,0.05);">
+                    <tr>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Green</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">5 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+5</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down more</td>
                     </tr>
-                    <tr>
+                    <tr style="background:rgba(255,255,255,0.05);">
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Pink</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">10 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+10</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down, more time</td>
                     </tr>
-                    <tr style="background:rgba(255,255,255,0.05);">
+                    <tr>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Red</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">20 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+20</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down, +3x time bonus</td>
                     </tr>
-                    <tr>
+                    <tr style="background:rgba(255,255,255,0.05);">
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Yellow</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">30 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+30</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down, +4x time bonus</td>
                     </tr>
                     <tr style="background:rgba(255,215,0,0.1);">
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);font-weight:bold;color:#ffd700;">ASRA PRO</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;font-weight:bold;">99 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;font-weight:bold;">+99</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Auto-play, no -100 penalty, up to 200 TON</td>
                     </tr>
                 </tbody>
@@ -862,13 +875,13 @@
         <div class="shop-modal-content">
             <h3>Coin Shop</h3>
             <div class="coin-grid" id="coin-grid">
-                <!-- Blue Coin - 1 TON -->
-                <div class="coin-item" data-coin="blue" data-price="1">
+                <!-- Blue Coin - 2 TON -->
+                <div class="coin-item" data-coin="blue" data-price="2">
                     <div class="coin-check"></div>
                     <div class="coin-status">off</div>
                     <div class="coin-info">
                         <div class="coin-name">Blue</div>
-                        <div class="coin-price">1 TON</div>
+                        <div class="coin-price">2 TON</div>
                     </div>
                     <img src="/assets/Blue.png" alt="Blue">
                 </div>
@@ -2107,7 +2120,7 @@
             const COIN_DATA = {
                 blue: { 
                     name: 'Blue', 
-                    price: 1, 
+                    price: 2, 
                     speedBonus: 100, 
                     img: '/assets/Blue.png',
                     description: 'Coin speed slows down a bit'
