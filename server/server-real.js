@@ -12,6 +12,44 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// SECURITY: Wallet binding - one wallet per user
+const walletToUserMap = new Map(); // connectedWallet -> userId
+
+// SECURITY: Simple rate limiting
+const requestCounts = new Map(); // ip -> { count, resetTime }
+const RATE_LIMIT = 100; // requests per 15 minutes
+const RATE_WINDOW = 15 * 60 * 1000; // 15 minutes
+
+function checkRateLimit(ip) {
+    const now = Date.now();
+    const record = requestCounts.get(ip);
+    
+    if (!record || now > record.resetTime) {
+        requestCounts.set(ip, { count: 1, resetTime: now + RATE_WINDOW });
+        return true;
+    }
+    
+    if (record.count >= RATE_LIMIT) {
+        return false;
+    }
+    
+    record.count++;
+    return true;
+}
+
+// SECURITY: Input validation helpers
+function isValidUserId(userId) {
+    return userId && typeof userId === 'string' && userId.length >= 3 && userId.length <= 50 && /^[a-zA-Z0-9_-]+$/.test(userId);
+}
+
+function isValidTonAddress(address) {
+    return address && typeof address === 'string' && (address.startsWith('EQ') || address.startsWith('UQ')) && address.length === 48;
+}
+
+function isValidAmount(amount) {
+    return typeof amount === 'number' && amount > 0 && amount <= 10000 && !isNaN(amount);
+}
+
 // TON Center API config
 const TON_API_KEY = process.env.TON_API_KEY || '';
 const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
@@ -157,11 +195,28 @@ app.post('/api/user/register', async (req, res) => {
     try {
         const { userId, connectedWallet } = req.body;
         
-        if (!userId || !connectedWallet) {
-            return res.status(400).json({ error: 'userId and connectedWallet required' });
+        // SECURITY: Input validation
+        if (!isValidUserId(userId) || !isValidTonAddress(connectedWallet)) {
+            return res.status(400).json({ error: 'Invalid userId or wallet address' });
+        }
+        
+        // SECURITY: Rate limiting check
+        const clientIp = req.ip || req.connection.remoteAddress;
+        if (!checkRateLimit(clientIp)) {
+            return res.status(429).json({ error: 'Too many requests. Please try again later.' });
         }
         
         let user = userDB.get(userId);
+        
+        // SECURITY: Check if wallet is already bound to another user
+        const boundUserId = walletToUserMap.get(connectedWallet);
+        if (boundUserId && boundUserId !== userId) {
+            console.log(`🚫 WALLET ALREADY BOUND: ${connectedWallet} -> ${boundUserId}`);
+            return res.status(403).json({ 
+                error: 'Wallet already bound to another user',
+                message: 'This wallet is already connected to another account' 
+            });
+        }
         
         if (user) {
             // Get updated balance
@@ -176,6 +231,18 @@ app.post('/api/user/register', async (req, res) => {
                 userDB.set(userId, user);
                 
                 console.log(`✅ New deposit: ${newDeposit.toFixed(4)} TON (User: ${userId})`);
+            }
+            
+            // Update wallet binding if changed
+            if (user.connectedWallet !== connectedWallet) {
+                // Remove old binding
+                if (user.connectedWallet) {
+                    walletToUserMap.delete(user.connectedWallet);
+                }
+                // Set new binding
+                walletToUserMap.set(connectedWallet, userId);
+                user.connectedWallet = connectedWallet;
+                userDB.set(userId, user);
             }
             
             return res.json({
@@ -193,6 +260,14 @@ app.post('/api/user/register', async (req, res) => {
                     paymentAddress: PAYMENT_ADDRESS || '',
                     newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0
                 }
+            });
+        }
+        
+        // SECURITY: Check wallet binding for new user too
+        if (walletToUserMap.has(connectedWallet)) {
+            return res.status(403).json({ 
+                error: 'Wallet already bound',
+                message: 'This wallet is already connected to another account' 
             });
         }
         
@@ -256,7 +331,18 @@ app.post('/api/user/register', async (req, res) => {
 // Get user balance (for withdrawal)
 app.get('/api/user/:userId/balance', async (req, res) => {
     try {
-        const user = userDB.get(req.params.userId);
+        // SECURITY: Input validation
+        if (!isValidUserId(userId)) {
+            return res.status(400).json({ error: 'Invalid userId' });
+        }
+        
+        // SECURITY: Rate limiting
+        const clientIp = req.ip || req.connection.remoteAddress;
+        if (!checkRateLimit(clientIp)) {
+            return res.status(429).json({ error: 'Too many requests' });
+        }
+        
+        const user = userDB.get(userId);
         
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
@@ -291,6 +377,17 @@ app.get('/api/user/:userId/balance', async (req, res) => {
 // Get user data
 app.get('/api/user/:userId', async (req, res) => {
     try {
+        // SECURITY: Input validation
+        if (!isValidUserId(req.params.userId)) {
+            return res.status(400).json({ error: 'Invalid userId' });
+        }
+        
+        // SECURITY: Rate limiting
+        const clientIp = req.ip || req.connection.remoteAddress;
+        if (!checkRateLimit(clientIp)) {
+            return res.status(429).json({ error: 'Too many requests' });
+        }
+        
         const user = userDB.get(req.params.userId);
         
         if (!user) {
@@ -568,11 +665,29 @@ app.post('/api/withdraw', async (req, res) => {
         console.log(`   testMode: ${testMode}`);
         console.log(`   toAddress: ${toAddress?.slice(0, 20)}...`);
         
-        if (!userId || !amount || amount <= 0 || !toAddress) {
-            console.log(`❌ VALIDATION ERROR: missing fields`);
+        // SECURITY: Input validation
+        if (!isValidUserId(userId) || !isValidAmount(amount) || !isValidTonAddress(toAddress)) {
+            console.log(`❌ VALIDATION ERROR: invalid fields`);
             return res.status(400).json({ 
-                error: 'userId, amount and toAddress required' 
+                error: 'Invalid input data' 
             });
+        }
+        
+        // SECURITY: Rate limiting for withdraw (stricter)
+        const clientIp = req.ip || req.connection.remoteAddress;
+        const withdrawLimit = 10; // 10 withdraw per 15 minutes
+        const withdrawRecord = requestCounts.get(clientIp + ':withdraw');
+        const now = Date.now();
+        
+        if (withdrawRecord && now < withdrawRecord.resetTime && withdrawRecord.count >= withdrawLimit) {
+            return res.status(429).json({ error: 'Withdraw limit exceeded. Try again later.' });
+        }
+        
+        // Track withdraw separately
+        if (!withdrawRecord || now > withdrawRecord.resetTime) {
+            requestCounts.set(clientIp + ':withdraw', { count: 1, resetTime: now + RATE_WINDOW });
+        } else {
+            withdrawRecord.count++;
         }
         
         const user = userDB.get(userId);
