@@ -1053,42 +1053,33 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
         if (paymentTx) {
             const txFromAddress = paymentTx.from || paymentTx.in_msg?.source || null;
             const now = new Date().toISOString();
-            const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
             
-            // Check if user already paid
+            // Check if user already paid with same wallet - unlimited time
             if (user.hasPaid && user.paidAt) {
-                const paidAtTime = new Date(user.paidAt).getTime();
-                const currentTime = new Date(now).getTime();
-                const timeDiff = currentTime - paidAtTime;
                 const isSameWallet = user.paidFromAddress && txFromAddress && 
                                      areAddressesEqual(user.paidFromAddress, txFromAddress);
                 
-                // If same wallet and less than 30 days passed - just extend payment
-                if (isSameWallet && timeDiff < thirtyDaysMs) {
-                    user.paidAt = now; // Extend payment date
+                // If same wallet - extend payment without time limit
+                if (isSameWallet) {
+                    user.paidAt = now; // Update payment date
                     user.paymentTxHash = paymentTx.transaction_id?.hash || null;
                     userDB.set(userId, user);
                     
-                    console.log(`✅ Payment extended: ${userId}`);
-                    console.log(`   Same wallet, ${Math.floor((thirtyDaysMs - timeDiff) / (24 * 60 * 60 * 1000))} days remaining`);
+                    console.log(`✅ Payment extended (no time limit): ${userId}`);
+                    console.log(`   Same wallet connected`);
                     
                     return res.json({
                         success: true,
                         hasPaid: true,
-                        message: 'Payment extended! Your game data is preserved.',
+                        message: 'Payment active! Same wallet detected.',
                         reset: false,
                         extended: true,
-                        daysRemaining: Math.floor((thirtyDaysMs - timeDiff) / (24 * 60 * 60 * 1000)),
                         txHash: paymentTx.transaction_id?.hash
                     });
                 }
                 
-                // If different wallet OR 30+ days passed - new payment required
-                if (!isSameWallet) {
-                    console.log(`🆕 New wallet connected: ${userId}`);
-                } else {
-                    console.log(`📅 30 days passed, payment renewal: ${userId}`);
-                }
+                // If different wallet - new payment required
+                console.log(`🆕 New wallet connected: ${userId}`);
             }
             
             // New payment or renewal - reset game data (demo → real game transition)
