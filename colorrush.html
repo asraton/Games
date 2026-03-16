@@ -1887,9 +1887,6 @@
                         const result = await res.json();
                         
                         if (result.success) {
-                            // Clear localStorage
-                            localStorage.removeItem(STORAGE_KEY);
-                            
                             // Disconnect wallet
                             if (tonConnectUI && connectedWalletAddress) {
                                 tonConnectUI.disconnect();
