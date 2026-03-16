@@ -973,9 +973,34 @@
         const STORAGE_KEY = userId ? `asra_game_${userId}` : 'asra_game_default';
         console.log('🔑 [INIT] STORAGE_KEY:', STORAGE_KEY);
 
+        // Debounce timer for saving game data
+        let saveDebounceTimer = null;
+        let lastSavedData = { asraScore: 0, tonCount: 0 };
+        
         // Save game data to backend (for all devices)
-        async function saveGameData() {
+        async function saveGameData(force = false) {
+            // Debounce: only save every 5 seconds unless forced
+            if (!force && saveDebounceTimer) {
+                return; // Save already scheduled
+            }
+            
+            if (!force) {
+                saveDebounceTimer = setTimeout(() => {
+                    saveDebounceTimer = null;
+                    saveGameData(true); // Force save after delay
+                }, 5000);
+                return;
+            }
+            
+            // Only save if data actually changed
+            if (asraScore === lastSavedData.asraScore && tonCount === lastSavedData.tonCount) {
+                return;
+            }
+            
             console.log('💾 [SAVE] Started. asraScore:', asraScore, 'tonCount:', tonCount);
+            
+            // Update last saved data
+            lastSavedData = { asraScore, tonCount };
             
             if (!userId) {
                 console.log('⚠️ [SAVE] No userId, saving only to localStorage');
@@ -1021,6 +1046,20 @@
                 }
             }
         }
+
+        // Force save immediately (for important events like withdrawal)
+        async function forceSaveGameData() {
+            if (saveDebounceTimer) {
+                clearTimeout(saveDebounceTimer);
+                saveDebounceTimer = null;
+            }
+            await saveGameData(true);
+        }
+
+        // Save before page unload
+        window.addEventListener('beforeunload', () => {
+            forceSaveGameData();
+        });
 
         // Load game data from backend
         async function loadGameDataFromAPI() {
@@ -1156,7 +1195,7 @@
             // Show ASRA in 4-digit format (0000-9999)
             asraDisplayElement.textContent = asraScore.toString().padStart(4, '0');
             
-            // Save to localStorage on every display update
+            // Schedule save (debounced - only saves every 5 seconds)
             saveGameData();
         }
 
@@ -1855,7 +1894,7 @@
                             // Reduce game TON
                             tonCount -= amount;
                             updateDisplay();
-                            saveGameData();
+                            await forceSaveGameData(); // Immediate save after withdrawal
                             
                             modalBody.innerHTML = `
                                 <div style="text-align:center;padding:16px;">
