@@ -1263,8 +1263,10 @@
                 showCoin();
             }, 200);
             
-            // Show temporary animation immediately
-            showFloatText(x, y - 50, '+... asra', false);
+
+            // Show temporary animation immediately - red for penalty coin, yellow for normal
+            const isRedCoin = currentCoinColor === 'pulse-red';
+            showFloatText(x, y - 50, 'asra', isRedCoin);
             
             // Send to server in BACKGROUND - don't wait
             fetch(API_BASE + '/game/catch/' + userId, {
@@ -1281,7 +1283,7 @@
                     asraScore = data.gameState.asraScore;
                     tonCount = data.gameState.tonCount;
                     
-                    // Show actual reward number with + or - sign
+                    // Show actual reward number from server
                     const isNegative = data.type === 'penalty';
                     const rewardText = isNegative ? data.reward + ' asra' : '+' + data.reward + ' asra';
                     showFloatText(x, y - 50, rewardText, isNegative);
