@@ -1255,7 +1255,7 @@ const GAME_CONSTANTS = {
 // Coin configuration (server authoritative)
 const COIN_CONFIG = {
     gunmetal: { speedBonus: 0, timeBonus: 1, price: 0 },
-    blue: { speedBonus: 200, timeBonus: 1.2, price: 1 },
+    blue: { speedBonus: 200, timeBonus: 1.2, price: 2 },
     green: { speedBonus: 400, timeBonus: 1.3, price: 5 },
     pink: { speedBonus: 600, timeBonus: 1.5, price: 10 },
     red: { speedBonus: 800, timeBonus: 3, price: 20 },
@@ -1279,25 +1279,26 @@ function calculateCoinSpeed(tonCount, selectedCoin) {
 // Calculate reward for catching a coin (SERVER-SIDE - anti-cheat)
 function calculateReward(coinColor, shopData) {
     const isRed = coinColor === 'pulse-red';
-    const isAsraPro = shopData.selected === 'asra' && shopData.purchased.includes('asra');
+    const selectedCoin = shopData.selected || 'gunmetal';
+    const isAsraPro = selectedCoin === 'asra' && shopData.purchased.includes('asra');
     
-    // ASRA PRO has no penalty and auto-rewards
+    // ASRA PRO has no penalty and gives +99 asra
     if (isAsraPro && COIN_CONFIG.asra.noPenalty) {
         if ((shopData.asraProUsed || 0) >= GAME_CONSTANTS.ASRA_PRO_LIMIT) {
             return { type: 'limit_reached', reward: 0 };
         }
-        const reward = Math.floor(Math.random() * GAME_CONSTANTS.MAX_REWARD) + GAME_CONSTANTS.MIN_REWARD;
-        return { type: 'asra_pro', reward, trackTon: true };
+        return { type: 'asra_pro', reward: COIN_CONFIG.asra.price, trackTon: true };
     }
     
-    // Red coin penalty
+    // Red coin penalty (-100 for all coins except ASRA PRO)
     if (isRed) {
         return { type: 'penalty', reward: -GAME_CONSTANTS.RED_PENALTY };
     }
     
-    // Normal reward
-    const reward = Math.floor(Math.random() * GAME_CONSTANTS.MAX_REWARD) + GAME_CONSTANTS.MIN_REWARD;
-    return { type: 'normal', reward };
+    // Normal reward based on coin price (gunmetal=+1, blue=+2, green=+5, etc.)
+    const coinConfig = COIN_CONFIG[selectedCoin] || COIN_CONFIG.gunmetal;
+    const reward = coinConfig.price || 1; // gunmetal price is 0, so default to 1
+    return { type: 'normal', reward: reward === 0 ? 1 : reward };
 }
 
 // Apply reward to user's balance (SERVER-SIDE calculation)

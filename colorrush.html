@@ -1266,7 +1266,8 @@
 
             // Show temporary animation immediately - red for penalty coin, yellow for normal
             const isRedCoin = currentCoinColor === 'pulse-red';
-            showFloatText(x, y - 50, 'asra', isRedCoin);
+            const tempText = isRedCoin ? 'Penalty' : 'Bonus';
+            showFloatText(x, y - 50, tempText, isRedCoin);
             
             // Send to server in BACKGROUND - don't wait
             fetch(API_BASE + '/game/catch/' + userId, {
