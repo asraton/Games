@@ -1784,6 +1784,14 @@ app.post('/api/shop/buy/:userId', async (req, res) => {
             shopData.asraProUsed = 0;
         }
         
+        // UNLOCK REAL GAME: Buying any coin unlocks full game (same as 1 TON payment)
+        if (!user.hasPaid) {
+            user.hasPaid = true;
+            user.paidAt = new Date().toISOString();
+            user.paidAmount = 1; // Treat as 1 TON payment equivalent
+            console.log(`🔓 Real game unlocked via shop purchase: ${userId}`);
+        }
+        
         user.shopData = shopData;
         userDB.set(userId, user);
         
