@@ -714,12 +714,8 @@
     <div id="game-container">
         <div id="score-display">
             <div class="score-box">
-                <div class="score-label">TON</div>
-                <div class="score-value" id="ton-value">0</div>
-            </div>
-            <div class="score-box">
                 <div class="score-label">asra</div>
-                <div class="score-value" id="asra-display">000000000</div>
+                <div class="score-value" id="asra-display">0</div>
             </div>
         </div>
 
@@ -1159,12 +1155,10 @@
         // Initial load
         initGameData();
         
-        const ASRA_PER_TON = 10000; // 10000 asra = 1 ton
         let gameActive = false;
         let isPaused = false;
 
         // Elements
-        const tonDisplayElement = document.getElementById('ton-value');
         const asraDisplayElement = document.getElementById('asra-display');
         const stopBtn = document.getElementById('stop-btn');
 
@@ -1178,16 +1172,8 @@
         const pulseColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 'pulse-cyan', 'pulse-purple', 'pulse-orange'];
 
         function updateDisplay() {
-            // Show TON without decimals if integer, otherwise full
-            const tonValue = tonCount;
-            const tonDisplay = Number.isInteger(tonValue) ? tonValue.toString() : tonValue.toFixed(4);
-            tonDisplayElement.textContent = tonDisplay;
-            
-            // Show ASRA in 4-digit format (0000-9999)
-            asraDisplayElement.textContent = asraScore.toString().padStart(4, '0');
-            
-            // Note: In industry standard, saves happen via /api/game/catch
-            // Not via updateDisplay to prevent duplicate saves
+            // Show ASRA directly as regular token (1 ASRA minimum)
+            asraDisplayElement.textContent = asraScore.toLocaleString();
         }
 
         function calculateSpeed() {
