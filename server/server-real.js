@@ -2531,8 +2531,10 @@ app.post('/api/daily-bonus/claim/:userId', async (req, res) => {
         
         // Check if user has paid 1 TON or bought coins from shop
         const hasBoughtCoins = user.shopData?.purchased?.length > 0;
-        const canClaimBonus = user.hasPaid || hasBoughtCoins;
+        const hasPaid = user.hasPaid === true;
+        const canClaimBonus = hasPaid || hasBoughtCoins;
         
+        console.log(`   hasPaid (strict): ${hasPaid}`);
         console.log(`   hasBoughtCoins: ${hasBoughtCoins}`);
         console.log(`   canClaimBonus: ${canClaimBonus}`);
         
