@@ -2054,10 +2054,53 @@
                         <p style="color:#888;font-size:11px;margin-bottom:4px;">TON address:</p>
                         <input type="text" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:10px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
                         <img src="${QR_CODE_URL}" alt="QR" style="width:180px;height:180px;margin:8px auto;display:block;background:#fff;padding:6px;border-radius:8px;">
-                        <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:12px;">Back</button>
+                        <button id="demo-open-wallet-btn" class="wallet-panel-btn btn-green" style="width:100%;margin-top:8px;">Open Wallet</button>
+                        <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:8px;">Back</button>
                     </div>
                 `;
                 modal.classList.add('open');
+                
+                // Add click handler for Open Wallet button
+                const openWalletBtn = document.getElementById('demo-open-wallet-btn');
+                if (openWalletBtn) {
+                    openWalletBtn.addEventListener('click', async () => {
+                        if (tonConnectUI && connectedWalletAddress) {
+                            // Wallet connected - send payment
+                            try {
+                                const result = await tonConnectUI.sendTransaction({
+                                    validUntil: Math.floor(Date.now() / 1000) + 600,
+                                    messages: [{
+                                        address: PAYMENT_ADDRESS,
+                                        amount: PAYMENT_NANO.toString()
+                                    }]
+                                });
+                                Swal.fire({
+                                    text: 'Payment sent!',
+                                    icon: 'success',
+                                    timer: 1500,
+                                    showConfirmButton: false,
+                                    width: '200px',
+                                    position: 'center'
+                                });
+                            } catch (e) {
+                                Swal.fire({
+                                    text: 'Payment cancelled',
+                                    icon: 'error',
+                                    timer: 1500,
+                                    showConfirmButton: false,
+                                    width: '200px',
+                                    position: 'center'
+                                });
+                            }
+                        } else if (tonConnectUI) {
+                            // TON Connect available but no wallet - open connection modal
+                            tonConnectUI.openModal();
+                        } else {
+                            // No TON Connect - use ton:// protocol
+                            window.location.href = TON_TRANSFER_URL;
+                        }
+                    });
+                }
             }
 
             // W button opens/closes panel
