@@ -3,8 +3,8 @@ const path = require('path');
 const crypto = require('crypto');
 
 // Data directory for Railway Volume
-// When running locally ./data, on Railway /app/data
-const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/app/data';
+// Supports both DATA_PATH and RAILWAY_VOLUME_MOUNT_PATH
+const DATA_DIR = process.env.DATA_PATH || process.env.RAILWAY_VOLUME_MOUNT_PATH || '/app/data';
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
 // Encryption key from environment variable (must be 32 bytes for AES-256)

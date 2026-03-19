@@ -193,7 +193,7 @@ app.get('/api/config', (req, res) => {
 // User registration
 app.post('/api/user/register', async (req, res) => {
     try {
-        const { userId, connectedWallet } = req.body;
+        const { userId, connectedWallet, firstName } = req.body;
         
         // SECURITY: Input validation
         if (!isValidUserId(userId) || !isValidTonAddress(connectedWallet)) {
@@ -245,6 +245,13 @@ app.post('/api/user/register', async (req, res) => {
                 userDB.set(userId, user);
             }
             
+            // Update firstName if not set (for existing users before firstName feature)
+            if (firstName && !user.firstName) {
+                user.firstName = firstName;
+                userDB.set(userId, user);
+                console.log(`✅ ${userId} - firstName updated: ${firstName}`);
+            }
+            
             return res.json({
                 success: true,
                 user: {
@@ -278,6 +285,7 @@ app.post('/api/user/register', async (req, res) => {
         user = {
             userId,
             connectedWallet,
+            firstName: firstName || null, // Store user's display name from Telegram
             depositWallet,
             balance: 0,
             jettonBalance: 0,
@@ -1603,6 +1611,11 @@ app.post('/api/game/catch/:userId', async (req, res) => {
         // Apply reward to user's balance (server-side)
         const newBalance = applyReward(user, rewardResult);
         
+        // Process referral reward if user earned ASRA
+        if (newBalance.reward > 0 && newBalance.type !== 'penalty') {
+            await processReferralReward(userId, newBalance.reward);
+        }
+        
         // Update ASRA PRO usage if applicable
         if (rewardResult.trackTon && newBalance.type === 'asra_pro') {
             if (newBalance.asraScore < (user.gameData?.asraScore || 0)) {
@@ -2071,12 +2084,897 @@ async function migrateDatabase() {
                 migratedCount++;
                 console.log(`   ✅ ${userId} - shopData created`);
             }
+            
+            // Migrate referral data if not exists
+            if (!user.referralData) {
+                user.referralData = {
+                    referredBy: null,
+                    referrals: [],
+                    totalReferralEarnings: 0
+                };
+                userDB.set(userId, user);
+            }
+            
+            // Migrate daily bonus data if not exists
+            if (!user.dailyBonus) {
+                user.dailyBonus = {
+                    lastClaimed: null,
+                    streak: 0,
+                    totalClaimed: 0
+                };
+                userDB.set(userId, user);
+            }
+            
+            // Migrate firstName if not exists (for leaderboard display)
+            if (!user.hasOwnProperty('firstName')) {
+                user.firstName = null; // Initialize as null, will be set on next registration/update
+                userDB.set(userId, user);
+                migratedCount++;
+                console.log(`   ✅ ${userId} - firstName field added`);
+            }
+            
+            // Migrate chatId if not exists (for Telegram notifications)
+            if (!user.hasOwnProperty('chatId')) {
+                user.chatId = null; // Initialize as null, will be set when user starts bot
+                userDB.set(userId, user);
+                migratedCount++;
+                console.log(`   ✅ ${userId} - chatId field added`);
+            }
+            
+            // Migrate dailyLeaderBonus if not exists (for daily leader bonus tracking)
+            if (!user.hasOwnProperty('dailyLeaderBonus')) {
+                user.dailyLeaderBonus = {
+                    lastAwarded: null, // When last received leader bonus
+                    totalAwarded: 0    // Total leader bonuses received
+                };
+                userDB.set(userId, user);
+                migratedCount++;
+                console.log(`   ✅ ${userId} - dailyLeaderBonus field added`);
+            }
         }
         
         console.log(`✅ Migration completed: ${migratedCount} users updated`);
     } catch (error) {
         console.error('❌ Migration error:', error);
     }
+}
+
+// =============================================================================
+// REFERRAL SYSTEM
+// =============================================================================
+
+// Register referral (when new user joins via referral link)
+app.post('/api/referral/register', async (req, res) => {
+    try {
+        const { userId, referredBy } = req.body;
+        
+        if (!userId || !referredBy) {
+            return res.status(400).json({ error: 'userId and referredBy required' });
+        }
+        
+        // Cannot refer yourself
+        if (userId === referredBy) {
+            return res.status(400).json({ error: 'Cannot refer yourself' });
+        }
+        
+        let user = userDB.get(userId);
+        let referrer = userDB.get(referredBy);
+        
+        // Auto-create user if not exists
+        if (!user) {
+            const depositWallet = await createDepositWallet();
+            user = {
+                userId,
+                connectedWallet: null,
+                depositWallet,
+                balance: 0,
+                jettonBalance: 0,
+                totalDeposited: 0,
+                totalConverted: 0,
+                purchasedItems: [],
+                createdAt: new Date().toISOString(),
+                hasPaid: false,
+                gameData: { asraScore: 0, tonCount: 0, lastSaved: null },
+                shopData: { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 },
+                referralData: { referredBy: null, referrals: [], totalReferralEarnings: 0 },
+                dailyBonus: { lastClaimed: null, streak: 0, totalClaimed: 0 }
+            };
+        }
+        
+        // If user already has a referrer, don't change it
+        if (user.referralData?.referredBy) {
+            return res.json({ success: false, message: 'Already registered with a referrer' });
+        }
+        
+        // Set referrer
+        user.referralData = {
+            referredBy: referredBy,
+            referrals: user.referralData?.referrals || [],
+            totalReferralEarnings: user.referralData?.totalReferralEarnings || 0
+        };
+        userDB.set(userId, user);
+        
+        // Add to referrer's list
+        if (!referrer) {
+            // Create referrer if not exists
+            const depositWallet = await createDepositWallet();
+            referrer = {
+                userId: referredBy,
+                connectedWallet: null,
+                depositWallet,
+                balance: 0,
+                jettonBalance: 0,
+                totalDeposited: 0,
+                totalConverted: 0,
+                purchasedItems: [],
+                createdAt: new Date().toISOString(),
+                hasPaid: false,
+                gameData: { asraScore: 0, tonCount: 0, lastSaved: null },
+                shopData: { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 },
+                referralData: { referredBy: null, referrals: [], totalReferralEarnings: 0 },
+                dailyBonus: { lastClaimed: null, streak: 0, totalClaimed: 0 }
+            };
+        }
+        
+        if (!referrer.referralData.referrals.includes(userId)) {
+            referrer.referralData.referrals.push(userId);
+            userDB.set(referredBy, referrer);
+        }
+        
+        console.log(`✅ Referral registered: ${userId} referred by ${referredBy}`);
+        
+        res.json({ success: true, message: 'Referral registered' });
+        
+    } catch (error) {
+        console.error('Referral registration error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Get referral info
+app.get('/api/referral/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const user = userDB.get(userId);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const referralData = user.referralData || { referredBy: null, referrals: [], totalReferralEarnings: 0 };
+        
+        // Get referral details (names/ids)
+        const referralDetails = [];
+        for (const refId of referralData.referrals) {
+            const refUser = userDB.get(refId);
+            if (refUser) {
+                referralDetails.push({
+                    userId: refId,
+                    joinedAt: refUser.createdAt,
+                    hasPaid: refUser.hasPaid || false,
+                    tonCount: refUser.gameData?.tonCount || 0
+                });
+            }
+        }
+        
+        res.json({
+            success: true,
+            referralData: {
+                ...referralData,
+                referralCount: referralData.referrals.length,
+                referralDetails
+            },
+            inviteLink: `https://t.me/ASRACoinBot?start=${userId}`
+        });
+        
+    } catch (error) {
+        console.error('Get referral error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Process referral reward (called when user earns ASRA)
+async function processReferralReward(userId, asraEarned) {
+    try {
+        const user = userDB.get(userId);
+        if (!user || !user.referralData?.referredBy) return;
+        
+        const referrerId = user.referralData.referredBy;
+        const referrer = userDB.get(referrerId);
+        if (!referrer) return;
+        
+        // 10% referral bonus
+        const bonusPercent = 0.10;
+        const bonusAsra = Math.floor(asraEarned * bonusPercent);
+        
+        if (bonusAsra > 0) {
+            // Add to referrer's ASRA
+            let referrerAsra = referrer.gameData?.asraScore || 0;
+            let referrerTon = referrer.gameData?.tonCount || 0;
+            
+            referrerAsra += bonusAsra;
+            
+            // Convert to TON if enough
+            while (referrerAsra >= GAME_CONSTANTS.ASRA_PER_TON) {
+                referrerTon++;
+                referrerAsra -= GAME_CONSTANTS.ASRA_PER_TON;
+            }
+            
+            referrer.gameData = {
+                asraScore: referrerAsra,
+                tonCount: referrerTon,
+                lastSaved: new Date().toISOString()
+            };
+            
+            referrer.referralData.totalReferralEarnings += bonusAsra;
+            userDB.set(referrerId, referrer);
+            
+            console.log(`💰 Referral bonus: ${referrerId} earned ${bonusAsra} ASRA from ${userId}`);
+        }
+    } catch (error) {
+        console.error('Process referral reward error:', error);
+    }
+}
+
+// =============================================================================
+// DAILY BONUS SYSTEM
+// =============================================================================
+
+const DAILY_BONUS_REWARDS = [100, 150, 200, 250, 300, 400, 500]; // Day 1-7 rewards
+const DAILY_LEADER_BONUS = 100; // Bonus for being #1 on leaderboard
+
+// Check if user is the current leader and award bonus if new leader
+async function checkAndAwardLeaderBonus(userId) {
+    try {
+        const users = userDB.getAll();
+        const userList = [];
+        
+        // Calculate all users' total ASRA
+        for (const [id, u] of Object.entries(users)) {
+            const tonCount = u.gameData?.tonCount || 0;
+            const asraScore = u.gameData?.asraScore || 0;
+            const totalAsra = (tonCount * GAME_CONSTANTS.ASRA_PER_TON) + asraScore;
+            
+            if (tonCount > 0 || asraScore > 0) {
+                userList.push({ userId: id, totalAsra });
+            }
+        }
+        
+        // Sort by total ASRA (descending)
+        userList.sort((a, b) => b.totalAsra - a.totalAsra);
+        
+        // Check if user is #1
+        const userRank = userList.findIndex(u => u.userId === userId);
+        if (userRank !== 0) {
+            return { isLeader: false, awarded: false, message: 'Not #1 on leaderboard' };
+        }
+        
+        // User is #1, check if already awarded today
+        const user = userDB.get(userId);
+        if (!user) {
+            return { isLeader: true, awarded: false, error: 'User not found' };
+        }
+        
+        // Initialize dailyLeaderBonus if not exists
+        if (!user.dailyLeaderBonus) {
+            user.dailyLeaderBonus = { lastAwarded: null, totalAwarded: 0 };
+        }
+        
+        const now = new Date();
+        const lastAwarded = user.dailyLeaderBonus.lastAwarded ? new Date(user.dailyLeaderBonus.lastAwarded) : null;
+        
+        // Check if already awarded today (within last 24 hours)
+        if (lastAwarded) {
+            const hoursSinceLastAwarded = (now - lastAwarded) / (1000 * 60 * 60);
+            if (hoursSinceLastAwarded < 24) {
+                return { 
+                    isLeader: true, 
+                    awarded: false, 
+                    alreadyAwarded: true,
+                    hoursRemaining: Math.ceil(24 - hoursSinceLastAwarded),
+                    message: 'Already received leader bonus today' 
+                };
+            }
+        }
+        
+        // Award the bonus
+        let asraScore = user.gameData?.asraScore || 0;
+        let tonCount = user.gameData?.tonCount || 0;
+        
+        asraScore += DAILY_LEADER_BONUS;
+        while (asraScore >= GAME_CONSTANTS.ASRA_PER_TON) {
+            tonCount++;
+            asraScore -= GAME_CONSTANTS.ASRA_PER_TON;
+        }
+        
+        // Update user
+        user.gameData = {
+            asraScore,
+            tonCount,
+            lastSaved: now.toISOString()
+        };
+        
+        user.dailyLeaderBonus = {
+            lastAwarded: now.toISOString(),
+            totalAwarded: (user.dailyLeaderBonus.totalAwarded || 0) + DAILY_LEADER_BONUS
+        };
+        
+        userDB.set(userId, user);
+        
+        console.log(`👑 Daily leader bonus awarded: ${userId} got ${DAILY_LEADER_BONUS} ASRA for being #1`);
+        
+        return { 
+            isLeader: true, 
+            awarded: true, 
+            bonus: DAILY_LEADER_BONUS,
+            newBalance: { asraScore, tonCount },
+            message: 'Leader bonus awarded' 
+        };
+        
+    } catch (error) {
+        console.error('Check and award leader bonus error:', error);
+        return { isLeader: false, awarded: false, error: error.message };
+    }
+}
+
+// Get daily bonus status
+app.get('/api/daily-bonus/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const user = userDB.get(userId);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const dailyBonus = user.dailyBonus || { lastClaimed: null, streak: 0, totalClaimed: 0 };
+        const now = new Date();
+        const lastClaimed = dailyBonus.lastClaimed ? new Date(dailyBonus.lastClaimed) : null;
+        
+        // Check if can claim (24 hours passed)
+        let canClaim = false;
+        let hoursRemaining = 0;
+        
+        if (!lastClaimed) {
+            canClaim = true;
+        } else {
+            const hoursSinceLastClaim = (now - lastClaimed) / (1000 * 60 * 60);
+            if (hoursSinceLastClaim >= 24) {
+                canClaim = true;
+            } else {
+                hoursRemaining = Math.ceil(24 - hoursSinceLastClaim);
+            }
+        }
+        
+        // Check if streak broken (more than 48 hours)
+        let currentStreak = dailyBonus.streak || 0;
+        if (lastClaimed && (now - lastClaimed) > (48 * 60 * 60 * 1000)) {
+            currentStreak = 0; // Reset streak
+        }
+        
+        // Calculate next reward
+        const nextReward = DAILY_BONUS_REWARDS[Math.min(currentStreak, 6)];
+        
+        // Check leader bonus status
+        const dailyLeaderBonus = user.dailyLeaderBonus || { lastAwarded: null, totalAwarded: 0 };
+        const lastLeaderBonus = dailyLeaderBonus.lastAwarded ? new Date(dailyLeaderBonus.lastAwarded) : null;
+        
+        let leaderBonusAvailable = false;
+        let leaderBonusHoursRemaining = 0;
+        
+        if (!lastLeaderBonus) {
+            leaderBonusAvailable = true;
+        } else {
+            const hoursSinceLastLeaderBonus = (now - lastLeaderBonus) / (1000 * 60 * 60);
+            if (hoursSinceLastLeaderBonus >= 24) {
+                leaderBonusAvailable = true;
+            } else {
+                leaderBonusHoursRemaining = Math.ceil(24 - hoursSinceLastLeaderBonus);
+            }
+        }
+        
+        // Check if user is current leader
+        const users = userDB.getAll();
+        const userList = [];
+        for (const [id, u] of Object.entries(users)) {
+            const tonCount = u.gameData?.tonCount || 0;
+            const asraScore = u.gameData?.asraScore || 0;
+            const totalAsra = (tonCount * GAME_CONSTANTS.ASRA_PER_TON) + asraScore;
+            if (tonCount > 0 || asraScore > 0) {
+                userList.push({ userId: id, totalAsra });
+            }
+        }
+        userList.sort((a, b) => b.totalAsra - a.totalAsra);
+        const isLeader = userList.length > 0 && userList[0].userId === userId;
+        
+        res.json({
+            success: true,
+            dailyBonus: {
+                canClaim,
+                hoursRemaining,
+                currentStreak,
+                nextReward,
+                totalClaimed: dailyBonus.totalClaimed || 0,
+                lastClaimed: dailyBonus.lastClaimed
+            },
+            leaderBonus: {
+                isLeader,
+                canClaim: isLeader && leaderBonusAvailable,
+                hoursRemaining: leaderBonusHoursRemaining,
+                bonusAmount: DAILY_LEADER_BONUS,
+                totalAwarded: dailyLeaderBonus.totalAwarded || 0,
+                lastAwarded: dailyLeaderBonus.lastAwarded
+            }
+        });
+        
+    } catch (error) {
+        console.error('Get daily bonus error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Claim daily bonus
+app.post('/api/daily-bonus/claim/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const user = userDB.get(userId);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Check if user has paid 1 TON or bought coins from shop
+        const hasBoughtCoins = user.shopData?.purchased?.length > 0;
+        if (!user.hasPaid && !hasBoughtCoins) {
+            return res.status(403).json({ 
+                error: 'Demo version - Pay 1 TON or buy coins to claim bonus',
+                demo: true
+            });
+        }
+        
+        let dailyBonus = user.dailyBonus || { lastClaimed: null, streak: 0, totalClaimed: 0 };
+        const now = new Date();
+        const lastClaimed = dailyBonus.lastClaimed ? new Date(dailyBonus.lastClaimed) : null;
+        
+        // Check if can claim
+        if (lastClaimed) {
+            const hoursSinceLastClaim = (now - lastClaimed) / (1000 * 60 * 60);
+            if (hoursSinceLastClaim < 24) {
+                return res.status(400).json({ 
+                    error: 'Already claimed today',
+                    hoursRemaining: Math.ceil(24 - hoursSinceLastClaim)
+                });
+            }
+        }
+        
+        // Calculate streak
+        let currentStreak = dailyBonus.streak || 0;
+        if (lastClaimed && (now - lastClaimed) <= (48 * 60 * 60 * 1000)) {
+            // Within 48 hours, maintain streak
+            currentStreak = Math.min(currentStreak + 1, 6); // Max 7 days (0-6)
+        } else {
+            currentStreak = 0; // Reset streak
+        }
+        
+        // Calculate reward
+        const reward = DAILY_BONUS_REWARDS[currentStreak];
+        
+        // Add reward to user balance
+        let asraScore = user.gameData?.asraScore || 0;
+        let tonCount = user.gameData?.tonCount || 0;
+        
+        asraScore += reward;
+        while (asraScore >= GAME_CONSTANTS.ASRA_PER_TON) {
+            tonCount++;
+            asraScore -= GAME_CONSTANTS.ASRA_PER_TON;
+        }
+        
+        // Update user
+        user.gameData = {
+            asraScore,
+            tonCount,
+            lastSaved: now.toISOString()
+        };
+        
+        user.dailyBonus = {
+            lastClaimed: now.toISOString(),
+            streak: currentStreak,
+            totalClaimed: (dailyBonus.totalClaimed || 0) + reward
+        };
+        
+        userDB.set(userId, user);
+        
+        console.log(`🎁 Daily bonus claimed: ${userId} got ${reward} ASRA (streak: ${currentStreak + 1})`);
+        
+        res.json({
+            success: true,
+            reward,
+            streak: currentStreak + 1,
+            newBalance: { asraScore, tonCount }
+        });
+        
+    } catch (error) {
+        console.error('Claim daily bonus error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Claim daily leader bonus (for #1 on leaderboard)
+app.post('/api/daily-bonus/claim-leader/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const user = userDB.get(userId);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Check if user has paid 1 TON or bought coins from shop
+        const hasBoughtCoins = user.shopData?.purchased?.length > 0;
+        if (!user.hasPaid && !hasBoughtCoins) {
+            return res.status(403).json({ 
+                error: 'Demo version - Pay 1 TON or buy coins to claim leader bonus',
+                demo: true
+            });
+        }
+        
+        // Use the checkAndAwardLeaderBonus function to verify and award
+        const result = await checkAndAwardLeaderBonus(userId);
+        
+        if (result.awarded) {
+            res.json({
+                success: true,
+                reward: result.bonus,
+                message: 'Leader bonus claimed! 👑',
+                newBalance: result.newBalance
+            });
+        } else if (result.isLeader && result.alreadyAwarded) {
+            res.status(400).json({
+                success: false,
+                error: 'Already claimed leader bonus today',
+                hoursRemaining: result.hoursRemaining,
+                isLeader: true
+            });
+        } else if (!result.isLeader) {
+            res.status(400).json({
+                success: false,
+                error: 'You are not the current leader',
+                isLeader: false
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                error: result.error || 'Failed to claim leader bonus'
+            });
+        }
+        
+    } catch (error) {
+        console.error('Claim leader bonus error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// =============================================================================
+// LEADERBOARD SYSTEM
+// =============================================================================
+
+// Get leaderboard (top users by TON count)
+app.get('/api/leaderboard', async (req, res) => {
+    try {
+        const users = userDB.getAll();
+        const userList = [];
+        
+        for (const [userId, user] of Object.entries(users)) {
+            const tonCount = user.gameData?.tonCount || 0;
+            const asraScore = user.gameData?.asraScore || 0;
+            const totalAsra = (tonCount * GAME_CONSTANTS.ASRA_PER_TON) + asraScore;
+            
+            if (tonCount > 0 || asraScore > 0) {
+                // Get purchased coins from shopData
+                const shopData = user.shopData || { purchased: [], selected: 'gunmetal' };
+                const purchasedCoins = shopData.purchased || [];
+                
+                userList.push({
+                    userId: userId.slice(0, 8) + '...', // Privacy - hide full ID
+                    firstName: user.firstName || null, // User's display name
+                    tonCount,
+                    asraScore,
+                    totalAsra,
+                    hasPaid: user.hasPaid || false,
+                    purchasedCoins, // Array of purchased coin types
+                    selectedCoin: shopData.selected || 'gunmetal'
+                });
+            }
+        }
+        
+        // Sort by total ASRA (descending)
+        userList.sort((a, b) => b.totalAsra - a.totalAsra);
+        
+        // Get top 50
+        const topUsers = userList.slice(0, 50);
+        
+        res.json({
+            success: true,
+            leaderboard: topUsers,
+            totalPlayers: Object.keys(users).length,
+            activePlayers: userList.length
+        });
+        
+    } catch (error) {
+        console.error('Get leaderboard error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Get user's rank
+app.get('/api/leaderboard/rank/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const user = userDB.get(userId);
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const users = userDB.getAll();
+        const userList = [];
+        
+        for (const [id, u] of Object.entries(users)) {
+            const tonCount = u.gameData?.tonCount || 0;
+            const asraScore = u.gameData?.asraScore || 0;
+            const totalAsra = (tonCount * GAME_CONSTANTS.ASRA_PER_TON) + asraScore;
+            
+            if (tonCount > 0 || asraScore > 0) {
+                userList.push({ userId: id, totalAsra });
+            }
+        }
+        
+        // Sort by total ASRA
+        userList.sort((a, b) => b.totalAsra - a.totalAsra);
+        
+        // Find user rank
+        const userRank = userList.findIndex(u => u.userId === userId) + 1;
+        const userTotalAsra = (user.gameData?.tonCount || 0) * GAME_CONSTANTS.ASRA_PER_TON + (user.gameData?.asraScore || 0);
+        
+        // Get nearby players (3 above, 3 below)
+        const nearbyPlayers = [];
+        if (userRank > 0) {
+            const start = Math.max(0, userRank - 4);
+            const end = Math.min(userList.length, userRank + 3);
+            for (let i = start; i < end; i++) {
+                const u = userList[i];
+                const userData = users[u.userId];
+                nearbyPlayers.push({
+                    rank: i + 1,
+                    userId: u.userId.slice(0, 8) + '...',
+                    firstName: userData?.firstName || null,
+                    totalAsra: u.totalAsra,
+                    isCurrentUser: u.userId === userId
+                });
+            }
+        }
+        
+        res.json({
+            success: true,
+            rank: userRank > 0 ? userRank : null,
+            totalPlayers: userList.length,
+            userTotalAsra,
+            nearbyPlayers
+        });
+        
+    } catch (error) {
+        console.error('Get user rank error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// =============================================================================
+// TELEGRAM NOTIFICATION SYSTEM
+// =============================================================================
+
+let telegramBot = null;
+
+// Initialize bot instance for notifications
+function initNotificationBot() {
+    if (process.env.TELEGRAM_BOT_TOKEN && !telegramBot) {
+        const TelegramBot = require('node-telegram-bot-api');
+        telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
+        console.log('✅ Notification bot initialized');
+    }
+    return telegramBot;
+}
+
+// Send notification to specific user
+async function sendNotificationToUser(userId, message, options = {}) {
+    try {
+        const bot = initNotificationBot();
+        if (!bot) {
+            console.log('❌ Bot not initialized - TELEGRAM_BOT_TOKEN missing');
+            return false;
+        }
+        
+        const user = userDB.get(userId);
+        if (!user || !user.chatId) {
+            console.log(`❌ User ${userId} has no chatId`);
+            return false;
+        }
+        
+        await bot.sendMessage(user.chatId, message, {
+            parse_mode: 'Markdown',
+            ...options
+        });
+        
+        console.log(`✅ Notification sent to ${userId} (chatId: ${user.chatId})`);
+        return true;
+    } catch (error) {
+        console.error(`❌ Failed to send notification to ${userId}:`, error.message);
+        return false;
+    }
+}
+
+// API: Send notification to specific user
+app.post('/api/notify/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { message, includeButton } = req.body;
+        
+        if (!message) {
+            return res.status(400).json({ error: 'Message required' });
+        }
+        
+        const options = {};
+        if (includeButton) {
+            options.reply_markup = {
+                inline_keyboard: [[
+                    {
+                        text: '🎮 Play Now',
+                        web_app: { 
+                            url: `${GAME_URL || process.env.GAME_URL || 'https://asracoin.up.railway.app'}?userId=${userId}` 
+                        }
+                    }
+                ]]
+            };
+        }
+        
+        const sent = await sendNotificationToUser(userId, message, options);
+        
+        if (sent) {
+            res.json({ success: true, message: 'Notification sent' });
+        } else {
+            res.status(400).json({ 
+                success: false, 
+                error: 'Failed to send notification - user may not have chatId' 
+            });
+        }
+    } catch (error) {
+        console.error('Notify API error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Send daily bonus reminder to all eligible users
+async function sendDailyBonusReminders() {
+    console.log('🔄 Sending daily bonus reminders...');
+    
+    try {
+        const users = userDB.getAll();
+        let sentCount = 0;
+        let skippedCount = 0;
+        
+        for (const [userId, user] of Object.entries(users)) {
+            // Skip users without chatId
+            if (!user.chatId) {
+                skippedCount++;
+                continue;
+            }
+            
+            // Check if user can claim daily bonus
+            const dailyBonus = user.dailyBonus || { lastClaimed: null, streak: 0, totalClaimed: 0 };
+            const now = new Date();
+            const lastClaimed = dailyBonus.lastClaimed ? new Date(dailyBonus.lastClaimed) : null;
+            
+            let canClaim = false;
+            if (!lastClaimed) {
+                canClaim = true;
+            } else {
+                const hoursSinceLastClaim = (now - lastClaimed) / (1000 * 60 * 60);
+                if (hoursSinceLastClaim >= 24) {
+                    canClaim = true;
+                }
+            }
+            
+            // Check if streak will break soon (more than 36 hours passed)
+            let streakWarning = false;
+            if (lastClaimed) {
+                const hoursSinceLastClaim = (now - lastClaimed) / (1000 * 60 * 60);
+                if (hoursSinceLastClaim > 36 && hoursSinceLastClaim < 48 && dailyBonus.streak > 0) {
+                    streakWarning = true;
+                }
+            }
+            
+            if (canClaim) {
+                const currentStreak = dailyBonus.streak || 0;
+                const DAILY_BONUS_REWARDS = [100, 150, 200, 250, 300, 400, 500];
+                const nextReward = DAILY_BONUS_REWARDS[Math.min(currentStreak, 6)];
+                
+                let message = `🎁 *Kunlik bonus tayyor!*\n\n`;
+                message += `Salom ${user.firstName || 'dost'}!\n\n`;
+                message += `Kunlik bonusni olishingiz mumkin:\n`;
+                message += `📅 Streak: *${currentStreak + 1}-kun*\n`;
+                message += `💰 Mukofot: *${nextReward} ASRA*\n\n`;
+                
+                if (streakWarning) {
+                    message += `⚠️ *Diqqat!* Streak uzilishi mumkin!\n`;
+                    message += `Yana ${Math.ceil(48 - ((now - lastClaimed) / (1000 * 60 * 60)))} soat ichida oling!\n\n`;
+                }
+                
+                message += `Bonus olish uchun "Play" tugmasini bosing! 👇`;
+                
+                const sent = await sendNotificationToUser(userId, message, {
+                    reply_markup: {
+                        inline_keyboard: [[
+                            {
+                                text: '🎮 Play & Claim Bonus',
+                                web_app: { 
+                                    url: `${GAME_URL || process.env.GAME_URL || 'https://asracoin.up.railway.app'}?userId=${userId}` 
+                                }
+                            }
+                        ]]
+                    }
+                });
+                
+                if (sent) sentCount++;
+            } else {
+                skippedCount++;
+            }
+        }
+        
+        console.log(`✅ Daily bonus reminders: ${sentCount} sent, ${skippedCount} skipped`);
+        return { sent: sentCount, skipped: skippedCount };
+    } catch (error) {
+        console.error('❌ Daily bonus reminder error:', error);
+        return { sent: 0, skipped: 0, error: error.message };
+    }
+}
+
+// API: Trigger daily bonus reminders manually
+app.post('/api/notify/daily-bonus/all', async (req, res) => {
+    try {
+        // Security: Check admin key if provided in env
+        const adminKey = req.headers['x-admin-key'];
+        if (process.env.ADMIN_KEY && adminKey !== process.env.ADMIN_KEY) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        
+        const result = await sendDailyBonusReminders();
+        res.json({
+            success: true,
+            message: `Daily bonus reminders sent to ${result.sent} users`,
+            ...result
+        });
+    } catch (error) {
+        console.error('Notify all API error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Schedule daily bonus reminders (every day at 9:00 AM)
+function scheduleDailyBonusReminders() {
+    const schedule = require('node-schedule');
+    
+    // Run at 9:00 AM every day
+    schedule.scheduleJob('0 9 * * *', async () => {
+        console.log('⏰ Scheduled: Sending daily bonus reminders...');
+        await sendDailyBonusReminders();
+    });
+    
+    // Also run at 8:00 PM for streak warnings
+    schedule.scheduleJob('0 20 * * *', async () => {
+        console.log('⏰ Scheduled: Sending streak warnings...');
+        await sendDailyBonusReminders();
+    });
+    
+    console.log('✅ Daily bonus reminders scheduled (9:00 AM and 8:00 PM)');
 }
 
 // Start server
@@ -2116,6 +3014,12 @@ app.listen(PORT, async () => {
     
     // Database migration
     await migrateDatabase();
+    
+    // Initialize notification bot and scheduled reminders
+    if (process.env.TELEGRAM_BOT_TOKEN) {
+        initNotificationBot();
+        scheduleDailyBonusReminders();
+    }
 });
 
 module.exports = app;

@@ -240,23 +240,51 @@
         }
 
         /* User initials badge - top right corner */
-        #user-badge {
+        #user-badge-section {
             position: fixed;
             top: clamp(5px, 1.5vh, 12px);
             right: clamp(10px, 2vw, 20px);
             z-index: 95;
-            background: url('/assets/Button.png') no-repeat center center;
-            background-size: 100% 100%;
-            color: #00ff00;
-            font-weight: bold;
-            font-size: 12px;
+        }
+
+        #user-badge {
             width: 44px;
             height: 44px;
+            padding: 0;
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: #00ff00;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
             display: flex;
             align-items: center;
             justify-content: center;
-            text-transform: uppercase;
         }
+
+        #user-badge:active {
+            transform: scale(0.9);
+        }
+
+        /* User badge panel - opens when badge is clicked */
+        #user-badge-panel {
+            display: none;
+            position: fixed;
+            top: 60px;
+            right: 10px;
+            z-index: 96;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 12px;
+            padding: 12px;
+            min-width: 200px;
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+
+        #user-badge-panel.open { display: block; }
 
         /* Wallet panel - opens when W is clicked */
         #wallet-panel {
@@ -619,11 +647,11 @@
         }
 
         .coin-item img {
-            width: 200%;
-            height: auto;
-            object-fit: cover;
-            margin: -20px 0;
-            transform: scale(1);
+            width: 60px !important;
+            height: 60px !important;
+            max-width: 60px !important;
+            max-height: 60px !important;
+            object-fit: contain;
         }
 
         .coin-name {
@@ -708,6 +736,241 @@
             display: block;
             animation: pulse 1s infinite;
         }
+
+        /* Bonus Section */
+        .bonus-section {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 30px);
+            right: clamp(220px, 35vw, 300px);
+            z-index: 95;
+        }
+
+        #daily-bonus-btn {
+            width: 80px;
+            height: 44px;
+            padding: 0;
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: #ffd700;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        #daily-bonus-btn:active {
+            transform: scale(0.9);
+        }
+
+        #daily-bonus-btn.claimed {
+            color: #888;
+        }
+
+        /* Referral Section */
+        .referral-section {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 30px);
+            right: clamp(120px, 25vw, 200px);
+            z-index: 95;
+        }
+
+        #referral-btn {
+            width: 80px;
+            height: 44px;
+            padding: 0;
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: #00d2ff;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        #referral-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* Leaderboard Section */
+        .leaderboard-section {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 30px);
+            right: clamp(10px, 2vw, 20px);
+            z-index: 95;
+        }
+
+        #leaderboard-btn {
+            width: 80px;
+            height: 44px;
+            padding: 0;
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: #ff6b6b;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        #leaderboard-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* Daily Bonus Modal */
+        #daily-bonus-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #daily-bonus-modal.open { display: flex; }
+
+        .bonus-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: clamp(16px, 4vw, 24px);
+            border-radius: 16px;
+            text-align: center;
+            max-width: 95vw;
+            width: min(320px, 95vw);
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            box-sizing: border-box;
+        }
+
+        .bonus-modal-content h3 {
+            color: #ffd700;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .bonus-streak {
+            color: #00d2ff;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .bonus-reward {
+            color: #2ed573;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .bonus-timer {
+            color: #ff4757;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .bonus-timer.ready {
+            color: #2ed573;
+        }
+
+        /* Referral Modal */
+        #referral-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #referral-modal.open { display: flex; }
+
+        .referral-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: clamp(16px, 4vw, 24px);
+            border-radius: 16px;
+            text-align: center;
+            max-width: 95vw;
+            width: min(340px, 95vw);
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 2px solid rgba(46, 213, 115, 0.4);
+            box-sizing: border-box;
+        }
+
+        .referral-modal-content h3 {
+            color: #2ed573;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .referral-stats {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        .referral-stats div {
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .referral-stats span {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        /* Leaderboard Modal */
+        #leaderboard-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #leaderboard-modal.open { display: flex; }
+
+        .leaderboard-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: clamp(16px, 4vw, 24px);
+            border-radius: 16px;
+            text-align: center;
+            max-width: 95vw;
+            width: min(400px, 95vw);
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 2px solid rgba(255, 107, 107, 0.4);
+            box-sizing: border-box;
+        }
+
+        .leaderboard-modal-content h3 {
+            color: #ff6b6b;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .leaderboard-row {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .leaderboard-row:nth-child(even) {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .leaderboard-row.current-user {
+            background: rgba(255, 215, 0, 0.15);
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -725,8 +988,18 @@
                 <div id="wallet-address-display" class="wallet-address" style="display:none"></div>
                 <button class="wallet-panel-btn btn-green" id="btn-wallet-action">Connect Wallet</button>
                 <button class="wallet-panel-btn btn-green" id="btn-pay-from-wallet">Pay from Wallet</button>
-                <button class="wallet-panel-btn btn-green" id="btn-ton-yechish">Withdraw TON</button>
+                <button class="wallet-panel-btn btn-green" id="btn-ton-yechish">Withdraw ASRA</button>
                 <button class="wallet-panel-btn btn-red" id="btn-restart">RESTART</button>
+            </div>
+        </div>
+
+        <!-- User Badge - Top Right -->
+        <div id="user-badge-section">
+            <button id="user-badge" title="User Menu">--</button>
+            <div id="user-badge-panel">
+                <button class="wallet-panel-btn" id="btn-bonus" style="color:#ffd700;">BONUS</button>
+                <button class="wallet-panel-btn" id="btn-invite" style="color:#00d2ff;">INVITE</button>
+                <button class="wallet-panel-btn" id="btn-rank" style="color:#ff6b6b;">RANK</button>
             </div>
         </div>
 
@@ -751,18 +1024,13 @@
         <div class="help-modal-content">
             <h3>Game Information</h3>
             
-            <div class="help-text" style="background:rgba(0,210,255,0.1);border:1px solid rgba(0,210,255,0.3);border-radius:8px;padding:12px;margin-bottom:15px;font-size:12px;color:#00d2ff;">
-                This is a real game with real rewards. Data comes from blockchain and server - some delay may occur based on your internet speed.
+            <div class="help-text" style="background:rgba(0,210,255,0.1);border:1px solid rgba(0,210,255,0.3);border-radius:8px;padding:12px;margin-bottom:15px;font-size:12px;color:#00d2ff;text-align:center;">
+                <a href="https://dyor.io/ru/token/EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy" target="_blank" style="color:#00d2ff;text-decoration:underline;">🔗 Buy or exchange ASRA here</a>
             </div>
             
             <div class="help-section-title">How to Play?</div>
             <div class="help-text">
-                Press START and quickly click on coins appearing on screen. Earn ASRA based on your selected coin price. Red glow behind coin = -100 ASRA penalty. 10,000 ASRA = 1 TON.
-            </div>
-            
-            <div class="help-section-title">Be Careful!</div>
-            <div class="help-text">
-                Red glow behind coin = -100 ASRA. Watch out!
+                Press START and quickly click on coins appearing on screen. Earn ASRA based on your selected coin price. Red glow behind coin = -100 ASRA penalty.
             </div>
             
             <div class="help-section-title">Your Profile</div>
@@ -772,23 +1040,23 @@
             
             <div class="help-section-title">Wallet Connection</div>
             <div class="help-text">
-                First connect your wallet using the Wallet button to withdraw TON. Connect Telegram Wallet, Tonkeeper or other wallets via TON Connect. For security, withdrawals are only allowed to your own wallet address.
+                First connect your wallet using the Wallet button to withdraw ASRA. Connect Telegram Wallet, Tonkeeper or other wallets via TON Connect. For security, withdrawals are only allowed to your own wallet address.
             </div>
             
-            <div class="help-section-title">Withdraw TON</div>
+            <div class="help-section-title">Withdraw ASRA</div>
             <div class="help-text-small">
-                • Collect at least 10 TON<br>
-                • 1 TON reserved for blockchain fee<br>
-                • Can withdraw: balance - 1 TON<br>
+                • Collect at least 10,000 ASRA<br>
+                • 1,000 ASRA reserved for fee<br>
+                • Can withdraw: balance - 1,000 ASRA<br>
                 • Wallet connection required - unauthorized withdrawal impossible<br>
-                • Blockchain rules: 1 TON fee per transaction
+                • Blockchain rules: 1,000 ASRA fee per transaction
             </div>
             
             <div class="help-section-title">Pay TON</div>
             <div class="help-text-small">
                 • Pay 1 TON to start real game<br>
                 • Pay via QR code or from wallet<br>
-                • Can withdraw TON after payment
+                • Can withdraw ASRA after payment
             </div>
             
             <div class="help-section-title">Shop - About Coins</div>
@@ -842,14 +1110,14 @@
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);font-weight:bold;color:#ffd700;">ASRA PRO</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;font-weight:bold;">99 TON</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;font-weight:bold;">+99</td>
-                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Auto-play, no -100 penalty, up to 200 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Auto-play, no -100 penalty, up to 2,000,000 ASRA</td>
                     </tr>
                 </tbody>
             </table>
             
             <div class="help-section-title">Goal</div>
             <div class="help-text">
-                Collect TON, gather ASRA, buy new coins from shop. Use ASRA PRO auto-play feature (up to 200 TON).
+                Collect TON, gather ASRA, buy new coins from shop. Use ASRA PRO auto-play feature (up to 2,000,000 ASRA).
             </div>
             
             <div class="help-section-title">Future</div>
@@ -940,8 +1208,88 @@
         </div>
     </div>
 
-    <!-- User initials badge -->
-    <div id="user-badge" style="display:none"></div>
+    <!-- Daily Bonus Modal -->
+    <div id="daily-bonus-modal">
+        <div class="bonus-modal-content">
+            <h3>🎁 Daily Bonus</h3>
+            <div id="daily-bonus-content">
+                <!-- Leader Bonus Section (only for #1) -->
+                <div id="leader-bonus-section" style="background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.5);border-radius:8px;padding:12px;margin-bottom:12px;display:none;">
+                    <div style="text-align:center;">
+                        <div style="color:#ffd700;font-size:16px;font-weight:bold;">👑 Leader Bonus</div>
+                        <div style="color:#fff;font-size:12px;margin:4px 0;">You are #1 on the leaderboard!</div>
+                        <div style="color:#00ff00;font-size:14px;font-weight:bold;">+100 ASRA</div>
+                        <div id="leader-bonus-timer" style="color:#888;font-size:10px;margin-top:4px;"></div>
+                        <button class="wallet-panel-btn btn-yellow" id="claim-leader-bonus-btn" style="width:100%;margin-top:8px;font-size:12px;padding:8px;">Claim Leader Bonus</button>
+                    </div>
+                </div>
+                
+                <!-- Regular Daily Bonus -->
+                <div class="bonus-streak" id="bonus-streak">Streak: 0 days</div>
+                <div class="bonus-reward" id="bonus-reward">Next reward: 100 ASRA</div>
+                <div class="bonus-timer" id="bonus-timer">Claim now!</div>
+                <button class="wallet-panel-btn btn-green" id="claim-bonus-btn" style="width:100%;margin-top:16px;">Claim Daily Bonus</button>
+            </div>
+            <button class="wallet-panel-btn close-modal btn-red" id="close-daily-bonus" style="width:100%;margin-top:8px;">Close</button>
+        </div>
+    </div>
+
+    <!-- Referral Modal -->
+    <div id="referral-modal">
+        <div class="referral-modal-content">
+            <h3>👥 Invite Friends</h3>
+            <div id="referral-content">
+                <div class="referral-stats" id="referral-stats" style="background:rgba(0,210,255,0.1);border:1px solid rgba(0,210,255,0.3);border-radius:8px;padding:12px;margin-bottom:16px;text-align:center;">
+                    <div style="display:flex;justify-content:space-around;">
+                        <div>
+                            <div style="color:#00d2ff;font-size:12px;">Referrals</div>
+                            <div style="color:#fff;font-size:18px;font-weight:bold;" id="referral-count">0</div>
+                        </div>
+                        <div>
+                            <div style="color:#ffd700;font-size:12px;">Earned</div>
+                            <div style="color:#fff;font-size:18px;font-weight:bold;"><span id="referral-earnings">0</span> ASRA</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="referral-link-section" style="padding:12px 0;margin-bottom:16px;">
+                    <p style="color:#888;font-size:12px;margin-bottom:8px;text-align:center;">Your invite link:</p>
+                    <input type="text" id="referral-link" readonly style="width:100%;padding:10px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.5);color:#ffd700;border-radius:6px;font-size:10px;margin-bottom:8px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-sizing:border-box;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
+                    <p style="color:#00d2ff;font-size:11px;text-align:center;margin:0;">Earn 10% from your referrals' earnings!</p>
+                </div>
+                <div id="referral-list" style="max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.2);border-radius:8px;padding:8px;">
+                    <!-- Referral list will be populated here -->
+                </div>
+            </div>
+            <button class="wallet-panel-btn close-modal btn-red" id="close-referral" style="width:100%;margin-top:16px;">Close</button>
+        </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div id="leaderboard-modal">
+        <div class="leaderboard-modal-content">
+            <h3>🏆 Leaderboard</h3>
+            <div id="leaderboard-content">
+                <div class="user-rank" id="user-rank" style="background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;margin-bottom:16px;text-align:center;">
+                    <div style="color:#ffd700;font-size:14px;">Your Rank: #-</div>
+                    <div style="color:#888;font-size:11px;">Total ASRA: 0</div>
+                </div>
+                <table style="width:100%;border-collapse:collapse;font-size:11px;" id="leaderboard-table">
+                    <thead>
+                        <tr style="background:rgba(0,210,255,0.2);">
+                            <th style="padding:6px 4px;border:1px solid rgba(0,210,255,0.3);color:#00d2ff;width:30px;">#</th>
+                            <th style="padding:6px 4px;border:1px solid rgba(0,210,255,0.3);color:#00d2ff;width:70px;">User</th>
+                            <th style="padding:6px 4px;border:1px solid rgba(0,210,255,0.3);color:#00d2ff;">Coins</th>
+                            <th style="padding:6px 4px;border:1px solid rgba(0,210,255,0.3);color:#00d2ff;width:50px;">ASRA</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Leaderboard rows will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+            <button class="wallet-panel-btn close-modal btn-red" id="close-leaderboard" style="width:100%;margin-top:16px;">Close</button>
+        </div>
+    </div>
 
     <div id="wallet-modal">
         <div class="wallet-modal-content" id="modal-content">
@@ -1171,9 +1519,18 @@
 
         const pulseColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 'pulse-cyan', 'pulse-purple', 'pulse-orange'];
 
+        // Helper function - format large numbers (K, M, B, T)
+        function formatCompactNumber(number) {
+            if (number >= 1e12) return (number / 1e12).toFixed(1) + 'T';  // Trillion
+            if (number >= 1e9) return (number / 1e9).toFixed(1) + 'B';   // Billion
+            if (number >= 1e6) return (number / 1e6).toFixed(1) + 'M';   // Million
+            if (number >= 1e3) return (number / 1e3).toFixed(1) + 'K';   // Thousand
+            return number.toString();
+        }
+
         function updateDisplay() {
-            // Show ASRA directly as regular token (1 ASRA minimum)
-            asraDisplayElement.textContent = asraScore.toLocaleString();
+            // Show ASRA in compact format for large numbers
+            asraDisplayElement.textContent = formatCompactNumber(asraScore);
         }
 
         function calculateSpeed() {
@@ -1269,7 +1626,7 @@
 
             // Show temporary animation immediately - red for penalty coin, yellow for normal
             const isRedCoin = currentCoinColor === 'pulse-red';
-            const tempText = isRedCoin ? 'Penalty' : 'Bonus';
+            const tempText = isRedCoin ? 'Penalty' : 'ASRA';
             showFloatText(x, y - 50, tempText, isRedCoin);
             
             // Send to server in BACKGROUND - don't wait
@@ -1287,10 +1644,10 @@
                     asraScore = data.gameState.asraScore;
                     tonCount = data.gameState.tonCount;
                     
-                    // Show actual reward number from server
-                    const isNegative = data.type === 'penalty';
-                    const rewardText = isNegative ? data.reward + ' asra' : '+' + data.reward + ' asra';
-                    showFloatText(x, y - 50, rewardText, isNegative);
+            // Show server reward number: +1 for normal, -100 for penalty
+            const isNegative = data.type === 'penalty';
+            const floatText = isNegative ? data.reward.toString() : '+' + data.reward;
+            showFloatText(x, y - 50, floatText, isNegative);
                     
                     // Update display
                     updateDisplay();
@@ -1372,13 +1729,68 @@
             }
         }
 
+        // Check if user has real game access (paid 1 TON or bought coins from shop)
+        async function checkRealGameAccess() {
+            if (!userId) return { hasAccess: false, reason: 'nouser' };
+            
+            try {
+                // Check payment status
+                const res = await fetch(API_BASE + '/check-payment/' + userId);
+                const paymentData = await res.json();
+                
+                // Check if user has purchased coins from shop
+                const shopRes = await fetch(API_BASE + '/shop/' + userId);
+                const shopData = await shopRes.json();
+                const hasBoughtCoins = shopData.success && shopData.shopData?.purchased?.length > 0;
+                
+                if (paymentData.hasPaid || hasBoughtCoins) {
+                    return { hasAccess: true, hasPaid: paymentData.hasPaid, hasBoughtCoins };
+                }
+                
+                return { hasAccess: false, reason: 'nopayment' };
+            } catch (e) {
+                console.error('Error checking game access:', e);
+                return { hasAccess: false, reason: 'error' };
+            }
+        }
+
+        // Show demo version modal with payment info
+        function showDemoModal(buttonName) {
+            const config = configData || { paymentAddress: 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM', paymentNano: 1000000000 };
+            const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+            const PAYMENT_NANO = config.paymentNano || 1000000000;
+            const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${firstName}_${userId}`;
+            const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
+            
+            modalTitle.textContent = '';
+            modalBody.innerHTML = `
+                <div style="text-align:center;padding:16px;">
+                    <p style="color:#ff6b6b;font-size:14px;margin-bottom:12px;">⚠️ Demo version</p>
+                    <p style="color:#fff;font-size:13px;margin-bottom:8px;">
+                        <b>${buttonName}</b> locked in demo mode
+                    </p>
+                    <p style="color:#ffd700;font-size:11px;margin-bottom:8px;">
+                        Pay <b>1 TON</b> to start real game
+                    </p>
+                    <p style="color:#00d2ff;font-size:11px;margin-bottom:12px;">
+                        Or buy any coin from SHOP to unlock
+                    </p>
+                    <p style="color:#888;font-size:11px;margin-bottom:4px;">TON address:</p>
+                    <input type="text" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:10px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
+                    <img src="${QR_CODE_URL}" alt="QR" style="width:180px;height:180px;margin:8px auto;display:block;background:#fff;padding:6px;border-radius:8px;">
+                    <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:12px;">Back</button>
+                </div>
+            `;
+            modal.classList.add('open');
+        }
+
         async function resumeGame() {
             await startNewGame();
         }
 
         let isFirstStart = true;
 
-        function toggleGame() {
+        async function toggleGame() {
             if (gameActive) {
                 stopGame();
             } else {
@@ -1583,12 +1995,38 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Show user badge - after DOM loads
+            // User Badge - set initials and toggle panel
             const userBadge = document.getElementById('user-badge');
+            const userBadgePanel = document.getElementById('user-badge-panel');
             
             if (userBadge && userInitials) {
                 userBadge.textContent = userInitials;
                 userBadge.style.display = 'flex';
+            }
+            
+            // Toggle user badge panel
+            if (userBadge && userBadgePanel) {
+                userBadge.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Stop game if active
+                    if (gameActive) {
+                        stopGame();
+                    }
+                    // Close wallet panel if open
+                    walletPanel.classList.remove('open');
+                    // Toggle user badge panel
+                    userBadgePanel.classList.toggle('open');
+                });
+                
+                // Close when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!userBadge.contains(e.target) && !userBadgePanel.contains(e.target)) {
+                        userBadgePanel.classList.remove('open');
+                    }
+                });
+                
+                // Prevent panel click from closing
+                userBadgePanel.addEventListener('click', (e) => e.stopPropagation());
             }
             
             const wBtn = document.getElementById('w-btn');
@@ -1605,6 +2043,8 @@
                 if (gameActive) {
                     stopGame();
                 }
+                // Close user badge panel if open
+                userBadgePanel.classList.remove('open');
                 walletPanel.classList.toggle('open');
             });
             document.addEventListener('click', () => walletPanel.classList.remove('open'));
@@ -1648,7 +2088,7 @@
                         fetch(API_BASE + '/user/register', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId, connectedWallet: connectedWalletAddress })
+                            body: JSON.stringify({ userId, connectedWallet: connectedWalletAddress, firstName: safeFirstName || null })
                         }).catch(err => {
                             console.error('❌ [REGISTER] Error:', err);
                         });
@@ -1756,13 +2196,13 @@
                 }
             });
 
-            // Withdraw TON
+            // Withdraw ASRA
             document.getElementById('btn-ton-yechish').addEventListener('click', async () => {
                 walletPanel.classList.remove('open');
                 
                 // Helper function - show error message
                 function showErrorModal(message, color = '#ff6b6b') {
-                    modalTitle.textContent = 'Withdraw TON';
+                    modalTitle.textContent = 'Withdraw ASRA';
                     modalBody.innerHTML = `
                         <p style="color:${color};margin-bottom:16px;">${message}</p>
                         <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Back</button>
@@ -1832,7 +2272,7 @@
                                 Or buy any coin from SHOP to unlock
                             </p>
                             <p style="color:#00d2ff;font-size:12px;margin-bottom:16px;">
-                                Can withdraw TON in real game
+                                Can withdraw ASRA in real game
                             </p>
                             
                             <!-- Only Back button -->
@@ -1898,18 +2338,18 @@
                 // Payment made - normal withdrawal from game balance
                 modalTitle.textContent = '';
                 
-                // Get game TON balance
-                const gameTonBalance = tonCount;
-                const minRequiredAmount = 10; // Minimum 10 TON required to withdraw
-                const feeReserve = 1; // 1 TON must remain for fee
-                const maxWithdrawAmount = Math.max(0, gameTonBalance - feeReserve);
+                // Get game ASRA balance
+                const gameAsraBalance = asraScore;
+                const minRequiredAmount = 10000; // Minimum 10000 ASRA required to withdraw
+                const feeReserve = 1000; // 1000 ASRA must remain for fee
+                const maxWithdrawAmount = Math.max(0, gameAsraBalance - feeReserve);
                 
-                if (gameTonBalance < minRequiredAmount) {
+                if (gameAsraBalance < minRequiredAmount) {
                     modalBody.innerHTML = `
                         <div style="text-align:center;padding:16px;">
-                            <p style="color:#ff6b6b;font-size:16px;margin-bottom:12px;">⚠️ Not enough TON</p>
-                            <p style="color:#fff;font-size:14px;margin-bottom:8px;">You have: ${gameTonBalance.toFixed(4)} TON</p>
-                            <p style="color:#00d2ff;font-size:13px;margin-bottom:16px;">Minimum 10 TON required to withdraw</p>
+                            <p style="color:#ff6b6b;font-size:16px;margin-bottom:12px;">⚠️ Not enough ASRA</p>
+                            <p style="color:#fff;font-size:14px;margin-bottom:8px;">You have: ${gameAsraBalance.toLocaleString()} ASRA</p>
+                            <p style="color:#00d2ff;font-size:13px;margin-bottom:16px;">Minimum 10,000 ASRA required to withdraw</p>
                             <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Back</button>
                         </div>
                     `;
@@ -1919,19 +2359,19 @@
                 
                 modalBody.innerHTML = `
                     <div style="text-align:center;padding:16px;">
-                        <p style="color:#888;font-size:18px;margin-bottom:12px;margin-top:20px;">💸 Withdraw TON</p>
+                        <p style="color:#888;font-size:18px;margin-bottom:12px;margin-top:20px;">💸 Withdraw ASRA</p>
                         <p style="color:#ffd700;font-size:18px;margin-bottom:12px;">💰 Your Game Balance</p>
-                        <p style="color:#00d2ff;font-size:32px;font-weight:bold;margin-bottom:8px;">${gameTonBalance.toFixed(4)} TON</p>
-                        <p style="color:#888;font-size:11px;margin-bottom:16px;">1 TON reserved for blockchain fee | Can withdraw: ${maxWithdrawAmount.toFixed(4)} TON</p>
+                        <p style="color:#00d2ff;font-size:32px;font-weight:bold;margin-bottom:8px;">${gameAsraBalance.toLocaleString()} ASRA</p>
+                        <p style="color:#888;font-size:11px;margin-bottom:16px;">1,000 ASRA reserved for fee | Can withdraw: ${maxWithdrawAmount.toLocaleString()} ASRA</p>
                         
                         <p style="color:#888;font-size:11px;margin-bottom:4px;">Withdrawal address: your connected wallet address</p>
                         <p style="color:#fff;font-size:12px;margin-bottom:16px;word-break:break-all;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;">${connectedWalletAddress}</p>
                         
                         <div class="withdraw-input-row" style="margin:16px 0;">
-                            <input type="number" id="withdraw-amount" placeholder="Min 1 TON" min="1" max="${maxWithdrawAmount}" step="0.1" style="flex:1;">
+                            <input type="number" id="withdraw-amount" placeholder="Amount (min 1,000)" min="1000" max="${maxWithdrawAmount}" step="100" style="flex:1;">
                             <button id="max-btn" style="white-space:nowrap;">MAX</button>
                         </div>
-                        <p style="color:#888;font-size:10px;margin-bottom:16px;">Min: 1 TON | Max: ${maxWithdrawAmount.toFixed(4)} TON (1 TON reserved for blockchain)</p>
+                        <p style="color:#888;font-size:10px;margin-bottom:16px;">Can withdraw: 1,000 - ${maxWithdrawAmount.toLocaleString()} ASRA (1,000 reserved)</p>
                         
                         <button class="wallet-panel-btn withdraw" id="withdraw-submit" style="width:100%;margin-bottom:8px;">Withdraw</button>
                         <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Back</button>
@@ -1941,15 +2381,15 @@
                 
                 // Max button functionality
                 document.getElementById('max-btn').addEventListener('click', () => {
-                    document.getElementById('withdraw-amount').value = maxWithdrawAmount.toFixed(4);
+                    document.getElementById('withdraw-amount').value = maxWithdrawAmount;
                 });
                 
                 // Withdraw button
                 document.getElementById('withdraw-submit').addEventListener('click', async () => {
-                    const amount = parseFloat(document.getElementById('withdraw-amount').value);
-                    if (!amount || amount < 1) {
+                    const amount = parseInt(document.getElementById('withdraw-amount').value);
+                    if (!amount || amount < 1000) {
                         Swal.fire({
-                            text: 'Minimum 1 TON',
+                            text: 'Minimum 1,000 ASRA',
                             icon: 'warning',
                             timer: 1500,
                             showConfirmButton: false,
@@ -1960,7 +2400,7 @@
                     }
                     if (amount > maxWithdrawAmount) {
                         Swal.fire({
-                            text: `Max ${maxWithdrawAmount.toFixed(4)} TON`,
+                            text: `Max ${maxWithdrawAmount.toLocaleString()} ASRA`,
                             icon: 'warning',
                             timer: 1500,
                             showConfirmButton: false,
@@ -1991,15 +2431,15 @@
                         const result = await res.json();
                         
                         if (result.success) {
-                            // Reduce game TON
-                            tonCount -= amount;
+                            // Reduce game ASRA
+                            asraScore -= amount;
                             updateDisplay();
                             await forceSaveGameData(); // Immediate save after withdrawal
                             
                             modalBody.innerHTML = `
                                 <div style="text-align:center;padding:16px;">
-                                    <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ ${amount} TON sent!</p>
-                                    <p style="color:#fff;font-size:13px;margin-bottom:8px;">Remaining balance: ${tonCount.toFixed(4)} TON</p>
+                                    <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ ${amount.toLocaleString()} ASRA sent!</p>
+                                    <p style="color:#fff;font-size:13px;margin-bottom:8px;">Remaining balance: ${asraScore.toLocaleString()} ASRA</p>
                                     <p style="color:#888;font-size:11px;margin-bottom:16px;">Wallet: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>
                                     <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Back</button>
                                 </div>
@@ -2050,7 +2490,6 @@
                             All your data will be deleted:
                         </p>
                         <ul style="color:#fff;text-align:left;margin-bottom:16px;font-size:13px;">
-                            <li>💰 TON balance: 0</li>
                             <li>🪙 ASRA coin: 0</li>
                             <li>🛒 Purchased coins: 0 (all reset)</li>
                             <li>💳 Payment status: cancelled</li>
@@ -2179,7 +2618,7 @@
                     name: 'ASRA PRO', 
                     price: 99, 
                     speedBonus: 600, 
-                    img: '/assets/ASRA.png', 
+                    img: '/assets/ASRAPRO.png', 
                     autoPlay: true, 
                     maxTon: 200, 
                     noPenalty: true,
@@ -2279,6 +2718,8 @@
                 if (gameActive) {
                     stopGame();
                 }
+                // Close user badge panel if open
+                userBadgePanel.classList.remove('open');
                 shopModal.classList.add('open');
                 updateShopUI();
             });
@@ -2298,6 +2739,8 @@
                 if (gameActive) {
                     stopGame();
                 }
+                // Close user badge panel if open
+                userBadgePanel.classList.remove('open');
                 helpModal.classList.add('open');
             });
 
@@ -2351,8 +2794,38 @@
                 
                 Swal.fire({
                     html: `
-                        <div style="text-align:center;font-family:inherit;display:flex;align-items:flex-start;justify-content:center;height:100vh;padding:0;margin:0;overflow:visible;">
-                            <img src="${coinInfo.img}" style="width:140vmin;height:140vmin;margin-top:-5vmin;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(0,0,0,0.8));">
+                        <div style="text-align:center;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:0;margin:0;overflow:hidden;background:transparent;">
+                            <img src="${coinInfo.img}" style="width:45vmin;height:45vmin;margin-top:25vmin;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(0,0,0,0.8));animation:none !important;transition:none !important;">
+                            <div style="margin-top:8vmin;display:flex;gap:20px;justify-content:center;animation:none !important;">
+                                <button id="btn-buy-coin" style="
+                                    background: url('/assets/Button.png') no-repeat center center;
+                                    background-size: cover;
+                                    border: none;
+                                    width: 130px;
+                                    height: 48px;
+                                    color: #2ed573;
+                                    font-size: 16px;
+                                    font-weight: bold;
+                                    cursor: pointer;
+                                    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+                                    animation: none !important;
+                                    transition: none !important;
+                                ">Buy</button>
+                                <button id="btn-cancel-coin" style="
+                                    background: url('/assets/Button.png') no-repeat center center;
+                                    background-size: cover;
+                                    border: none;
+                                    width: 130px;
+                                    height: 48px;
+                                    color: #ff4757;
+                                    font-size: 16px;
+                                    font-weight: bold;
+                                    cursor: pointer;
+                                    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+                                    animation: none !important;
+                                    transition: none !important;
+                                ">Cancel</button>
+                            </div>
                         </div>
                     `,
                     showCancelButton: false,
@@ -2365,36 +2838,6 @@
                         popup: 'coin-purchase-popup'
                     },
                     didOpen: () => {
-                        const popup = Swal.getPopup();
-                        popup.innerHTML += `
-                            <div style="position:fixed;top:60%;left:50%;transform:translateX(-50%);background:linear-gradient(145deg, #2a2a3a 0%, #1a1a2e 100%);border:2px solid rgba(255,215,0,0.4);border-radius:12px;padding:8px 20px;display:flex;gap:15px;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10000;animation:none !important;">
-                                <button id="btn-buy-coin" style="
-                                    background: url('/assets/Button.png') no-repeat center center;
-                                    background-size: cover;
-                                    border: none;
-                                    width: 120px;
-                                    height: 44px;
-                                    color: #2ed573;
-                                    font-size: 14px;
-                                    font-weight: bold;
-                                    cursor: pointer;
-                                    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-                                ">Buy</button>
-                                <button id="btn-cancel-coin" style="
-                                    background: url('/assets/Button.png') no-repeat center center;
-                                    background-size: cover;
-                                    border: none;
-                                    width: 120px;
-                                    height: 44px;
-                                    color: #ff4757;
-                                    font-size: 14px;
-                                    font-weight: bold;
-                                    cursor: pointer;
-                                    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-                                ">Cancel</button>
-                            </div>
-                        `;
-                        
                         document.getElementById('btn-buy-coin').addEventListener('click', async () => {
                             Swal.close();
                             const SHOP_PAYMENT_ADDRESS = 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
@@ -2714,6 +3157,355 @@
 
             // Update initial UI
             updateShopUI();
+
+            // ==================== DAILY BONUS FUNCTIONALITY ====================
+            const dailyBonusBtn = document.getElementById('daily-bonus-btn');
+            const dailyBonusModal = document.getElementById('daily-bonus-modal');
+            const closeDailyBonus = document.getElementById('close-daily-bonus');
+            const claimBonusBtn = document.getElementById('claim-bonus-btn');
+            const bonusStreakEl = document.getElementById('bonus-streak');
+            const bonusRewardEl = document.getElementById('bonus-reward');
+            const bonusTimerEl = document.getElementById('bonus-timer');
+            
+            // Leader bonus elements
+            const leaderBonusSection = document.getElementById('leader-bonus-section');
+            const leaderBonusTimer = document.getElementById('leader-bonus-timer');
+            const claimLeaderBonusBtn = document.getElementById('claim-leader-bonus-btn');
+
+            let dailyBonusData = { canClaim: false, currentStreak: 0, nextReward: 100, hoursRemaining: 0 };
+            let leaderBonusData = { isLeader: false, canClaim: false, hoursRemaining: 0, bonusAmount: 100 };
+
+            async function loadDailyBonus() {
+                if (!userId) return;
+                try {
+                    const res = await fetch(API_BASE + '/daily-bonus/' + userId);
+                    const data = await res.json();
+                    if (data.success) {
+                        dailyBonusData = data.dailyBonus;
+                        leaderBonusData = data.leaderBonus;
+                        updateDailyBonusUI();
+                    }
+                } catch (e) {
+                    console.error('Failed to load daily bonus:', e);
+                }
+            }
+
+            function updateDailyBonusUI() {
+                // Regular daily bonus UI
+                bonusStreakEl.textContent = `Streak: ${dailyBonusData.currentStreak} days`;
+                bonusRewardEl.textContent = `Next reward: ${dailyBonusData.nextReward.toLocaleString()} ASRA`;
+                
+                if (dailyBonusData.canClaim) {
+                    bonusTimerEl.textContent = 'Claim now!';
+                    bonusTimerEl.classList.add('ready');
+                    claimBonusBtn.disabled = false;
+                    claimBonusBtn.style.opacity = '1';
+                    dailyBonusBtn.classList.remove('claimed');
+                } else {
+                    bonusTimerEl.textContent = `Wait ${dailyBonusData.hoursRemaining}h`;
+                    bonusTimerEl.classList.remove('ready');
+                    claimBonusBtn.disabled = true;
+                    claimBonusBtn.style.opacity = '0.5';
+                    dailyBonusBtn.classList.add('claimed');
+                }
+                
+                // Leader bonus UI
+                if (leaderBonusData.isLeader) {
+                    leaderBonusSection.style.display = 'block';
+                    if (leaderBonusData.canClaim) {
+                        leaderBonusTimer.textContent = 'Claim your 100 ASRA now!';
+                        leaderBonusTimer.style.color = '#00ff00';
+                        claimLeaderBonusBtn.disabled = false;
+                        claimLeaderBonusBtn.style.opacity = '1';
+                        claimLeaderBonusBtn.style.background = 'rgba(255, 215, 0, 0.3)';
+                    } else {
+                        leaderBonusTimer.textContent = `Already claimed! Next in ${leaderBonusData.hoursRemaining}h`;
+                        leaderBonusTimer.style.color = '#888';
+                        claimLeaderBonusBtn.disabled = true;
+                        claimLeaderBonusBtn.style.opacity = '0.5';
+                        claimLeaderBonusBtn.style.background = 'rgba(255, 215, 0, 0.1)';
+                    }
+                } else {
+                    leaderBonusSection.style.display = 'none';
+                }
+            }
+
+            closeDailyBonus.addEventListener('click', () => {
+                dailyBonusModal.classList.remove('open');
+            });
+
+            claimBonusBtn.addEventListener('click', async () => {
+                if (!userId) return;
+                try {
+                    const res = await fetch(API_BASE + '/daily-bonus/claim/' + userId, { method: 'POST' });
+                    const data = await res.json();
+                    if (data.success) {
+                        asraScore = data.newBalance.asraScore;
+                        tonCount = data.newBalance.tonCount;
+                        updateDisplay();
+                        
+                        Swal.fire({
+                            text: `Claimed ${data.reward} ASRA! 🔥 Streak: ${data.streak} days`,
+                            icon: 'success',
+                            timer: 2500,
+                            showConfirmButton: false,
+                            width: '280px',
+                            position: 'center'
+                        });
+                        
+                        dailyBonusData.canClaim = false;
+                        dailyBonusData.currentStreak = data.streak - 1;
+                        updateDailyBonusUI();
+                    } else if (data.demo || res.status === 403) {
+                        // Show demo modal for non-paid users
+                        showDemoModal('Daily Bonus');
+                    } else {
+                        Swal.fire({
+                            text: data.error || 'Failed to claim bonus',
+                            icon: 'warning',
+                            timer: 2000,
+                            showConfirmButton: false,
+                            width: '250px',
+                            position: 'center'
+                        });
+                    }
+                } catch (e) {
+                    Swal.fire({
+                        text: 'Failed to claim bonus',
+                        icon: 'error',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        width: '200px',
+                        position: 'center'
+                    });
+                }
+            });
+            
+            // Claim leader bonus
+            claimLeaderBonusBtn.addEventListener('click', async () => {
+                if (!userId) return;
+                try {
+                    const res = await fetch(API_BASE + '/daily-bonus/claim-leader/' + userId, { method: 'POST' });
+                    const data = await res.json();
+                    if (data.success) {
+                        asraScore = data.newBalance.asraScore;
+                        tonCount = data.newBalance.tonCount;
+                        updateDisplay();
+                        
+                        Swal.fire({
+                            text: `👑 Leader Bonus! +${data.reward} ASRA!`,
+                            icon: 'success',
+                            timer: 2500,
+                            showConfirmButton: false,
+                            width: '280px',
+                            position: 'center'
+                        });
+                        
+                        leaderBonusData.canClaim = false;
+                        updateDailyBonusUI();
+                    } else if (data.demo || res.status === 403) {
+                        // Show demo modal for non-paid users
+                        showDemoModal('Leader Bonus');
+                    } else {
+                        Swal.fire({
+                            text: data.error || 'Failed to claim leader bonus',
+                            icon: 'warning',
+                            timer: 2000,
+                            showConfirmButton: false,
+                            width: '250px',
+                            position: 'center'
+                        });
+                    }
+                } catch (e) {
+                    Swal.fire({
+                        text: 'Failed to claim leader bonus',
+                        icon: 'error',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        width: '200px',
+                        position: 'center'
+                    });
+                }
+            });
+
+            // ==================== REFERRAL FUNCTIONALITY ====================
+            const referralBtn = document.getElementById('referral-btn');
+            const referralModal = document.getElementById('referral-modal');
+            const closeReferral = document.getElementById('close-referral');
+            const referralLinkInput = document.getElementById('referral-link');
+            const referralCountEl = document.getElementById('referral-count');
+            const referralEarningsEl = document.getElementById('referral-earnings');
+            const referralListEl = document.getElementById('referral-list');
+
+            async function loadReferralData() {
+                if (!userId) return;
+                
+                // Set invite link with user name for trust
+                const userName = safeFirstName || safeLastName ? `${safeFirstName}${safeLastName ? '_' + safeLastName : ''}` : '';
+                const inviteLink = userName 
+                    ? `https://t.me/ASRACoinBot?start=${userId}_${userName}`
+                    : `https://t.me/ASRACoinBot?start=${userId}`;
+                referralLinkInput.value = inviteLink;
+                
+                try {
+                    const res = await fetch(API_BASE + '/referral/' + userId);
+                    const data = await res.json();
+                    if (data.success) {
+                        referralCountEl.textContent = data.referralData.referralCount || 0;
+                        referralEarningsEl.textContent = (data.referralData.totalReferralEarnings || 0).toLocaleString();
+                        
+                        // Populate referral list
+                        if (data.referralData.referralDetails && data.referralData.referralDetails.length > 0) {
+                            referralListEl.innerHTML = data.referralData.referralDetails.map(ref => `
+                                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;margin-bottom:6px;font-size:11px;">
+                                    <span style="color:#ccc;">${ref.userId.slice(0, 12)}...</span>
+                                    <span style="color:${ref.hasPaid ? '#2ed573' : '#888'};">${ref.hasPaid ? '✅ Paid' : '⏳ Free'}</span>
+                                </div>
+                            `).join('');
+                        } else {
+                            referralListEl.innerHTML = '<p style="color:#888;font-size:12px;text-align:center;margin-top:20px;">No referrals yet. Share your link!</p>';
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to load referral data:', e);
+                }
+            }
+
+
+
+            closeReferral.addEventListener('click', () => {
+                referralModal.classList.remove('open');
+            });
+
+            // ==================== LEADERBOARD FUNCTIONALITY ====================
+            const leaderboardBtn = document.getElementById('leaderboard-btn');
+            const leaderboardModal = document.getElementById('leaderboard-modal');
+            const closeLeaderboard = document.getElementById('close-leaderboard');
+            const leaderboardBody = document.getElementById('leaderboard-body');
+            const userRankEl = document.getElementById('user-rank');
+
+            // Coin names mapping for display
+            const COIN_NAMES = {
+                gunmetal: 'Gunmetal',
+                blue: 'Blue',
+                green: 'Green',
+                pink: 'Pink',
+                red: 'Red',
+                yellow: 'Yellow',
+                asra: 'ASRA'
+            };
+
+            async function loadLeaderboard() {
+                try {
+                    // Load top 50
+                    const res = await fetch(API_BASE + '/leaderboard');
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        leaderboardBody.innerHTML = data.leaderboard.slice(0, 20).map((user, index) => {
+                            // Format display name: use firstName if available, otherwise userId
+                            let displayName = user.firstName || user.userId;
+                            // Truncate if longer than 8 chars
+                            if (displayName.length > 8) {
+                                displayName = displayName.substring(0, 8) + '...';
+                            }
+                            
+                            // Format purchased coins
+                            const purchasedCoins = user.purchasedCoins || [];
+                            let coinsDisplay = '';
+                            if (purchasedCoins.length === 0) {
+                                coinsDisplay = '<span style="color:#888;font-size:9px;">-</span>';
+                            } else {
+                                // Get coin names and join with commas, limit to fit
+                                const coinNames = purchasedCoins.map(coin => COIN_NAMES[coin] || coin);
+                                // If more than 2 coins, show first 2 + "+N"
+                                if (coinNames.length > 2) {
+                                    coinsDisplay = coinNames.slice(0, 2).join(', ') + ` <span style="color:#ffd700;font-size:9px;">+${coinNames.length - 2}</span>`;
+                                } else {
+                                    coinsDisplay = coinNames.join(', ');
+                                }
+                            }
+                            
+                            return `
+                            <tr class="leaderboard-row ${user.userId.includes(userId?.slice(0, 8)) ? 'current-user' : ''}">
+                                <td style="padding:6px 4px;border:1px solid rgba(255,255,255,0.1);color:${index < 3 ? '#ffd700' : '#ccc'};font-weight:${index < 3 ? 'bold' : 'normal'};text-align:center;">${index + 1}</td>
+                                <td style="padding:6px 4px;border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:10px;">${displayName}</td>
+                                <td style="padding:6px 4px;border:1px solid rgba(255,255,255,0.1);color:#00d2ff;font-size:9px;word-break:break-word;max-width:100px;">${coinsDisplay}</td>
+                                <td style="padding:6px 4px;border:1px solid rgba(255,255,255,0.1);color:#00ff00;font-size:10px;text-align:right;">${user.asraScore.toLocaleString()}</td>
+                            </tr>
+                        `}).join('');
+                    }
+                } catch (e) {
+                    console.error('Failed to load leaderboard:', e);
+                }
+
+                // Load user rank
+                if (userId) {
+                    try {
+                        const rankRes = await fetch(API_BASE + '/leaderboard/rank/' + userId);
+                        const rankData = await rankRes.json();
+                        if (rankData.success) {
+                            userRankEl.innerHTML = `
+                                <div style="color:#ffd700;font-size:14px;">Your Rank: #${rankData.rank || '-'}</div>
+                                <div style="color:#888;font-size:11px;">Total ASRA: ${rankData.userTotalAsra?.toLocaleString() || 0} | Players: ${rankData.totalPlayers || 0}</div>
+                            `;
+                        }
+                    } catch (e) {
+                        console.error('Failed to load user rank:', e);
+                    }
+                }
+            }
+
+
+
+            closeLeaderboard.addEventListener('click', () => {
+                leaderboardModal.classList.remove('open');
+            });
+
+            // User Badge panel buttons for Bonus, Invite, Rank
+            document.getElementById('btn-bonus').addEventListener('click', async () => {
+                userBadgePanel.classList.remove('open');
+                if (gameActive) stopGame();
+                
+                // Check if user has real game access for bonus
+                const access = await checkRealGameAccess();
+                if (!access.hasAccess) {
+                    showDemoModal('Bonus');
+                    return;
+                }
+                
+                loadDailyBonus();
+                dailyBonusModal.classList.add('open');
+            });
+
+            document.getElementById('btn-invite').addEventListener('click', () => {
+                userBadgePanel.classList.remove('open');
+                if (gameActive) stopGame();
+                // Referral works for ALL users - no payment check needed
+                loadReferralData();
+                referralModal.classList.add('open');
+            });
+
+            document.getElementById('btn-rank').addEventListener('click', () => {
+                userBadgePanel.classList.remove('open');
+                if (gameActive) stopGame();
+                loadLeaderboard();
+                leaderboardModal.classList.add('open');
+            });
+
+            // Close modals when clicking outside
+            dailyBonusModal.addEventListener('click', (e) => {
+                if (e.target === dailyBonusModal) dailyBonusModal.classList.remove('open');
+            });
+            referralModal.addEventListener('click', (e) => {
+                if (e.target === referralModal) referralModal.classList.remove('open');
+            });
+            leaderboardModal.addEventListener('click', (e) => {
+                if (e.target === leaderboardModal) leaderboardModal.classList.remove('open');
+            });
+
+            // Load daily bonus status on init
+            loadDailyBonus();
         });
     </script>
 </body>

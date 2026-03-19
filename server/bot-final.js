@@ -1,4 +1,5 @@
 const TelegramBot = require('node-telegram-bot-api');
+const { userDB } = require('./jsonDB.js');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 // GAME_URL - Railway URL (backend + frontend together)
@@ -44,6 +45,29 @@ function initBot(app) {
     console.log('✅ /start received!');
     console.log('   User:', user.first_name);
     console.log('   Chat ID:', chatId);
+    
+    // Save chatId to user data for notifications
+    const userId = user.id.toString();
+    let userData = userDB.get(userId);
+    if (userData) {
+        // Update existing user with chatId
+        userData.chatId = chatId;
+        userData.firstName = user.first_name || userData.firstName;
+        userData.lastName = user.last_name || userData.lastName;
+        userDB.set(userId, userData);
+        console.log(`✅ ChatId saved for user ${userId}: ${chatId}`);
+    } else {
+        // Create minimal user record with chatId
+        userData = {
+            userId: userId,
+            chatId: chatId,
+            firstName: user.first_name || null,
+            lastName: user.last_name || null,
+            createdAt: new Date().toISOString()
+        };
+        userDB.set(userId, userData);
+        console.log(`✅ New user record created with chatId: ${userId}`);
+    }
     
     const welcomeMessage = `👋 Hello, ${user.first_name}!
 
