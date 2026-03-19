@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const { TonClient, WalletContractV5R1, internal, toNano, Address } = require('@ton/ton');
+const { TonClient, WalletContractV5R1, internal, toNano, Address, beginCell } = require('@ton/ton');
 const { mnemonicNew, mnemonicToWalletKey } = require('@ton/crypto');
 const axios = require('axios');
 
@@ -108,6 +108,9 @@ const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQCtlk8bgwbSOt8OFnVe4KuF
 // Master Wallet config - all withdrawals are made from this wallet
 const MASTER_WALLET_MNEMONIC = process.env.MASTER_WALLET_MNEMONIC || '';
 const MASTER_WALLET_ADDRESS = process.env.MASTER_WALLET_ADDRESS || PAYMENT_ADDRESS;
+
+// ASRA Token Contract Address (Jetton Master)
+const ASRA_CONTRACT_ADDRESS = process.env.ASRA_CONTRACT_ADDRESS || 'EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy';
 
 // Game URL for Telegram notifications
 const GAME_URL = process.env.GAME_URL || 'https://asracoin.up.railway.app';
@@ -229,6 +232,70 @@ async function getTransactions(address, limit = 10) {
     }
 }
 
+// Send ASRA Jetton tokens from Master Wallet to user
+async function sendAsraJetton(toAddress, amount) {
+    try {
+        if (!MASTER_WALLET_MNEMONIC) {
+            console.log('❌ Master wallet mnemonic not configured');
+            return { success: false, error: 'Master wallet not configured' };
+        }
+
+        console.log(`🚀 Sending ${amount} ASRA to ${toAddress.slice(0, 15)}...`);
+        
+        // Parse master wallet mnemonic
+        const mnemonicArray = MASTER_WALLET_MNEMONIC.split(' ');
+        if (mnemonicArray.length !== 24) {
+            console.log('❌ Invalid mnemonic format (need 24 words)');
+            return { success: false, error: 'Invalid mnemonic' };
+        }
+        
+        const keyPair = await mnemonicToWalletKey(mnemonicArray);
+        const masterWallet = WalletContractV5R1.create({
+            workchain: 0,
+            publicKey: keyPair.publicKey
+        });
+        
+        const walletContract = client.open(masterWallet);
+        
+        // ASRA has 9 decimals (from the metadata you provided)
+        const decimals = 9;
+        const jettonAmount = BigInt(Math.floor(amount * Math.pow(10, decimals)));
+        
+        // Jetton transfer forward payload
+        // Format: op (32 bits) + query_id (64 bits) + amount (128 bits) + to_address (Address) + response_address (Address) + custom_payload (Maybe Cell) + forward_ton_amount (Coins) + forward_payload (Maybe Cell)
+        const forwardPayload = beginCell()
+            .storeUint(0xf8a7ea5, 32) // op: transfer
+            .storeUint(0, 64) // query_id
+            .storeCoins(jettonAmount)
+            .storeAddress(Address.parse(toAddress))
+            .storeAddress(Address.parse(MASTER_WALLET_ADDRESS)) // response address
+            .storeMaybeRef(null) // custom payload
+            .storeCoins(toNano(0.05)) // forward ton amount
+            .storeMaybeRef(null) // forward payload
+            .endCell();
+        
+        // Send jetton transfer
+        await walletContract.sendTransfer({
+            seqno: await walletContract.getSeqno(),
+            secretKey: keyPair.secretKey,
+            messages: [
+                internal({
+                    to: Address.parse(ASRA_CONTRACT_ADDRESS),
+                    value: toNano(0.1), // Gas for jetton transfer
+                    body: forwardPayload
+                })
+            ]
+        });
+        
+        console.log(`✅ ASRA Jetton transfer sent: ${amount} ASRA to ${toAddress.slice(0, 15)}...`);
+        return { success: true, amount, toAddress };
+        
+    } catch (error) {
+        console.error('❌ Jetton transfer error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 // Health check endpoint for Railway
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -319,7 +386,8 @@ app.post('/api/user/register', async (req, res) => {
                     jettonBalance: user.jettonBalance,
                     hasPaid: user.hasPaid || false,
                     paymentAddress: PAYMENT_ADDRESS || '',
-                    newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0
+                    newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0,
+                    asraScore: user.gameData?.asraScore || 0
                 }
             });
         }
@@ -380,7 +448,8 @@ app.post('/api/user/register', async (req, res) => {
                 jettonBalance: 0,
                 hasPaid: false,
                 paymentAddress: PAYMENT_ADDRESS || '',
-                newDeposit: 0
+                newDeposit: 0,
+                asraScore: 0
             }
         });
         
@@ -526,13 +595,18 @@ app.post('/api/restart-game/:userId', async (req, res) => {
                 },
                 gameData: {
                     asraScore: 0,
-                    tonCount: 0,
                     lastSaved: null
+                },
+                shopData: {
+                    purchased: [],
+                    selected: 'gunmetal',
+                    purchaseTime: {},
+                    asraProUsed: 0
                 }
             };
         } else {
             console.log(`✅ User found: ${userId}`);
-            console.log(`   Old state: tonCount=${user.gameData?.tonCount || 0}, asraScore=${user.gameData?.asraScore || 0}`);
+            console.log(`   Old state: asraScore=${user.gameData?.asraScore || 0}`);
             
             // Create new deposit wallet
             const newDepositWallet = await createDepositWallet();
@@ -560,7 +634,6 @@ app.post('/api/restart-game/:userId', async (req, res) => {
             };
             user.gameData = {
                 asraScore: 0,
-                tonCount: 0,
                 lastSaved: null
             };
             user.globalStats = {
@@ -583,7 +656,6 @@ app.post('/api/restart-game/:userId', async (req, res) => {
             message: 'Game restarted',
             newDepositAddress: user.depositWallet.address,
             resetData: {
-                tonCount: 0,
                 asraScore: 0,
                 hasPaid: false
             }
@@ -718,22 +790,29 @@ app.post('/api/check-all-deposits', async (req, res) => {
     }
 });
 
-// REAL Withdraw - user withdraws to their own wallet
+// ASRA Withdraw - user withdraws ASRA tokens to their own wallet
 app.post('/api/withdraw', async (req, res) => {
     try {
         const { userId, amount, toAddress, testMode } = req.body;
         
-        console.log(`📝 WITHDRAW REQUEST:`);
+        console.log(`📝 ASRA WITHDRAW REQUEST:`);
         console.log(`   userId: ${userId}`);
-        console.log(`   amount: ${amount}`);
+        console.log(`   amount: ${amount} ASRA`);
         console.log(`   testMode: ${testMode}`);
         console.log(`   toAddress: ${toAddress?.slice(0, 20)}...`);
         
         // SECURITY: Input validation
-        if (!isValidUserId(userId) || !isValidAmount(amount) || !isValidTonAddress(toAddress)) {
+        if (!isValidUserId(userId) || !isValidTonAddress(toAddress)) {
             console.log(`❌ VALIDATION ERROR: invalid fields`);
             return res.status(400).json({ 
                 error: 'Invalid input data' 
+            });
+        }
+        
+        // Validate amount (ASRA amount)
+        if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 10000000) {
+            return res.status(400).json({ 
+                error: 'Invalid ASRA amount (1 - 10000000)' 
             });
         }
         
@@ -763,7 +842,7 @@ app.post('/api/withdraw', async (req, res) => {
         
         console.log(`✅ User found: ${userId}`);
         console.log(`   hasPaid: ${user.hasPaid}`);
-        console.log(`   gameData:`, user.gameData);
+        console.log(`   asraScore: ${user.gameData?.asraScore || 0}`);
         
         // Check if testMode is allowed (only in development)
         const isDevEnvironment = process.env.NODE_ENV !== 'production';
@@ -774,171 +853,69 @@ app.post('/api/withdraw', async (req, res) => {
             console.log(`❌ PAYMENT REQUIRED (real mode)`);
             return res.status(403).json({ 
                 error: 'Demo version',
-                message: 'You need to pay 1 TON first to withdraw TON',
+                message: 'You need to pay 1 TON first to withdraw ASRA',
                 requiredPayment: 1,
                 paymentAddress: PAYMENT_ADDRESS || '',
                 demoMode: true
             });
         }
         
-        // TEST MODE: withdraw from gameData.tonCount (ONLY in development mode!)
-        if (isTestMode) {
-            console.log(`🧪 TEST MODE withdraw (Development only)`);
-            const gameTon = user.gameData?.tonCount || 0;
-            console.log(`   gameTon available: ${gameTon}`);
-            
-            if (gameTon < amount) {
-                console.log(`❌ Not enough TON: need ${amount}, have ${gameTon}`);
-                return res.status(400).json({
-                    error: 'Not enough TON',
-                    required: amount,
-                    available: gameTon,
-                    message: 'Not enough TON in game'
-                });
-            }
-            
-            // Must keep 1 TON
-            if (gameTon - amount < 1) {
-                console.log(`❌ Must keep 1 TON: have ${gameTon}, withdraw ${amount}`);
-                return res.status(400).json({
-                    error: 'Must keep 1 TON',
-                    maxWithdraw: Math.max(0, gameTon - 1)
-                });
-            }
-            
-            // Reduce TON from GameData
-            user.gameData.tonCount -= amount;
-            userDB.set(userId, user);
-            
-            console.log(`✅ TEST WITHDRAW SUCCESS: ${amount} TON`);
-            console.log(`   Remaining: ${user.gameData.tonCount} TON`);
-            
-            return res.json({
-                success: true,
-                message: `${amount} TON withdrawn (Test mode)`,
-                tonCount: user.gameData.tonCount,
-                testMode: true
-            });
-        }
+        const asraBalance = user.gameData?.asraScore || 0;
         
-        // REAL MODE: withdraw from Master Wallet
-        // Minimum amount check
-        if (amount < 0.1) {
-            return res.status(400).json({ 
-                error: 'Minimum withdrawal amount is 0.1 TON' 
-            });
-        }
-        
-        const gameTon = user.gameData?.tonCount || 0;
-        
-        // Check game TON
-        if (gameTon < amount) {
+        // Minimum 10,000 ASRA required to withdraw
+        if (asraBalance < 10000) {
+            console.log(`❌ Minimum 10000 ASRA required: have ${asraBalance}`);
             return res.status(400).json({
-                error: 'Not enough TON',
-                required: amount,
-                available: gameTon,
-                message: 'Not enough TON in game'
+                error: 'Minimum 10000 ASRA required',
+                required: 10000,
+                available: asraBalance,
+                message: 'You need at least 10000 ASRA to withdraw'
             });
         }
         
-        // Must keep 1 TON in game balance
-        if (gameTon - amount < 1) {
+        // Check if requested amount is available (must keep at least 10,000 ASRA for commission)
+        const maxWithdraw = asraBalance - 10000;
+        if (amount > maxWithdraw) {
+            console.log(`❌ Cannot withdraw: need to keep 10000 ASRA minimum (commission)`);
             return res.status(400).json({
-                error: 'Must keep 1 TON',
-                maxWithdraw: Math.max(0, gameTon - 1)
+                error: 'Must keep 10000 ASRA',
+                maxWithdraw: maxWithdraw,
+                available: asraBalance,
+                message: `You can withdraw max ${maxWithdraw} ASRA (10,000 ASRA stays as commission)`
             });
         }
         
-        // Check Master Wallet balance
-        const masterBalance = await getRealTonBalance(MASTER_WALLET_ADDRESS);
-        console.log(`💰 Master Wallet balance: ${masterBalance.toFixed(4)} TON`);
-        console.log(`💰 User game TON: ${gameTon} TON`);
-        console.log(`💰 Withdraw amount: ${amount} TON`);
+        // Deduct ASRA from gameData
+        user.gameData.asraScore = asraBalance - amount;
+        userDB.set(userId, user);
         
-        if (masterBalance < amount) {
-            return res.status(400).json({
-                error: 'Not enough TON in Master wallet',
-                required: amount,
-                available: masterBalance,
-                message: 'Please try again later.',
-                isReal: true
-            });
-        }
+        console.log(`✅ ASRA WITHDRAW SUCCESS: ${amount} ASRA`);
+        console.log(`   Remaining ASRA: ${user.gameData.asraScore}`);
+        console.log(`   To: ${toAddress}`);
         
-        // Send REAL TON transfer from MASTER WALLET
-        try {
-            console.log(`🔄 MASTER WALLET WITHDRAW: ${amount} TON`);
-            console.log(`   From Master: ${MASTER_WALLET_ADDRESS}`);
-            console.log(`   To User: ${toAddress}`);
-            
-            // Get Master wallet keyPair
-            if (!MASTER_WALLET_MNEMONIC) {
-                throw new Error('MASTER_WALLET_MNEMONIC not set!');
+        // Send real ASRA tokens from Master Wallet (jetton transfer)
+        let jettonResult = { success: false, error: 'Test mode - no real transfer' };
+        if (!isTestMode) {
+            jettonResult = await sendAsraJetton(toAddress, amount);
+            if (!jettonResult.success) {
+                console.error('❌ Jetton transfer failed:', jettonResult.error);
+                // Optionally revert the game balance deduction if jetton transfer fails
+                // user.gameData.asraScore = asraBalance;
+                // userDB.set(userId, user);
             }
-            
-            const keyPair = await mnemonicToWalletKey(MASTER_WALLET_MNEMONIC.split(' '));
-            const wallet = WalletContractV5R1.create({
-                workchain: 0,
-                publicKey: keyPair.publicKey
-            });
-            
-            const contract = client.open(wallet);
-            
-            // Get current seqno
-            let seqno = await contract.getSeqno();
-            console.log(`   Seqno (before): ${seqno}`);
-            
-            // Transfer
-            const transferAmount = toNano(amount.toString());
-            
-            await contract.sendTransfer({
-                seqno,
-                secretKey: keyPair.secretKey,
-                messages: [
-                    internal({
-                        to: toAddress,
-                        value: transferAmount,
-                        body: 'ASRA Coin Game TON Withdraw',
-                        bounce: false
-                    })
-                ]
-            });
-            
-            // Wait for seqno update
-            console.log(`   Waiting for seqno update...`);
-            let currentSeqno = seqno;
-            let retry = 0;
-            while (currentSeqno === seqno && retry < 10) {
-                await new Promise(r => setTimeout(r, 1500));
-                currentSeqno = await contract.getSeqno();
-                retry++;
-            }
-            console.log(`   Seqno (after): ${currentSeqno} (retries: ${retry})`);
-            
-            // Reduce game TON from database
-            user.gameData.tonCount -= amount;
-            userDB.set(userId, user);
-            
-            console.log(`✅ MASTER WALLET WITHDRAW SUCCESS: ${amount} TON`);
-            console.log(`   Remaining game TON: ${user.gameData.tonCount}`);
-            
-            return res.json({
-                success: true,
-                message: `${amount} TON sent successfully`,
-                tonCount: user.gameData.tonCount,
-                toAddress: toAddress,
-                fromMaster: MASTER_WALLET_ADDRESS,
-                isReal: true
-            });
-            
-        } catch (txError) {
-            console.error('❌ Master Wallet Blockchain error:', txError);
-            return res.status(500).json({
-                error: 'Blockchain error. TON was not sent.',
-                details: txError.message,
-                isReal: true
-            });
         }
+        
+        return res.json({
+            success: true,
+            message: `${amount} ASRA withdrawn successfully`,
+            withdrawn: amount,
+            remaining: user.gameData.asraScore,
+            asraScore: user.gameData.asraScore,
+            toAddress: toAddress,
+            isReal: !isTestMode,
+            jettonTransfer: jettonResult.success,
+            jettonError: jettonResult.error || null
+        });
         
     } catch (error) {
         console.error('Withdraw error:', error);
@@ -1306,10 +1283,9 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
             user.demoAsraBalance = 0;
             user.purchasedItems = [];
             
-            // Reset game data (asraScore, tonCount) - DEMO to REAL transition
+            // Reset game data (asraScore only) - DEMO to REAL transition
             user.gameData = {
                 asraScore: 0,
-                tonCount: 0,
                 lastSaved: new Date().toISOString()
             };
             
@@ -1331,7 +1307,7 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
             res.json({
                 success: true,
                 hasPaid: true,
-                message: 'Payment confirmed! Real game started. You can now withdraw TON when you earn enough.',
+                message: 'Payment confirmed! Real game started. You can now withdraw ASRA when you earn enough.',
                 reset: true,
                 txHash: paymentTx.transaction_id?.hash
             });
@@ -1442,11 +1418,10 @@ app.get('/api/user/:userId/stats', async (req, res) => {
 
 // Game constants (server-side only - users cannot hack these)
 const GAME_CONSTANTS = {
-    ASRA_PER_TON: 10000,           // 10000 ASRA = 1 TON
     RED_PENALTY: 100,              // Red coin penalty
     MIN_REWARD: 1,                 // Min reward per coin
     MAX_REWARD: 100,               // Max reward per coin
-    ASRA_PRO_LIMIT: 200,           // Max TON with ASRA PRO
+    ASRA_PRO_LIMIT: 2000000,       // Max ASRA with ASRA PRO (2 million)
     BASE_SPEED_MS: 1500,           // Base coin speed
     SPEED_PER_TON_MS: 200,         // Speed increase per TON
     MIN_SPEED_MS: 200              // Minimum visible time
@@ -1490,12 +1465,12 @@ process.on('exit', () => {
     console.log(`🧹 Game sessions cleanup: removed all active sessions on exit`);
 });
 
-// Calculate coin visible time based on user's TON count and selected coin
-function calculateCoinSpeed(tonCount, selectedCoin) {
+// Calculate coin visible time based on user's ASRA level and selected coin
+function calculateCoinSpeed(userLevel, selectedCoin) {
     const coin = COIN_CONFIG[selectedCoin] || COIN_CONFIG.gunmetal;
     const baseSpeed = Math.max(
         GAME_CONSTANTS.MIN_SPEED_MS,
-        GAME_CONSTANTS.BASE_SPEED_MS - (tonCount * GAME_CONSTANTS.SPEED_PER_TON_MS)
+        GAME_CONSTANTS.BASE_SPEED_MS - (userLevel * GAME_CONSTANTS.SPEED_PER_TON_MS)
     );
     return baseSpeed + (coin.speedBonus || 0);
 }
@@ -1528,35 +1503,22 @@ function calculateReward(coinColor, shopData) {
 // Apply reward to user's balance (SERVER-SIDE calculation)
 function applyReward(user, rewardResult) {
     let asraScore = user.gameData?.asraScore || 0;
-    let tonCount = user.gameData?.tonCount || 0;
     
     if (rewardResult.type === 'limit_reached') {
-        return { asraScore, tonCount, limitReached: true, reward: 0 };
+        return { asraScore, limitReached: true, reward: 0 };
     }
     
     const reward = rewardResult.reward;
     
     if (reward < 0) {
-        // Penalty
-        asraScore += reward; // reward is negative
-        if (asraScore < 0) {
-            if (tonCount > 0) {
-                tonCount--;
-                asraScore = GAME_CONSTANTS.ASRA_PER_TON + asraScore;
-            } else {
-                asraScore = 0;
-            }
-        }
+        // Penalty - cannot go below 0
+        asraScore = Math.max(0, asraScore + reward);
     } else {
-        // Positive reward
+        // Positive reward - just add ASRA, no conversion
         asraScore += reward;
-        while (asraScore >= GAME_CONSTANTS.ASRA_PER_TON) {
-            tonCount++;
-            asraScore -= GAME_CONSTANTS.ASRA_PER_TON;
-        }
     }
     
-    return { asraScore, tonCount, reward, type: rewardResult.type };
+    return { asraScore, reward, type: rewardResult.type };
 }
 
 // Start game session
@@ -1575,10 +1537,11 @@ app.post('/api/game/start/:userId', async (req, res) => {
         
         // Get user's shop settings
         const shopData = user.shopData || { selected: 'gunmetal', purchased: [], asraProUsed: 0 };
-        const tonCount = user.gameData?.tonCount || 0;
+        const userAsra = user.gameData?.asraScore || 0;
         
-        // Calculate coin speed based on user's progress
-        const coinSpeed = calculateCoinSpeed(tonCount, shopData.selected);
+        // Calculate coin speed based on user's ASRA progress (10000 ASRA = 1 level)
+        const userLevel = Math.floor(userAsra / 10000);
+        const coinSpeed = calculateCoinSpeed(userLevel, shopData.selected);
         
         // Store active game session
         const gameSession = {
@@ -1616,8 +1579,7 @@ app.post('/api/game/start/:userId', async (req, res) => {
             coinSpeed,
             selectedCoin: shopData.selected,
             gameState: {
-                asraScore: user.gameData?.asraScore || 0,
-                tonCount: user.gameData?.tonCount || 0
+                asraScore: user.gameData?.asraScore || 0
             }
         });
         
@@ -1680,10 +1642,9 @@ app.post('/api/game/catch/:userId', async (req, res) => {
             return res.json({
                 success: true,
                 limitReached: true,
-                message: 'ASRA PRO limit reached (200 TON)',
+                message: 'ASRA PRO limit reached (200 ASRA earned)',
                 gameState: {
-                    asraScore: user.gameData?.asraScore || 0,
-                    tonCount: user.gameData?.tonCount || 0
+                    asraScore: user.gameData?.asraScore || 0
                 }
             });
         }
@@ -1698,29 +1659,20 @@ app.post('/api/game/catch/:userId', async (req, res) => {
         
         // Update ASRA PRO usage if applicable
         if (rewardResult.trackTon && newBalance.type === 'asra_pro') {
-            if (newBalance.asraScore < (user.gameData?.asraScore || 0)) {
-                // User earned a TON with ASRA PRO
-                gameSession.shopData.asraProUsed = (gameSession.shopData.asraProUsed || 0) + 1;
-                user.shopData.asraProUsed = gameSession.shopData.asraProUsed;
-            }
+            // Track ASRA PRO usage
+            gameSession.shopData.asraProUsed = (gameSession.shopData.asraProUsed || 0) + 1;
+            user.shopData.asraProUsed = gameSession.shopData.asraProUsed;
         }
         
         // Update global stats
         if (user.globalStats) {
             user.globalStats.totalClicksAllTime++;
             user.globalStats.totalCoinsCollected++;
-            if (newBalance.type !== 'penalty') {
-                const tonEarned = newBalance.tonCount - (user.gameData?.tonCount || 0);
-                if (tonEarned > 0) {
-                    user.globalStats.totalTonEarned += tonEarned;
-                }
-            }
         }
         
-        // Save new balance
+        // Save new balance - only ASRA, no TON conversion
         user.gameData = {
             asraScore: newBalance.asraScore,
-            tonCount: newBalance.tonCount,
             lastSaved: new Date().toISOString()
         };
         
@@ -1735,8 +1687,7 @@ app.post('/api/game/catch/:userId', async (req, res) => {
             reward: newBalance.reward,
             type: newBalance.type,
             gameState: {
-                asraScore: newBalance.asraScore,
-                tonCount: newBalance.tonCount
+                asraScore: newBalance.asraScore
             }
         });
         
@@ -1768,7 +1719,6 @@ app.get('/api/game/state/:userId', async (req, res) => {
             success: true,
             gameState: {
                 asraScore: user.gameData?.asraScore || 0,
-                tonCount: user.gameData?.tonCount || 0,
                 lastSaved: user.gameData?.lastSaved
             },
             shopData: user.shopData || { purchased: [], selected: 'gunmetal' },
@@ -1789,7 +1739,7 @@ app.get('/api/game/state/:userId', async (req, res) => {
 app.post('/api/save-game/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const { asraScore, tonCount } = req.body;
+        const { asraScore } = req.body;
         
         if (!userId) {
             return res.status(400).json({ error: 'userId required' });
@@ -1804,7 +1754,6 @@ app.post('/api/save-game/:userId', async (req, res) => {
         // Main updates go through /api/game/catch
         user.gameData = {
             asraScore: parseInt(asraScore) || user.gameData?.asraScore || 0,
-            tonCount: parseFloat(tonCount) || user.gameData?.tonCount || 0,
             lastSaved: new Date().toISOString()
         };
         
@@ -1843,7 +1792,6 @@ app.get('/api/load-game/:userId', async (req, res) => {
         res.json({
             success: true,
             asraScore: user.gameData?.asraScore || 0,
-            tonCount: user.gameData?.tonCount || 0,
             hasPaid: user.hasPaid || false,
             note: 'Use /api/game/state for new clients'
         });
@@ -1938,7 +1886,7 @@ app.post('/api/shop/:userId', async (req, res) => {
     }
 });
 
-// INDUSTRY STANDARD: Buy coin from shop (server-side deduction)
+// INDUSTRY STANDARD: Buy coin from shop (server-side deduction from REAL TON deposits)
 app.post('/api/shop/buy/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
@@ -1969,18 +1917,20 @@ app.post('/api/shop/buy/:userId', async (req, res) => {
             return res.json({ success: true, message: 'Coin selected', action: 'selected' });
         }
         
-        // Check if user has enough TON
-        const tonCount = user.gameData?.tonCount || 0;
-        if (tonCount < coinData.price) {
+        // Check if user has enough REAL TON deposited
+        const realTonBalance = user.totalDeposited - user.totalConverted;
+        if (realTonBalance < coinData.price) {
             return res.status(400).json({ 
                 error: 'Insufficient TON', 
                 required: coinData.price, 
-                available: tonCount 
+                available: realTonBalance,
+                message: 'Please deposit TON first'
             });
         }
         
-        // Deduct TON (server-side)
-        user.gameData.tonCount -= coinData.price;
+        // Deduct from real TON deposits (server-side)
+        user.totalConverted += coinData.price;
+        user.balance = user.totalDeposited - user.totalConverted;
         
         // Add to purchased
         shopData.purchased.push(coin);
@@ -2004,7 +1954,6 @@ app.post('/api/shop/buy/:userId', async (req, res) => {
             // Reset game data (DEMO → REAL transition)
             user.gameData = {
                 asraScore: 0,
-                tonCount: 0,
                 lastSaved: new Date().toISOString()
             };
             console.log(`🔄 Game data reset to 0 for first shop unlock: ${userId}`);
@@ -2013,7 +1962,7 @@ app.post('/api/shop/buy/:userId', async (req, res) => {
         user.shopData = shopData;
         userDB.set(userId, user);
         
-        console.log(`✅ Coin purchased: ${userId} bought ${coin} for ${coinData.price} TON`);
+        console.log(`✅ Coin purchased: ${userId} bought ${coin} for ${coinData.price} TON (from deposits)`);
         
         res.json({
             success: true,
@@ -2022,8 +1971,7 @@ app.post('/api/shop/buy/:userId', async (req, res) => {
             price: coinData.price,
             unlockedRealGame: unlockedRealGame, // Tell frontend if this unlocked real game
             gameState: {
-                asraScore: user.gameData.asraScore,
-                tonCount: user.gameData.tonCount
+                asraScore: user.gameData.asraScore
             }
         });
         
@@ -2079,12 +2027,23 @@ async function migrateDatabase() {
             if (!user.gameData) {
                 user.gameData = {
                     asraScore: 0,
-                    tonCount: 0,
                     lastSaved: null
                 };
                 userDB.set(userId, user);
                 migratedCount++;
                 console.log(`   ✅ ${userId} - gameData created`);
+            }
+            
+            // Migrate old tonCount to ASRA if exists (backward compatibility)
+            if (user.gameData.tonCount !== undefined) {
+                // Convert old tonCount to ASRA and remove tonCount
+                const oldTonCount = user.gameData.tonCount || 0;
+                const oldAsraScore = user.gameData.asraScore || 0;
+                // tonCount was just a game mechanic, not real TON - remove it
+                // ASRA stays as is
+                delete user.gameData.tonCount;
+                userDB.set(userId, user);
+                console.log(`   ✅ ${userId} - removed tonCount (old: ${oldTonCount})`);
             }
             
             // If user doesn't have shopData, create it
@@ -2196,7 +2155,7 @@ app.post('/api/referral/register', async (req, res) => {
                 purchasedItems: [],
                 createdAt: new Date().toISOString(),
                 hasPaid: false,
-                gameData: { asraScore: 0, tonCount: 0, lastSaved: null },
+                gameData: { asraScore: 0, lastSaved: null },
                 shopData: { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 },
                 referralData: { referredBy: null, referrals: [], totalReferralEarnings: 0 },
                 dailyBonus: { lastClaimed: null, streak: 0, totalClaimed: 0 }
@@ -2231,7 +2190,7 @@ app.post('/api/referral/register', async (req, res) => {
                 purchasedItems: [],
                 createdAt: new Date().toISOString(),
                 hasPaid: false,
-                gameData: { asraScore: 0, tonCount: 0, lastSaved: null },
+                gameData: { asraScore: 0, lastSaved: null },
                 shopData: { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 },
                 referralData: { referredBy: null, referrals: [], totalReferralEarnings: 0 },
                 dailyBonus: { lastClaimed: null, streak: 0, totalClaimed: 0 }
@@ -2274,7 +2233,7 @@ app.get('/api/referral/:userId', async (req, res) => {
                     userId: refId,
                     joinedAt: refUser.createdAt,
                     hasPaid: refUser.hasPaid || false,
-                    tonCount: refUser.gameData?.tonCount || 0
+                    asraScore: refUser.gameData?.asraScore || 0
                 });
             }
         }
@@ -2310,21 +2269,13 @@ async function processReferralReward(userId, asraEarned) {
         const bonusAsra = Math.floor(asraEarned * bonusPercent);
         
         if (bonusAsra > 0) {
-            // Add to referrer's ASRA
+            // Add to referrer's ASRA (no conversion, just ASRA)
             let referrerAsra = referrer.gameData?.asraScore || 0;
-            let referrerTon = referrer.gameData?.tonCount || 0;
             
             referrerAsra += bonusAsra;
             
-            // Convert to TON if enough
-            while (referrerAsra >= GAME_CONSTANTS.ASRA_PER_TON) {
-                referrerTon++;
-                referrerAsra -= GAME_CONSTANTS.ASRA_PER_TON;
-            }
-            
             referrer.gameData = {
                 asraScore: referrerAsra,
-                tonCount: referrerTon,
                 lastSaved: new Date().toISOString()
             };
             
@@ -2353,12 +2304,10 @@ async function checkAndAwardLeaderBonus(userId) {
         
         // Calculate all users' total ASRA
         for (const [id, u] of Object.entries(users)) {
-            const tonCount = u.gameData?.tonCount || 0;
             const asraScore = u.gameData?.asraScore || 0;
-            const totalAsra = (tonCount * GAME_CONSTANTS.ASRA_PER_TON) + asraScore;
             
-            if (tonCount > 0 || asraScore > 0) {
-                userList.push({ userId: id, totalAsra });
+            if (asraScore > 0) {
+                userList.push({ userId: id, totalAsra: asraScore });
             }
         }
         
@@ -2399,20 +2348,14 @@ async function checkAndAwardLeaderBonus(userId) {
             }
         }
         
-        // Award the bonus
+        // Award the bonus - just add ASRA, no conversion
         let asraScore = user.gameData?.asraScore || 0;
-        let tonCount = user.gameData?.tonCount || 0;
         
         asraScore += DAILY_LEADER_BONUS;
-        while (asraScore >= GAME_CONSTANTS.ASRA_PER_TON) {
-            tonCount++;
-            asraScore -= GAME_CONSTANTS.ASRA_PER_TON;
-        }
         
         // Update user
         user.gameData = {
             asraScore,
-            tonCount,
             lastSaved: now.toISOString()
         };
         
@@ -2429,7 +2372,7 @@ async function checkAndAwardLeaderBonus(userId) {
             isLeader: true, 
             awarded: true, 
             bonus: DAILY_LEADER_BONUS,
-            newBalance: { asraScore, tonCount },
+            newBalance: { asraScore },
             message: 'Leader bonus awarded' 
         };
         
@@ -2499,11 +2442,9 @@ app.get('/api/daily-bonus/:userId', async (req, res) => {
         const users = userDB.getAll();
         const userList = [];
         for (const [id, u] of Object.entries(users)) {
-            const tonCount = u.gameData?.tonCount || 0;
             const asraScore = u.gameData?.asraScore || 0;
-            const totalAsra = (tonCount * GAME_CONSTANTS.ASRA_PER_TON) + asraScore;
-            if (tonCount > 0 || asraScore > 0) {
-                userList.push({ userId: id, totalAsra });
+            if (asraScore > 0) {
+                userList.push({ userId: id, totalAsra: asraScore });
             }
         }
         userList.sort((a, b) => b.totalAsra - a.totalAsra);
@@ -2597,20 +2538,14 @@ app.post('/api/daily-bonus/claim/:userId', async (req, res) => {
         // Calculate reward
         const reward = DAILY_BONUS_REWARDS[currentStreak];
         
-        // Add reward to user balance
+        // Add reward to user balance - just ASRA, no conversion
         let asraScore = user.gameData?.asraScore || 0;
-        let tonCount = user.gameData?.tonCount || 0;
         
         asraScore += reward;
-        while (asraScore >= GAME_CONSTANTS.ASRA_PER_TON) {
-            tonCount++;
-            asraScore -= GAME_CONSTANTS.ASRA_PER_TON;
-        }
         
         // Update user
         user.gameData = {
             asraScore,
-            tonCount,
             lastSaved: now.toISOString()
         };
         
@@ -2628,7 +2563,7 @@ app.post('/api/daily-bonus/claim/:userId', async (req, res) => {
             success: true,
             reward,
             streak: currentStreak + 1,
-            newBalance: { asraScore, tonCount }
+            newBalance: { asraScore }
         });
         
     } catch (error) {
@@ -2696,18 +2631,16 @@ app.post('/api/daily-bonus/claim-leader/:userId', async (req, res) => {
 // LEADERBOARD SYSTEM
 // =============================================================================
 
-// Get leaderboard (top users by TON count)
+// Get leaderboard (top users by ASRA)
 app.get('/api/leaderboard', async (req, res) => {
     try {
         const users = userDB.getAll();
         const userList = [];
         
         for (const [userId, user] of Object.entries(users)) {
-            const tonCount = user.gameData?.tonCount || 0;
             const asraScore = user.gameData?.asraScore || 0;
-            const totalAsra = (tonCount * GAME_CONSTANTS.ASRA_PER_TON) + asraScore;
             
-            if (tonCount > 0 || asraScore > 0) {
+            if (asraScore > 0) {
                 // Get purchased coins from shopData
                 const shopData = user.shopData || { purchased: [], selected: 'gunmetal' };
                 const purchasedCoins = shopData.purchased || [];
@@ -2715,9 +2648,7 @@ app.get('/api/leaderboard', async (req, res) => {
                 userList.push({
                     userId: userId.slice(0, 8) + '...', // Privacy - hide full ID
                     firstName: user.firstName || null, // User's display name
-                    tonCount,
                     asraScore,
-                    totalAsra,
                     hasPaid: user.hasPaid || false,
                     purchasedCoins, // Array of purchased coin types
                     selectedCoin: shopData.selected || 'gunmetal'
@@ -2725,8 +2656,8 @@ app.get('/api/leaderboard', async (req, res) => {
             }
         }
         
-        // Sort by total ASRA (descending)
-        userList.sort((a, b) => b.totalAsra - a.totalAsra);
+        // Sort by ASRA (descending)
+        userList.sort((a, b) => b.asraScore - a.asraScore);
         
         // Get top 50
         const topUsers = userList.slice(0, 50);
@@ -2758,21 +2689,19 @@ app.get('/api/leaderboard/rank/:userId', async (req, res) => {
         const userList = [];
         
         for (const [id, u] of Object.entries(users)) {
-            const tonCount = u.gameData?.tonCount || 0;
             const asraScore = u.gameData?.asraScore || 0;
-            const totalAsra = (tonCount * GAME_CONSTANTS.ASRA_PER_TON) + asraScore;
             
-            if (tonCount > 0 || asraScore > 0) {
-                userList.push({ userId: id, totalAsra });
+            if (asraScore > 0) {
+                userList.push({ userId: id, asraScore });
             }
         }
         
-        // Sort by total ASRA
-        userList.sort((a, b) => b.totalAsra - a.totalAsra);
+        // Sort by ASRA
+        userList.sort((a, b) => b.asraScore - a.asraScore);
         
         // Find user rank
         const userRank = userList.findIndex(u => u.userId === userId) + 1;
-        const userTotalAsra = (user.gameData?.tonCount || 0) * GAME_CONSTANTS.ASRA_PER_TON + (user.gameData?.asraScore || 0);
+        const userTotalAsra = user.gameData?.asraScore || 0;
         
         // Get nearby players (3 above, 3 below)
         const nearbyPlayers = [];
@@ -2786,7 +2715,7 @@ app.get('/api/leaderboard/rank/:userId', async (req, res) => {
                     rank: i + 1,
                     userId: u.userId.slice(0, 8) + '...',
                     firstName: userData?.firstName || null,
-                    totalAsra: u.totalAsra,
+                    asraScore: u.asraScore,
                     isCurrentUser: u.userId === userId
                 });
             }

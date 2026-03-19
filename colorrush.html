@@ -1057,10 +1057,11 @@
             <div class="help-section-title">Withdraw ASRA</div>
             <div class="help-text-small">
                 • Collect at least 10,000 ASRA<br>
-                • 1,000 ASRA reserved for fee<br>
-                • Can withdraw: balance - 1,000 ASRA<br>
-                • Wallet connection required - unauthorized withdrawal impossible<br>
-                • Blockchain rules: 1,000 ASRA fee per transaction
+                • 10,000 ASRA stays as commission (cannot withdraw)<br>
+                • Can withdraw: balance - 10,000 ASRA<br>
+                • Example: 25,000 ASRA → withdraw 15,000 (10,000 stays)<br>
+                • Wallet connection required<br>
+                • Need 10,000 ASRA minimum to withdraw again
             </div>
             
             <div class="help-section-title">Pay TON</div>
@@ -1383,13 +1384,12 @@
                 return;
             }
             
-            console.log('💾 [SAVE] Saving. asraScore:', asraScore, 'tonCount:', tonCount);
+            console.log('💾 [SAVE] Saving. asraScore:', asraScore);
             
             // Always save to localStorage first (as backup)
             try {
                 localStorage.setItem('asra_score_' + userId, JSON.stringify({
                     asraScore: asraScore,
-                    tonCount: tonCount,
                     savedAt: new Date().toISOString()
                 }));
                 console.log('✅ [SAVE] Saved to localStorage');
@@ -1403,8 +1403,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        asraScore: asraScore,
-                        tonCount: tonCount
+                        asraScore: asraScore
                     })
                 });
                 console.log('✅ [SAVE] Backend response:', response.status);
@@ -1418,7 +1417,7 @@
         async function loadGameState() {
             if (!userId) {
                 console.log('⚠️ [LOAD] No userId, starting with 0');
-                return { asraScore: 0, tonCount: 0 };
+                return { asraScore: 0 };
             }
             
             try {
@@ -1439,8 +1438,7 @@
                 if (data.success) {
                     console.log('✅ [LOAD] Loaded from server:', data.gameState);
                     return {
-                        asraScore: data.gameState.asraScore || 0,
-                        tonCount: data.gameState.tonCount || 0
+                        asraScore: data.gameState.asraScore || 0
                     };
                 } else {
                     console.log('❌ [LOAD] Server error:', data.error);
@@ -1450,12 +1448,11 @@
                 showOfflineWarning();
             }
             
-            return { asraScore: 0, tonCount: 0 };
+            return { asraScore: 0 };
         }
 
         // Load saved data from server
         let asraScore = 0;
-        let tonCount = 0;
         let dataLoaded = false;
         let isLoadingData = true;
         
@@ -1499,11 +1496,10 @@
             const data = await loadGameState();
             
             asraScore = data.asraScore;
-            tonCount = data.tonCount;
             dataLoaded = true;
             isLoadingData = false;
             
-            console.log('✅ [INIT] Data loaded:', { asraScore, tonCount });
+            console.log('✅ [INIT] Data loaded:', { asraScore });
             
             // Remove loading overlay
             loadingOverlay.remove();
@@ -1544,8 +1540,10 @@
             asraDisplayElement.textContent = formatCompactNumber(asraScore);
         }
 
+        // Calculate speed based on ASRA score (10000 ASRA = 1 level)
         function calculateSpeed() {
-            return Math.max(200, 1500 - (tonCount + 1) * 200);
+            const userLevel = Math.floor(asraScore / 10000);
+            return Math.max(200, 1500 - (userLevel + 1) * 200);
         }
 
         function getRandomPosition(coinSize) {
@@ -1653,7 +1651,6 @@
                 if (data.success) {
                     // Update from server response
                     asraScore = data.gameState.asraScore;
-                    tonCount = data.gameState.tonCount;
                     
             // Show server reward number: +1 for normal, -100 for penalty
             const isNegative = data.type === 'penalty';
@@ -1666,7 +1663,7 @@
                     // Check ASRA PRO limit
                     if (data.limitReached) {
                         Swal.fire({
-                            text: 'ASRA PRO limit reached (200 TON). Please purchase again.',
+                            text: 'ASRA PRO limit reached (200 ASRA). Please purchase again.',
                             icon: 'warning',
                             timer: 3000,
                             showConfirmButton: false,
@@ -1698,7 +1695,6 @@
                 if (data.success) {
                     // Update local state from server
                     asraScore = data.gameState.asraScore;
-                    tonCount = data.gameState.tonCount;
                     
                     gameActive = true;
                     isPaused = false;
@@ -1860,7 +1856,6 @@
                 // Refresh game state when not playing
                 loadGameState().then(data => {
                     asraScore = data.asraScore;
-                    tonCount = data.tonCount;
                     updateDisplay();
                 });
             }
@@ -2408,7 +2403,7 @@
                 // Get game ASRA balance
                 const gameAsraBalance = asraScore;
                 const minRequiredAmount = 10000; // Minimum 10000 ASRA required to withdraw
-                const feeReserve = 1000; // 1000 ASRA must remain for fee
+                const feeReserve = 10000; // 10,000 ASRA stays as commission (cannot withdraw)
                 const maxWithdrawAmount = Math.max(0, gameAsraBalance - feeReserve);
                 
                 if (gameAsraBalance < minRequiredAmount) {
@@ -2429,16 +2424,17 @@
                         <p style="color:#888;font-size:18px;margin-bottom:12px;margin-top:20px;">💸 Withdraw ASRA</p>
                         <p style="color:#ffd700;font-size:18px;margin-bottom:12px;">💰 Your Game Balance</p>
                         <p style="color:#00d2ff;font-size:32px;font-weight:bold;margin-bottom:8px;">${gameAsraBalance.toLocaleString()} ASRA</p>
-                        <p style="color:#888;font-size:11px;margin-bottom:16px;">1,000 ASRA reserved for fee | Can withdraw: ${maxWithdrawAmount.toLocaleString()} ASRA</p>
+                        <p style="color:#ff6b6b;font-size:12px;margin-bottom:8px;">⚠️ 10,000 ASRA stays as commission (cannot withdraw)</p>
+                        <p style="color:#888;font-size:11px;margin-bottom:16px;">Can withdraw: ${maxWithdrawAmount.toLocaleString()} ASRA</p>
                         
                         <p style="color:#888;font-size:11px;margin-bottom:4px;">Withdrawal address: your connected wallet address</p>
                         <p style="color:#fff;font-size:12px;margin-bottom:16px;word-break:break-all;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;">${connectedWalletAddress}</p>
                         
                         <div class="withdraw-input-row" style="margin:16px 0;">
-                            <input type="number" id="withdraw-amount" placeholder="Amount (min 1,000)" min="1000" max="${maxWithdrawAmount}" step="100" style="flex:1;">
+                            <input type="number" id="withdraw-amount" placeholder="Amount (min 10,000)" min="10000" max="${maxWithdrawAmount}" step="100" style="flex:1;">
                             <button id="max-btn" style="white-space:nowrap;">MAX</button>
                         </div>
-                        <p style="color:#888;font-size:10px;margin-bottom:16px;">Can withdraw: 1,000 - ${maxWithdrawAmount.toLocaleString()} ASRA (1,000 reserved)</p>
+                        <p style="color:#888;font-size:10px;margin-bottom:16px;">Min: 10,000 ASRA | Max: ${maxWithdrawAmount.toLocaleString()} ASRA (10,000 stays)</p>
                         
                         <button class="wallet-panel-btn withdraw" id="withdraw-submit" style="width:100%;margin-bottom:8px;">Withdraw</button>
                         <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Back</button>
@@ -2454,9 +2450,9 @@
                 // Withdraw button
                 document.getElementById('withdraw-submit').addEventListener('click', async () => {
                     const amount = parseInt(document.getElementById('withdraw-amount').value);
-                    if (!amount || amount < 1000) {
+                    if (!amount || amount < 10000) {
                         Swal.fire({
-                            text: 'Minimum 1,000 ASRA',
+                            text: 'Minimum 10,000 ASRA',
                             icon: 'warning',
                             timer: 1500,
                             showConfirmButton: false,
@@ -2687,9 +2683,9 @@
                     speedBonus: 600, 
                     img: '/assets/ASRAPRO.png', 
                     autoPlay: true, 
-                    maxTon: 200, 
+                    maxAsra: 2000000, 
                     noPenalty: true,
-                    description: 'Auto-play, no -100 penalty, up to 200 TON'
+                    description: 'Auto-play, no -100 penalty, up to 2,000,000 ASRA'
                 }
             };
 
@@ -2954,7 +2950,6 @@
                                         if (buyResult.unlockedRealGame) {
                                             // Reset game scores to 0
                                             asraScore = 0;
-                                            tonCount = 0;
                                             updateDisplay();
                                             
                                             // Close Swal first, then show unlock modal
@@ -3049,22 +3044,23 @@
 
             // ASRA auto-play function
             let asraAutoInterval = null;
-            let asraStartTon = 0;
+            let asraStartScore = 0;
 
             function startAsraAutoPlay() {
                 if (asraAutoInterval) clearInterval(asraAutoInterval);
-                asraStartTon = tonCount;
+                asraStartScore = asraScore;
                 asraIndicator.classList.add('active');
                 
                 asraAutoInterval = setInterval(() => {
                     if (!gameActive || isPaused) return;
                     
-                    // Reached 200 TON?
-                    if (shopData.asraProUsed >= 200) {
+                    // Reached 2,000,000 ASRA earned with ASRA PRO?
+                    const asraEarned = asraScore - asraStartScore;
+                    if (asraEarned >= 2000000) {
                         stopAsraAutoPlay();
                         asraIndicator.classList.remove('active');
                         Swal.fire({
-                            text: 'ASRA PRO limit reached (200 TON)! Please purchase again.',
+                            text: 'ASRA PRO limit reached (2,000,000 ASRA)! Please purchase again.',
                             icon: 'info',
                             timer: 3000,
                             showConfirmButton: false,
@@ -3074,18 +3070,10 @@
                         return;
                     }
 
-                    // Auto-click - random reward
+                    // Auto-click - fixed 99 ASRA reward
                     if (coinVisible) {
-                        const reward = Math.floor(Math.random() * 100) + 1;
+                        const reward = 99;
                         asraScore += reward;
-                        
-                        if (asraScore >= ASRA_PER_TON) {
-                            tonCount++;
-                            asraScore = asraScore - ASRA_PER_TON;
-                            // Track ASRA PRO usage (increment by 1 TON)
-                            shopData.asraProUsed = (shopData.asraProUsed || 0) + 1;
-                            saveShopDataBackend();
-                        }
                         
                         updateDisplay();
                         
@@ -3148,11 +3136,11 @@
             catchCoin = function(e) {
                 const selectedCoin = shopData.selected;
                 if (selectedCoin === 'asra' && shopData.purchased.includes('asra')) {
-                    // Check if ASRA PRO has reached 200 TON limit
-                    if (shopData.asraProUsed >= 200) {
+                    // Check if ASRA PRO has reached 2,000,000 ASRA limit
+                    if (shopData.asraProUsed >= 2000000) {
                         // Limit reached - fall back to normal coin rules
                         Swal.fire({
-                            text: 'ASRA PRO limit reached (200 TON). Please purchase again to continue using.',
+                            text: 'ASRA PRO limit reached (2,000,000 ASRA). Please purchase again to continue using.',
                             icon: 'warning',
                             timer: 3000,
                             showConfirmButton: false,
@@ -3173,31 +3161,27 @@
 
                     clearTimeout(coinTimeout);
                     
-                    // Always positive reward
-                    const reward = Math.floor(Math.random() * 100) + 1;
+                    // Always positive reward - fixed 99 ASRA
+                    const reward = 99;
                     asraScore += reward;
-                    const rewardText = '+' + reward + ' asra';
+                    const rewardText = '+99 asra';
                     
-                    if (asraScore >= ASRA_PER_TON) {
-                        tonCount++;
-                        asraScore = asraScore - ASRA_PER_TON;
-                        // Track ASRA PRO usage (increment by 1 TON)
-                        shopData.asraProUsed = (shopData.asraProUsed || 0) + 1;
-                        saveShopDataBackend();
+                    // Track ASRA PRO usage (count clicks, not TON)
+                    shopData.asraProUsed = (shopData.asraProUsed || 0) + 1;
+                    saveShopDataBackend();
                         
-                        // Check if limit reached after this TON
-                        if (shopData.asraProUsed >= 200) {
-                            stopAsraAutoPlay();
-                            asraIndicator.classList.remove('active');
-                            Swal.fire({
-                                text: 'ASRA PRO limit reached (200 TON)! Please purchase again.',
-                                icon: 'info',
-                                timer: 3000,
-                                showConfirmButton: false,
-                                width: '280px',
-                                position: 'center'
-                            });
-                        }
+                    // Check if limit reached
+                    if (shopData.asraProUsed >= 2000000) {
+                        stopAsraAutoPlay();
+                        asraIndicator.classList.remove('active');
+                        Swal.fire({
+                            text: 'ASRA PRO limit reached (2,000,000 ASRA)! Please purchase again.',
+                            icon: 'info',
+                            timer: 3000,
+                            showConfirmButton: false,
+                            width: '280px',
+                            position: 'center'
+                        });
                     }
 
                     const x = e.clientX || (e.touches && e.touches[0].clientX);
