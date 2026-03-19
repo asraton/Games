@@ -9,7 +9,41 @@ const axios = require('axios');
 const { userDB } = require('./jsonDB');
 
 const app = express();
-app.use(cors());
+
+// SECURITY: CORS - Allow only specific origins
+const allowedOrigins = [
+    'https://web.telegram.org',
+    'https://*.telegram.org',
+    'https://*.web.telegram.org',
+    'https://asracoin.up.railway.app',
+    'http://localhost:3000',
+    'http://localhost:8080'
+];
+
+app.use(cors({
+    origin: function(origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, etc)
+        if (!origin) return callback(null, true);
+        
+        // Check if origin matches allowed patterns
+        const isAllowed = allowedOrigins.some(allowed => {
+            if (allowed.includes('*')) {
+                const regex = new RegExp(allowed.replace(/\*/g, '.*'));
+                return regex.test(origin);
+            }
+            return origin === allowed;
+        });
+        
+        if (isAllowed) {
+            return callback(null, true);
+        }
+        console.log(`🚫 CORS blocked: ${origin}`);
+        return callback(new Error('Not allowed by CORS'), false);
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Key']
+}));
+
 app.use(express.json());
 
 // SECURITY: Wallet binding - one wallet per user
@@ -19,6 +53,22 @@ const walletToUserMap = new Map(); // connectedWallet -> userId
 const requestCounts = new Map(); // ip -> { count, resetTime }
 const RATE_LIMIT = 100; // requests per 15 minutes
 const RATE_WINDOW = 15 * 60 * 1000; // 15 minutes
+const CLEANUP_INTERVAL = 60 * 60 * 1000; // Cleanup every hour
+
+// Cleanup old rate limit entries every hour to prevent memory leak
+setInterval(() => {
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [ip, record] of requestCounts.entries()) {
+        if (now > record.resetTime) {
+            requestCounts.delete(ip);
+            cleaned++;
+        }
+    }
+    if (cleaned > 0) {
+        console.log(`🧹 Rate limit cleanup: removed ${cleaned} expired entries`);
+    }
+}, CLEANUP_INTERVAL);
 
 function checkRateLimit(ip) {
     const now = Date.now();
@@ -58,6 +108,10 @@ const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || 'UQCtlk8bgwbSOt8OFnVe4KuF
 // Master Wallet config - all withdrawals are made from this wallet
 const MASTER_WALLET_MNEMONIC = process.env.MASTER_WALLET_MNEMONIC || '';
 const MASTER_WALLET_ADDRESS = process.env.MASTER_WALLET_ADDRESS || PAYMENT_ADDRESS;
+
+// Game URL for Telegram notifications
+const GAME_URL = process.env.GAME_URL || 'https://asracoin.up.railway.app';
+const TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'ASRACoinBot';
 
 // Address normalization - compare via TON Address library
 function areAddressesEqual(addr1, addr2) {
@@ -339,6 +393,8 @@ app.post('/api/user/register', async (req, res) => {
 // Get user balance (for withdrawal)
 app.get('/api/user/:userId/balance', async (req, res) => {
     try {
+        const { userId } = req.params;
+        
         // SECURITY: Input validation
         if (!isValidUserId(userId)) {
             return res.status(400).json({ error: 'Invalid userId' });
@@ -1409,6 +1465,30 @@ const COIN_CONFIG = {
 
 // Active games session storage (in-memory, per user)
 const activeGames = new Map();
+const GAME_SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes timeout
+
+// Cleanup inactive game sessions every 10 minutes
+setInterval(() => {
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [userId, session] of activeGames.entries()) {
+        if (now - session.startTime > GAME_SESSION_TIMEOUT) {
+            activeGames.delete(userId);
+            cleaned++;
+        }
+    }
+    if (cleaned > 0) {
+        console.log(`🧹 Game sessions cleanup: removed ${cleaned} inactive sessions`);
+    }
+}, 10 * 60 * 1000);
+
+// Add cleanup mechanism for activeGames to prevent memory leak
+process.on('exit', () => {
+    for (const [userId, session] of activeGames.entries()) {
+        activeGames.delete(userId);
+    }
+    console.log(`🧹 Game sessions cleanup: removed all active sessions on exit`);
+});
 
 // Calculate coin visible time based on user's TON count and selected coin
 function calculateCoinSpeed(tonCount, selectedCoin) {
@@ -1987,64 +2067,6 @@ app.post('/api/shop/select/:userId', async (req, res) => {
     }
 });
 
-// INDUSTRY STANDARD: Restart game - reset all data (userId stays)
-app.post('/restart-game/:userId', async (req, res) => {
-    try {
-        const { userId } = req.params;
-        
-        if (!userId) {
-            return res.status(400).json({ error: 'userId required' });
-        }
-        
-        let user = userDB.get(userId);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        
-        // Reset all game data
-        user.gameData = {
-            asraScore: 0,
-            tonCount: 0,
-            lastSaved: new Date().toISOString()
-        };
-        
-        // Reset shop data
-        user.shopData = {
-            purchased: [],
-            selected: 'gunmetal',
-            purchaseTime: {},
-            asraProUsed: 0
-        };
-        
-        // Reset payment status
-        user.hasPaid = false;
-        user.totalDeposited = 0;
-        user.totalConverted = 0;
-        user.balance = 0;
-        user.jettonBalance = 0;
-        
-        // Keep deposit wallet but reset transactions
-        user.transactions = [];
-        user.purchasedItems = []; // legacy
-        
-        userDB.set(userId, user);
-        
-        console.log(`🔄 Game restarted for user: ${userId}`);
-        console.log(`   All data reset to 0`);
-        
-        res.json({
-            success: true,
-            message: 'Game restarted successfully',
-            gameState: user.gameState,
-            hasPaid: false
-        });
-        
-    } catch (error) {
-        console.error('Restart game error:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
 // Database migration - migrate old users to new format
 async function migrateDatabase() {
     try {
@@ -2264,7 +2286,7 @@ app.get('/api/referral/:userId', async (req, res) => {
                 referralCount: referralData.referrals.length,
                 referralDetails
             },
-            inviteLink: `https://t.me/ASRACoinBot?start=${userId}`
+            inviteLink: `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${userId}`
         });
         
     } catch (error) {
