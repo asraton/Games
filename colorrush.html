@@ -1731,25 +1731,38 @@
 
         // Check if user has real game access (paid 1 TON or bought coins from shop)
         async function checkRealGameAccess() {
-            if (!userId) return { hasAccess: false, reason: 'nouser' };
+            console.log(`🔍 checkRealGameAccess called for user: ${userId}`);
+            
+            if (!userId) {
+                console.log(`❌ No userId, returning no access`);
+                return { hasAccess: false, reason: 'nouser' };
+            }
             
             try {
                 // Check payment status
+                console.log(`📡 Fetching check-payment for ${userId}`);
                 const res = await fetch(API_BASE + '/check-payment/' + userId);
                 const paymentData = await res.json();
+                console.log(`📦 check-payment response:`, paymentData);
                 
                 // Check if user has purchased coins from shop
+                console.log(`📡 Fetching shop data for ${userId}`);
                 const shopRes = await fetch(API_BASE + '/shop/' + userId);
                 const shopData = await shopRes.json();
+                console.log(`📦 shop response:`, shopData);
+                
                 const hasBoughtCoins = shopData.success && shopData.shopData?.purchased?.length > 0;
+                console.log(`🔍 hasPaid: ${paymentData.hasPaid}, hasBoughtCoins: ${hasBoughtCoins}`);
                 
                 if (paymentData.hasPaid || hasBoughtCoins) {
+                    console.log(`✅ User has access!`);
                     return { hasAccess: true, hasPaid: paymentData.hasPaid, hasBoughtCoins };
                 }
                 
+                console.log(`❌ User has NO access`);
                 return { hasAccess: false, reason: 'nopayment' };
             } catch (e) {
-                console.error('Error checking game access:', e);
+                console.error('❌ Error checking game access:', e);
                 return { hasAccess: false, reason: 'error' };
             }
         }
@@ -3472,16 +3485,22 @@
 
             // User Badge panel buttons for Bonus, Invite, Rank
             document.getElementById('btn-bonus').addEventListener('click', async () => {
+                console.log(`🔍 btn-bonus clicked!`);
                 userBadgePanel.classList.remove('open');
                 if (gameActive) stopGame();
                 
                 // Check if user has real game access for bonus
+                console.log(`📡 Calling checkRealGameAccess...`);
                 const access = await checkRealGameAccess();
+                console.log(`📦 checkRealGameAccess returned:`, access);
+                
                 if (!access.hasAccess) {
+                    console.log(`❌ No access, showing demo modal`);
                     showDemoModal('Bonus');
                     return;
                 }
                 
+                console.log(`✅ Has access, loading daily bonus`);
                 loadDailyBonus();
                 dailyBonusModal.classList.add('open');
             });
