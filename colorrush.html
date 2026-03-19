@@ -1767,36 +1767,6 @@
             }
         }
 
-        // Show demo version modal with payment info
-        function showDemoModal(buttonName) {
-            const config = configData || { paymentAddress: 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM', paymentNano: 1000000000 };
-            const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
-            const PAYMENT_NANO = config.paymentNano || 1000000000;
-            const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${firstName}_${userId}`;
-            const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
-            
-            modalTitle.textContent = '';
-            modalBody.innerHTML = `
-                <div style="text-align:center;padding:16px;">
-                    <p style="color:#ff6b6b;font-size:14px;margin-bottom:12px;">⚠️ Demo version</p>
-                    <p style="color:#fff;font-size:13px;margin-bottom:8px;">
-                        <b>${buttonName}</b> locked in demo mode
-                    </p>
-                    <p style="color:#ffd700;font-size:11px;margin-bottom:8px;">
-                        Pay <b>1 TON</b> to start real game
-                    </p>
-                    <p style="color:#00d2ff;font-size:11px;margin-bottom:12px;">
-                        Or buy any coin from SHOP to unlock
-                    </p>
-                    <p style="color:#888;font-size:11px;margin-bottom:4px;">TON address:</p>
-                    <input type="text" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:10px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
-                    <img src="${QR_CODE_URL}" alt="QR" style="width:180px;height:180px;margin:8px auto;display:block;background:#fff;padding:6px;border-radius:8px;">
-                    <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:12px;">Back</button>
-                </div>
-            `;
-            modal.classList.add('open');
-        }
-
         async function resumeGame() {
             await startNewGame();
         }
@@ -2048,6 +2018,36 @@
             const modalBody = document.getElementById('modal-body');
             const modalTitle = document.getElementById('modal-title');
             const closeModal = modal.querySelector('.close-modal');
+
+            // Show demo version modal with payment info
+            function showDemoModal(buttonName) {
+                const config = configData || { paymentAddress: 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM', paymentNano: 1000000000 };
+                const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                const PAYMENT_NANO = config.paymentNano || 1000000000;
+                const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${firstName}_${userId}`;
+                const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
+                
+                modalTitle.textContent = '';
+                modalBody.innerHTML = `
+                    <div style="text-align:center;padding:16px;">
+                        <p style="color:#ff6b6b;font-size:14px;margin-bottom:12px;">⚠️ Demo version</p>
+                        <p style="color:#fff;font-size:13px;margin-bottom:8px;">
+                            <b>${buttonName}</b> locked in demo mode
+                        </p>
+                        <p style="color:#ffd700;font-size:11px;margin-bottom:8px;">
+                            Pay <b>1 TON</b> to start real game
+                        </p>
+                        <p style="color:#00d2ff;font-size:11px;margin-bottom:12px;">
+                            Or buy any coin from SHOP to unlock
+                        </p>
+                        <p style="color:#888;font-size:11px;margin-bottom:4px;">TON address:</p>
+                        <input type="text" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:10px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
+                        <img src="${QR_CODE_URL}" alt="QR" style="width:180px;height:180px;margin:8px auto;display:block;background:#fff;padding:6px;border-radius:8px;">
+                        <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:12px;">Back</button>
+                    </div>
+                `;
+                modal.classList.add('open');
+            }
 
             // W button opens/closes panel
             wBtn.addEventListener('click', (e) => {
