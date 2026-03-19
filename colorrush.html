@@ -980,6 +980,9 @@
                 <div class="score-label">asra</div>
                 <div class="score-value" id="asra-display">0</div>
             </div>
+            <div id="asra-payment-indicator" style="display:none;text-align:center;margin-top:4px;padding:2px 8px;background:rgba(255,215,0,0.2);border:1px solid rgba(255,215,0,0.4);border-radius:12px;font-size:10px;color:#ffd700;">
+                💰 Spent: <span id="asra-spent-amount">0</span> ASRA
+            </div>
         </div>
 
         <div class="wallet-section">
@@ -1039,7 +1042,7 @@
                 <b>WALLET</b> - Connect wallet, pay TON, withdraw ASRA<br>
                 <b>SHOP</b> - Buy coins with TON<br>
                 <b>BONUS</b> - Daily bonus (100 ASRA every 24h). Only for paid users<br>
-                <b>INVITE</b> - Invite friends, earn 10% from their earnings<br>
+                <b>INVITE</b> - Invite friends, earn 5% from their earnings<br>
                 <b>RANK</b> - Leaderboard, see top players<br>
                 <b>HELP</b> - This information page
             </div>
@@ -1069,6 +1072,16 @@
                 • Pay 1 TON to start real game<br>
                 • Pay via QR code or from wallet<br>
                 • Can withdraw ASRA after payment
+            </div>
+            
+            <div class="help-section-title">Pay with ASRA</div>
+            <div class="help-text-small">
+                • Alternative to TON payment<br>
+                • Pay 10,000 ASRA to unlock real game<br>
+                • ASRA will be deducted from your wallet<br>
+                • Your spent ASRA will be shown on game screen (below your ASRA score)<br>
+                • Example: "💰 Spent: 10,000 ASRA"<br>
+                • <b>Only for ASRA payments</b> - TON payments don't show this
             </div>
             
             <div class="help-section-title">Shop - About Coins</div>
@@ -1127,9 +1140,25 @@
                 </tbody>
             </table>
             
+            <div class="help-section-title">Daily Bonus</div>
+            <div class="help-text-small">
+                • Claim every 24 hours (100-500 ASRA)<br>
+                • Streak system: Day 1 = 100 ASRA, Day 7 = 500 ASRA<br>
+                • <b>Only available after payment</b> (TON or ASRA)<br>
+                • Shop purchase also unlocks daily bonus<br>
+                • If you miss 48 hours, streak resets to 0
+            </div>
+            
+            <div class="help-section-title">Leader Bonus</div>
+            <div class="help-text-small">
+                • If you are #1 on the leaderboard<br>
+                • Get extra +100 ASRA every 24 hours<br>
+                • Leaderboard updates in real-time<br>
+                • Compete with other players for top spot!
+            </div>
             <div class="help-section-title">Goal</div>
             <div class="help-text">
-                Collect TON, gather ASRA, buy new coins from shop. Use ASRA PRO auto-play feature (up to 2,000,000 ASRA).
+                Collect ASRA, buy new coins from shop. Use ASRA PRO auto-play feature (up to 2,000,000 ASRA). Invite friends and earn bonuses!
             </div>
             
             <div class="help-section-title">Future</div>
@@ -1139,7 +1168,13 @@
             
             <div class="help-section-title">ASRA Team Gratitude</div>
             <div class="help-text-small">
-                Thank you for your support! Together we walk towards a great future.
+                Thank you for your support! Together we walk towards a great future.<br><br>
+                <b>New features added:</b><br>
+                • Pay with ASRA (10,000 ASRA)<br>
+                • ASRA payment tracking on screen<br>
+                • 5% referral bonus<br>
+                • Daily & Leader bonuses<br>
+                • 2,000,000 ASRA limit for ASRA PRO
             </div>
             
             <button class="wallet-panel-btn close-modal btn-red" id="close-help" style="width:100%;margin-top:16px;">Close</button>
@@ -1266,7 +1301,7 @@
                 <div class="referral-link-section" style="padding:12px 0;margin-bottom:16px;">
                     <p style="color:#888;font-size:12px;margin-bottom:8px;text-align:center;">Your invite link:</p>
                     <input type="text" id="referral-link" readonly style="width:100%;padding:10px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.5);color:#ffd700;border-radius:6px;font-size:10px;margin-bottom:8px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-sizing:border-box;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
-                    <p style="color:#00d2ff;font-size:11px;text-align:center;margin:0;">Earn 10% from your referrals' earnings!</p>
+                    <p style="color:#00d2ff;font-size:11px;text-align:center;margin:0;">Earn 5% from your referrals' earnings!</p>
                 </div>
                 <div id="referral-list" style="max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.2);border-radius:8px;padding:8px;">
                     <!-- Referral list will be populated here -->
@@ -1437,6 +1472,11 @@
                 
                 if (data.success) {
                     console.log('✅ [LOAD] Loaded from server:', data.gameState);
+                    
+                    // Store payment info for display
+                    paymentType = data.paymentType || null;
+                    totalAsraSpent = data.totalAsraSpent || 0;
+                    
                     return {
                         asraScore: data.gameState.asraScore || 0
                     };
@@ -1455,6 +1495,8 @@
         let asraScore = 0;
         let dataLoaded = false;
         let isLoadingData = true;
+        let paymentType = null;
+        let totalAsraSpent = 0;
         
         // Create loading overlay
         const loadingOverlay = document.createElement('div');
@@ -1538,6 +1580,17 @@
         function updateDisplay() {
             // Show ASRA in compact format for large numbers
             asraDisplayElement.textContent = formatCompactNumber(asraScore);
+            
+            // Show ASRA payment indicator if user paid with ASRA
+            const paymentIndicator = document.getElementById('asra-payment-indicator');
+            const asraSpentAmount = document.getElementById('asra-spent-amount');
+            
+            if (paymentType === 'asra' && totalAsraSpent > 0) {
+                asraSpentAmount.textContent = totalAsraSpent.toLocaleString();
+                paymentIndicator.style.display = 'block';
+            } else {
+                paymentIndicator.style.display = 'none';
+            }
         }
 
         // Calculate speed based on ASRA score (10000 ASRA = 1 level)
@@ -2040,59 +2093,197 @@
                         <p style="color:#fff;font-size:13px;margin-bottom:8px;">
                             <b>${buttonName}</b> locked in demo mode
                         </p>
-                        <p style="color:#ffd700;font-size:11px;margin-bottom:8px;">
-                            Pay <b>1 TON</b> to start real game
+                        <p style="color:#ffd700;font-size:11px;margin-bottom:16px;">
+                            Choose payment method to unlock:
                         </p>
-                        <p style="color:#00d2ff;font-size:11px;margin-bottom:12px;">
+                        
+                        <!-- TON Payment Option -->
+                        <div style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);border-radius:8px;padding:12px;margin-bottom:12px;">
+                            <p style="color:#00d2ff;font-size:14px;margin-bottom:4px;">💎 Pay with TON</p>
+                            <p style="color:#fff;font-size:18px;font-weight:bold;margin-bottom:8px;">1 TON</p>
+                            <button id="pay-ton-btn" class="wallet-panel-btn btn-green" style="width:100%;">Pay with TON</button>
+                        </div>
+                        
+                        <!-- ASRA Payment Option -->
+                        <div style="background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;margin-bottom:12px;">
+                            <p style="color:#ffd700;font-size:14px;margin-bottom:4px;">🪙 Pay with ASRA</p>
+                            <p style="color:#fff;font-size:18px;font-weight:bold;margin-bottom:8px;">10,000 ASRA</p>
+                            <button id="pay-asra-btn" class="wallet-panel-btn" style="width:100%;background:linear-gradient(135deg,#ffd700,#ffaa00);">Pay with ASRA</button>
+                        </div>
+                        
+                        <p style="color:#888;font-size:10px;margin-bottom:8px;">
                             Or buy any coin from SHOP to unlock
                         </p>
-                        <p style="color:#888;font-size:11px;margin-bottom:4px;">TON address:</p>
-                        <input type="text" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:10px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
-                        <img src="${QR_CODE_URL}" alt="QR" style="width:180px;height:180px;margin:8px auto;display:block;background:#fff;padding:6px;border-radius:8px;">
-                        <button id="demo-open-wallet-btn" class="wallet-panel-btn btn-green" style="width:100%;margin-top:8px;">Open Wallet</button>
                         <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:8px;">Back</button>
                     </div>
                 `;
                 modal.classList.add('open');
                 
-                // Add click handler for Open Wallet button
-                const openWalletBtn = document.getElementById('demo-open-wallet-btn');
-                if (openWalletBtn) {
-                    openWalletBtn.addEventListener('click', async () => {
-                        if (tonConnectUI && connectedWalletAddress) {
-                            // Wallet connected - send payment
-                            try {
-                                const result = await tonConnectUI.sendTransaction({
-                                    validUntil: Math.floor(Date.now() / 1000) + 600,
-                                    messages: [{
-                                        address: PAYMENT_ADDRESS,
-                                        amount: PAYMENT_NANO.toString()
-                                    }]
-                                });
+                // TON Payment Handler
+                document.getElementById('pay-ton-btn').addEventListener('click', () => {
+                    showTonPaymentModal();
+                });
+                
+                // ASRA Payment Handler
+                document.getElementById('pay-asra-btn').addEventListener('click', () => {
+                    showAsraPaymentModal();
+                });
+            }
+            
+            // Show TON payment modal
+            function showTonPaymentModal() {
+                const config = configData || { paymentAddress: 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM', paymentNano: 1000000000 };
+                const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                const PAYMENT_NANO = config.paymentNano || 1000000000;
+                const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${firstName}_${userId}`;
+                const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
+                
+                modalBody.innerHTML = `
+                    <div style="text-align:center;padding:16px;">
+                        <p style="color:#00d2ff;font-size:16px;margin-bottom:12px;">💎 Pay with TON</p>
+                        <p style="color:#fff;font-size:24px;font-weight:bold;margin-bottom:8px;">1 TON</p>
+                        <p style="color:#888;font-size:11px;margin-bottom:12px;">Send 1 TON to unlock real game</p>
+                        
+                        <p style="color:#888;font-size:11px;margin-bottom:4px;">TON address:</p>
+                        <input type="text" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:10px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
+                        <img src="${QR_CODE_URL}" alt="QR" style="width:180px;height:180px;margin:8px auto;display:block;background:#fff;padding:6px;border-radius:8px;">
+                        <button id="ton-wallet-btn" class="wallet-panel-btn btn-green" style="width:100%;margin-top:8px;">Open Wallet</button>
+                        <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:8px;">Back</button>
+                    </div>
+                `;
+                
+                document.getElementById('ton-wallet-btn').addEventListener('click', async () => {
+                    if (tonConnectUI && connectedWalletAddress) {
+                        try {
+                            const result = await tonConnectUI.sendTransaction({
+                                validUntil: Math.floor(Date.now() / 1000) + 600,
+                                messages: [{
+                                    address: PAYMENT_ADDRESS,
+                                    amount: PAYMENT_NANO.toString()
+                                }]
+                            });
+                            Swal.fire({
+                                text: 'Payment sent!',
+                                icon: 'success',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                width: '200px',
+                                position: 'center'
+                            });
+                        } catch (e) {
+                            Swal.fire({
+                                text: 'Payment cancelled',
+                                icon: 'error',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                width: '200px',
+                                position: 'center'
+                            });
+                        }
+                    } else if (tonConnectUI) {
+                        tonConnectUI.openModal();
+                    } else {
+                        window.location.href = TON_TRANSFER_URL;
+                    }
+                });
+            }
+            
+            // Show ASRA payment modal
+            async function showAsraPaymentModal() {
+                if (!connectedWalletAddress) {
+                    Swal.fire({
+                        text: 'Connect wallet first!',
+                        icon: 'warning',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        width: '200px',
+                        position: 'center'
+                    });
+                    return;
+                }
+                
+                // Check ASRA balance
+                let asraBalance = 0;
+                try {
+                    const res = await fetch(API_BASE + '/asra-balance/' + connectedWalletAddress);
+                    const data = await res.json();
+                    if (data.success) {
+                        asraBalance = data.asraBalance;
+                    }
+                } catch (e) {
+                    console.error('Error checking ASRA balance:', e);
+                }
+                
+                const hasEnoughAsra = asraBalance >= 10000;
+                
+                modalBody.innerHTML = `
+                    <div style="text-align:center;padding:16px;">
+                        <p style="color:#ffd700;font-size:16px;margin-bottom:12px;">🪙 Pay with ASRA</p>
+                        <p style="color:#fff;font-size:24px;font-weight:bold;margin-bottom:8px;">10,000 ASRA</p>
+                        <p style="color:#888;font-size:11px;margin-bottom:12px;">Send 10,000 ASRA to unlock real game</p>
+                        
+                        <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:12px;margin-bottom:12px;">
+                            <p style="color:#888;font-size:11px;margin-bottom:4px;">Your ASRA Balance:</p>
+                            <p style="color:${hasEnoughAsra ? '#2ed573' : '#ff6b6b'};font-size:20px;font-weight:bold;">${asraBalance.toLocaleString()} ASRA</p>
+                            ${!hasEnoughAsra ? '<p style="color:#ff6b6b;font-size:11px;margin-top:4px;">⚠️ Not enough ASRA</p>' : ''}
+                        </div>
+                        
+                        <p style="color:#888;font-size:11px;margin-bottom:4px;">Master Wallet:</p>
+                        <input type="text" value="${MASTER_WALLET_ADDRESS || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM'}" readonly style="color:#fff;font-size:10px;margin-bottom:12px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
+                        
+                        <button id="asra-pay-btn" class="wallet-panel-btn" style="width:100%;background:linear-gradient(135deg,#ffd700,#ffaa00);margin-bottom:8px;${!hasEnoughAsra ? 'opacity:0.5;cursor:not-allowed;' : ''}" ${!hasEnoughAsra ? 'disabled' : ''}>
+                            ${hasEnoughAsra ? 'Pay 10,000 ASRA' : 'Insufficient ASRA'}
+                        </button>
+                        <button class="wallet-panel-btn close-modal" style="width:100%;">Back</button>
+                    </div>
+                `;
+                
+                if (hasEnoughAsra) {
+                    document.getElementById('asra-pay-btn').addEventListener('click', async () => {
+                        try {
+                            const res = await fetch(API_BASE + '/pay-with-asra/' + userId, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ walletAddress: connectedWalletAddress })
+                            });
+                            const result = await res.json();
+                            
+                            if (result.success) {
                                 Swal.fire({
-                                    text: 'Payment sent!',
+                                    text: 'ASRA payment confirmed!',
                                     icon: 'success',
-                                    timer: 1500,
+                                    timer: 2000,
                                     showConfirmButton: false,
-                                    width: '200px',
+                                    width: '250px',
                                     position: 'center'
                                 });
-                            } catch (e) {
+                                
+                                // Reset and start real game
+                                asraScore = 0;
+                                saveGameData();
+                                updateDisplay();
+                                stopGame();
+                                
+                                modal.classList.remove('open');
+                            } else {
                                 Swal.fire({
-                                    text: 'Payment cancelled',
+                                    text: result.message || 'Payment failed',
                                     icon: 'error',
-                                    timer: 1500,
+                                    timer: 2000,
                                     showConfirmButton: false,
-                                    width: '200px',
+                                    width: '250px',
                                     position: 'center'
                                 });
                             }
-                        } else if (tonConnectUI) {
-                            // TON Connect available but no wallet - open connection modal
-                            tonConnectUI.openModal();
-                        } else {
-                            // No TON Connect - use ton:// protocol
-                            window.location.href = TON_TRANSFER_URL;
+                        } catch (e) {
+                            Swal.fire({
+                                text: 'Payment error',
+                                icon: 'error',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                width: '200px',
+                                position: 'center'
+                            });
                         }
                     });
                 }

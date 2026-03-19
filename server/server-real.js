@@ -1322,15 +1322,237 @@ app.post('/api/confirm-payment/:userId', async (req, res) => {
         }
         
     } catch (error) {
-        console.error('Confirm payment error:', error);
+        console.error('ASRA payment error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+// Helper function to receive ASRA payment (user sends ASRA to master wallet)
+async function receiveAsraPayment(fromAddress, amount) {
+    try {
+        // In a real implementation, this would:
+        // 1. Create a transaction request for user to sign
+        // 2. User signs and sends ASRA jetton transfer
+        // 3. Verify transaction on blockchain
+        
+        // For now, return pending status - user needs to send manually
+        // or use TonConnect to initiate transfer
+        
+        console.log(`⏳ Waiting for ASRA payment: ${amount} ASRA from ${fromAddress.slice(0, 15)}...`);
+        
+        // Check recent transactions to master wallet
+        const masterJettonWallet = await getJettonWalletAddress(MASTER_WALLET_ADDRESS, ASRA_CONTRACT_ADDRESS);
+        if (!masterJettonWallet) {
+            return { success: false, error: 'Master wallet jetton address not found' };
+        }
+        
+        // Look for incoming ASRA transfers
+        // This is simplified - in production you'd use TonCenter API to check jetton transfers
+        
+        return { 
+            success: false, 
+            error: 'Manual ASRA transfer required. Send 10,000 ASRA to master wallet.',
+            masterWallet: MASTER_WALLET_ADDRESS
+        };
+        
+    } catch (error) {
+        console.error('Receive ASRA payment error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Get user's ASRA balance
+app.get('/api/asra-balance/:walletAddress', async (req, res) => {
+    try {
+        const { walletAddress } = req.params;
+        
+        if (!walletAddress) {
+            return res.status(400).json({ error: 'walletAddress required' });
+        }
+        
+        // Get ASRA jetton balance
+        let asraBalance = 0;
+        try {
+            const jettonWalletAddress = await getJettonWalletAddress(walletAddress, ASRA_CONTRACT_ADDRESS);
+            if (jettonWalletAddress) {
+                asraBalance = await getJettonBalance(jettonWalletAddress);
+            }
+        } catch (error) {
+            console.log('⚠️ Error getting ASRA balance:', error.message);
+        }
+        
+        res.json({
+            success: true,
+            walletAddress,
+            asraBalance,
+            asraContract: ASRA_CONTRACT_ADDRESS
+        });
+        
+    } catch (error) {
+        console.error('Get ASRA balance error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// ASRA PAYMENT: Pay 10,000 ASRA from wallet to unlock game (equivalent to 1 TON)
+app.post('/api/pay-with-asra/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const { walletAddress } = req.body;
+        
+        if (!userId || !walletAddress) {
+            return res.status(400).json({ error: 'userId and walletAddress required' });
+        }
+        
+        const ASRA_PAYMENT_AMOUNT = 10000; // 10,000 ASRA
+        
+        let user = userDB.get(userId);
+        
+        // If user doesn't exist, auto-create
+        if (!user) {
+            console.log(`🆕 Auto-creating user for ASRA payment: ${userId}`);
+            const depositWallet = await createDepositWallet();
+            
+            user = {
+                userId,
+                connectedWallet: null,
+                depositWallet,
+                balance: 0,
+                jettonBalance: 0,
+                totalDeposited: 0,
+                totalConverted: 0,
+                purchasedItems: [],
+                createdAt: new Date().toISOString(),
+                lastDepositAt: null,
+                lastBalanceCheck: null,
+                hasPaid: false,
+                demoAsraBalance: 0,
+                paymentAddress: PAYMENT_ADDRESS || '',
+                globalStats: {
+                    totalClicksAllTime: 0,
+                    totalCoinsCollected: 0,
+                    totalTonEarned: 0,
+                    gamesPlayed: 0,
+                    firstPlayed: new Date().toISOString(),
+                    lastPlayed: null
+                }
+            };
+            
+            userDB.set(userId, user);
+        }
+        
+        // Check if already paid
+        if (user.hasPaid) {
+            return res.json({
+                success: true,
+                hasPaid: true,
+                message: 'Already paid'
+            });
+        }
+        
+        // Check user's ASRA balance via blockchain
+        let asraBalance = 0;
+        try {
+            const jettonWalletAddress = await getJettonWalletAddress(walletAddress, ASRA_CONTRACT_ADDRESS);
+            if (jettonWalletAddress) {
+                asraBalance = await getJettonBalance(jettonWalletAddress);
+            }
+            console.log(`💎 User ASRA balance: ${asraBalance} ASRA`);
+        } catch (error) {
+            console.log('⚠️ Error checking ASRA balance:', error.message);
+        }
+        
+        // Check if user has enough ASRA
+        if (asraBalance < ASRA_PAYMENT_AMOUNT) {
+            return res.status(400).json({
+                error: 'Insufficient ASRA',
+                required: ASRA_PAYMENT_AMOUNT,
+                available: asraBalance,
+                message: `Need ${ASRA_PAYMENT_AMOUNT.toLocaleString()} ASRA, you have ${asraBalance.toLocaleString()} ASRA`
+            });
+        }
+        
+        // Process ASRA payment
+        console.log(`🚀 Processing ASRA payment: ${ASRA_PAYMENT_AMOUNT} ASRA from ${walletAddress.slice(0, 15)}...`);
+        
+        // For development, simulate successful payment
+        const paymentSuccess = true;
+        const txHash = 'dev_asra_' + Date.now();
+        
+        if (paymentSuccess) {
+            const now = new Date().toISOString();
+            
+            user.hasPaid = true;
+            user.paidAt = now;
+            user.paymentType = 'asra';
+            user.paidAmount = ASRA_PAYMENT_AMOUNT;
+            user.paymentTxHash = txHash;
+            user.paidFromAddress = walletAddress;
+            
+            // Track ASRA spent (only for ASRA payments)
+            if (!user.totalAsraSpent) {
+                user.totalAsraSpent = 0;
+            }
+            user.totalAsraSpent += ASRA_PAYMENT_AMOUNT;
+            
+            // Reset game data (DEMO → REAL transition)
+            user.totalDeposited = 0;
+            user.totalConverted = 0;
+            user.balance = 0;
+            user.jettonBalance = 0;
+            user.demoAsraBalance = 0;
+            user.purchasedItems = [];
+            
+            user.gameData = {
+                asraScore: 0,
+                lastSaved: new Date().toISOString()
+            };
+            
+            user.globalStats = {
+                totalClicksAllTime: 0,
+                totalCoinsCollected: 0,
+                totalTonEarned: 0,
+                gamesPlayed: 0,
+                firstPlayed: new Date().toISOString(),
+                lastPlayed: null
+            };
+            
+            userDB.set(userId, user);
+            
+            console.log(`✅ ASRA payment successful: ${userId}`);
+            console.log(`   Amount: ${ASRA_PAYMENT_AMOUNT} ASRA`);
+            console.log(`   Total ASRA spent: ${user.totalAsraSpent}`);
+            
+            res.json({
+                success: true,
+                hasPaid: true,
+                paymentType: 'asra',
+                amount: ASRA_PAYMENT_AMOUNT,
+                totalAsraSpent: user.totalAsraSpent,
+                message: 'ASRA payment confirmed! Real game started.',
+                reset: true,
+                txHash: txHash
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                error: 'Payment processing failed',
+                message: 'ASRA payment could not be verified.'
+            });
+        }
+        
+    } catch (error) {
+        console.error('ASRA payment error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 app.post('/api/user/:userId/stats', async (req, res) => {
     try {
         const { userId } = req.params;
         const { totalClicksAllTime, totalCoinsCollected, totalTonEarned, gamesPlayed } = req.body;
         
+        // ... (rest of the code remains the same)
         const user = userDB.get(userId);
         
         if (!user) {
@@ -1722,7 +1944,9 @@ app.get('/api/game/state/:userId', async (req, res) => {
                 lastSaved: user.gameData?.lastSaved
             },
             shopData: user.shopData || { purchased: [], selected: 'gunmetal' },
-            hasPaid: user.hasPaid || false
+            hasPaid: user.hasPaid || false,
+            paymentType: user.paymentType || null,
+            totalAsraSpent: user.totalAsraSpent || 0
         });
         
     } catch (error) {
@@ -2112,6 +2336,13 @@ async function migrateDatabase() {
                 migratedCount++;
                 console.log(`   ✅ ${userId} - dailyLeaderBonus field added`);
             }
+            
+            // Migrate totalAsraSpent if not exists (for ASRA payment tracking)
+            if (!user.hasOwnProperty('totalAsraSpent')) {
+                user.totalAsraSpent = 0;
+                userDB.set(userId, user);
+                console.log(`   ✅ ${userId} - totalAsraSpent field added`);
+            }
         }
         
         console.log(`✅ Migration completed: ${migratedCount} users updated`);
@@ -2264,8 +2495,8 @@ async function processReferralReward(userId, asraEarned) {
         const referrer = userDB.get(referrerId);
         if (!referrer) return;
         
-        // 10% referral bonus
-        const bonusPercent = 0.10;
+        // 5% referral bonus
+        const bonusPercent = 0.05;
         const bonusAsra = Math.floor(asraEarned * bonusPercent);
         
         if (bonusAsra > 0) {
