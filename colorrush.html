@@ -3237,9 +3237,15 @@
             claimBonusBtn.addEventListener('click', async () => {
                 if (!userId) return;
                 try {
+                    console.log(`🔍 FRONTEND: Claiming daily bonus for ${userId}`);
                     const res = await fetch(API_BASE + '/daily-bonus/claim/' + userId, { method: 'POST' });
                     const data = await res.json();
+                    
+                    console.log(`📦 FRONTEND: Response status: ${res.status}`);
+                    console.log(`📦 FRONTEND: Response data:`, data);
+                    
                     if (data.success) {
+                        console.log(`✅ FRONTEND: Bonus claimed successfully!`);
                         asraScore = data.newBalance.asraScore;
                         tonCount = data.newBalance.tonCount;
                         updateDisplay();
@@ -3257,9 +3263,10 @@
                         dailyBonusData.currentStreak = data.streak - 1;
                         updateDailyBonusUI();
                     } else if (data.demo || res.status === 403) {
-                        // Show demo modal for non-paid users
+                        console.log(`❌ FRONTEND: Demo mode - no bonus awarded`);
                         showDemoModal('Daily Bonus');
                     } else {
+                        console.log(`⚠️ FRONTEND: Failed to claim:`, data.error);
                         Swal.fire({
                             text: data.error || 'Failed to claim bonus',
                             icon: 'warning',
@@ -3270,6 +3277,7 @@
                         });
                     }
                 } catch (e) {
+                    console.error(`❌ FRONTEND: Error claiming bonus:`, e);
                     Swal.fire({
                         text: 'Failed to claim bonus',
                         icon: 'error',

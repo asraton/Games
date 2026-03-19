@@ -2523,14 +2523,28 @@ app.post('/api/daily-bonus/claim/:userId', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
         
+        // DEBUG: Log user payment status
+        console.log(`🔍 DEBUG Daily Bonus Claim - User: ${userId}`);
+        console.log(`   hasPaid: ${user.hasPaid}`);
+        console.log(`   shopData: ${JSON.stringify(user.shopData)}`);
+        console.log(`   purchased: ${user.shopData?.purchased?.length || 0} items`);
+        
         // Check if user has paid 1 TON or bought coins from shop
         const hasBoughtCoins = user.shopData?.purchased?.length > 0;
-        if (!user.hasPaid && !hasBoughtCoins) {
+        const canClaimBonus = user.hasPaid || hasBoughtCoins;
+        
+        console.log(`   hasBoughtCoins: ${hasBoughtCoins}`);
+        console.log(`   canClaimBonus: ${canClaimBonus}`);
+        
+        if (!canClaimBonus) {
+            console.log(`   ❌ BLOCKED: User ${userId} cannot claim bonus (no payment)`);
             return res.status(403).json({ 
                 error: 'Demo version - Pay 1 TON or buy coins to claim bonus',
                 demo: true
             });
         }
+        
+        console.log(`   ✅ ALLOWED: User ${userId} can claim bonus`);
         
         let dailyBonus = user.dailyBonus || { lastClaimed: null, streak: 0, totalClaimed: 0 };
         const now = new Date();
