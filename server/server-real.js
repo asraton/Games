@@ -116,14 +116,6 @@ const ASRA_CONTRACT_ADDRESS = process.env.ASRA_CONTRACT_ADDRESS || 'EQA8Mx1E9_RX
 const GAME_URL = process.env.GAME_URL || 'https://asratongames.up.railway.app';
 const TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'asratonbot';
 
-// VIP wallet - when connected: all shop coins purchased, real game active
-const VIP_WALLET = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
-const ALL_SHOP_COINS = ['blue', 'green', 'pink', 'red', 'yellow', 'asra'];
-
-function isVipWallet(walletAddress) {
-    return walletAddress && areAddressesEqual(walletAddress, VIP_WALLET);
-}
-
 // Address normalization - compare via TON Address library
 function areAddressesEqual(addr1, addr2) {
     if (!addr1 || !addr2) return false;
@@ -568,7 +560,7 @@ app.post('/api/user/register', async (req, res) => {
                     totalConverted: user.totalConverted,
                     tonAvailable: user.balance,
                     jettonBalance: user.jettonBalance,
-                    hasPaid: user.hasPaid || isVipWallet(user.connectedWallet) || false,
+                    hasPaid: user.hasPaid || false,
                     paymentAddress: PAYMENT_ADDRESS || '',
                     newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0,
                     asraScore: user.gameData?.asraScore || 0
@@ -795,30 +787,24 @@ app.post('/api/restart-game/:userId', async (req, res) => {
             // Create new deposit wallet
             const newDepositWallet = await createDepositWallet();
             
-            // Fully reset user data (except VIP wallet if connected)
+            // Fully reset user data
             const oldWallet = user.connectedWallet;
-            const wasVip = isVipWallet(oldWallet);
             
-            user.connectedWallet = oldWallet; // Keep VIP wallet connected
+            user.connectedWallet = oldWallet;
             user.depositWallet = newDepositWallet;
             user.balance = 0;
             user.jettonBalance = 0;
             user.totalDeposited = 0;
             user.totalConverted = 0;
             user.purchasedItems = [];
-            user.hasPaid = wasVip ? true : false;
+            user.hasPaid = false;
             user.paidAt = null;
             user.paidAmount = 0;
             user.paymentTxHash = null;
             user.paidFromAddress = null;
             user.paymentResetAt = new Date().toISOString(); // Track reset time - ignore old payments
             user.demoAsraBalance = 0;
-            user.shopData = wasVip ? {
-                purchased: [...ALL_SHOP_COINS],
-                selected: 'gunmetal',
-                purchaseTime: Object.fromEntries(ALL_SHOP_COINS.map(c => [c, Date.now()])),
-                asraProUsed: 0
-            } : {
+            user.shopData = {
                 purchased: [],
                 selected: 'gunmetal',
                 purchaseTime: {},
@@ -1040,8 +1026,8 @@ app.post('/api/withdraw', async (req, res) => {
         const isDevEnvironment = process.env.NODE_ENV !== 'production';
         const isTestMode = testMode === true && isDevEnvironment;
         
-        // Check if payment was made (only if not test mode) - VIP wallet bypasses
-        if (!isTestMode && !user.hasPaid && !isVipWallet(user.connectedWallet)) {
+        // Check if payment was made (only if not test mode)
+        if (!isTestMode && !user.hasPaid) {
             console.log(`❌ PAYMENT REQUIRED (real mode)`);
             return res.status(403).json({ 
                 error: 'Demo version',
@@ -1302,16 +1288,6 @@ app.get('/api/check-payment/:userId', async (req, res) => {
         }
         
         const REQUIRED_AMOUNT = 1; // 1 TON
-
-        // VIP wallet: full access when this wallet is connected
-        if (isVipWallet(user.connectedWallet)) {
-            console.log(`✅ VIP wallet connected for ${userId}, hasPaid=true`);
-            return res.json({
-                success: true,
-                hasPaid: true,
-                message: 'Payment made'
-            });
-        }
 
         // If already paid
         if (user.hasPaid) {
@@ -1988,7 +1964,7 @@ function calculateCoinSpeed(userLevel, selectedCoin) {
 // Calculate reward for catching a coin (SERVER-SIDE - anti-cheat)
 // NOTE: coinColor is visual effect (pulse-*), reward based on shopData.selected
 // EXCEPTION: pulse-red always gives -100 penalty (unless ASRA PRO)
-function calculateReward(coinColor, shopData, isVip = false) {
+function calculateReward(coinColor, shopData) {
     const selectedCoin = shopData.selected || 'gunmetal';
     const isAsraPro = selectedCoin === 'asra' && shopData.purchased.includes('asra');
     
@@ -2010,8 +1986,8 @@ function calculateReward(coinColor, shopData, isVip = false) {
     // CSS pulse-* colors are just visual effects (except red)
     const coinType = selectedCoin;
     
-    // Check if user owns this coin type (or it's free gunmetal, or VIP)
-    const isOwned = coinType === 'gunmetal' || shopData.purchased.includes(coinType) || isVip;
+    // Check if user owns this coin type (or it's free gunmetal)
+    const isOwned = coinType === 'gunmetal' || shopData.purchased.includes(coinType);
     
     if (!isOwned) {
         // User doesn't own this coin - fallback to gunmetal (+1 ASRA)
@@ -2110,14 +2086,8 @@ app.post('/api/game/start/:userId', async (req, res) => {
             console.log(`✅ New user created for game start: ${userId}`);
         }
         
-        // VIP wallet: full access when this wallet is connected (all coins unlocked)
-        let shopData;
-        if (isVipWallet(user.connectedWallet)) {
-            // VIP gets all coins automatically, no purchase needed
-            shopData = { purchased: [...ALL_SHOP_COINS], selected: 'gunmetal', asraProUsed: 0 };
-        } else {
-            shopData = user.shopData || { selected: 'gunmetal', purchased: [], asraProUsed: 0 };
-        }
+        // Get user's shop data
+        let shopData = user.shopData || { selected: 'gunmetal', purchased: [], asraProUsed: 0 };
         const userAsra = user.gameData?.asraScore || 0;
         
         // Calculate coin speed based on user's ASRA progress (10000 ASRA = 1 level)
@@ -2216,8 +2186,7 @@ app.post('/api/game/catch/:userId', async (req, res) => {
         activeGames.set(userId, gameSession);
         
         // SERVER-SIDE reward calculation (Industry Standard)
-        const isVip = isVipWallet(user.connectedWallet);
-        const rewardResult = calculateReward(coinColor, gameSession.shopData, isVip);
+        const rewardResult = calculateReward(coinColor, gameSession.shopData);
         
         // Check ASRA PRO limit
         if (rewardResult.type === 'limit_reached') {
@@ -2297,16 +2266,7 @@ app.get('/api/game/state/:userId', async (req, res) => {
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
 
-        const isVip = isVipWallet(user.connectedWallet);
-        const now = new Date().getTime();
-        
-        // VIP gets all coins automatically with correct ASRA values
-        const shopData = isVip ? {
-            purchased: [...ALL_SHOP_COINS],
-            selected: 'gunmetal',
-            purchaseTime: Object.fromEntries(ALL_SHOP_COINS.map(c => [c, now])),
-            asraProUsed: 0
-        } : (user.shopData || { purchased: [], selected: 'gunmetal' });
+        const shopData = user.shopData || { purchased: [], selected: 'gunmetal' };
 
         res.json({
             success: true,
@@ -2315,8 +2275,8 @@ app.get('/api/game/state/:userId', async (req, res) => {
                 lastSaved: user.gameData?.lastSaved
             },
             shopData,
-            hasPaid: user.hasPaid || isVip || false,
-            paymentType: user.paymentType || (isVip ? 'vip' : null),
+            hasPaid: user.hasPaid || false,
+            paymentType: user.paymentType || null,
             totalAsraSpent: user.totalAsraSpent || 0
         });
 
@@ -2387,7 +2347,7 @@ app.get('/api/load-game/:userId', async (req, res) => {
         res.json({
             success: true,
             asraScore: user.gameData?.asraScore || 0,
-            hasPaid: user.hasPaid || isVipWallet(user.connectedWallet) || false,
+            hasPaid: user.hasPaid || false,
             note: 'Use /api/game/state for new clients'
         });
         
@@ -2411,26 +2371,15 @@ app.get('/api/shop/:userId', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // VIP wallet: all shop coins purchased when this wallet is connected
-        let shopData;
-        if (isVipWallet(user.connectedWallet)) {
-            const now = new Date().getTime();
-            shopData = {
-                purchased: [...ALL_SHOP_COINS],
-                selected: 'gunmetal',
-                purchaseTime: Object.fromEntries(ALL_SHOP_COINS.map(c => [c, now])),
-                asraProUsed: 0
-            };
-        } else {
-            shopData = user.shopData || {
-                purchased: [],
-                selected: 'gunmetal',
-                purchaseTime: {},
-                asraProUsed: 0  // Track how much TON was earned with ASRA PRO
-            };
-        }
+        // Get user's shop data
+        let shopData = user.shopData || {
+            purchased: [],
+            selected: 'gunmetal',
+            purchaseTime: {},
+            asraProUsed: 0
+        };
         
-        // Filter out expired items (30 days) - skip for VIP
+        // Filter out expired items (30 days)
         const now = new Date().getTime();
         const thirtyDays = 30 * 24 * 60 * 60 * 1000;
         
