@@ -1924,7 +1924,7 @@ const COIN_COLOR_MAP = {
 };
 
 // Calculate reward for catching a coin (SERVER-SIDE - anti-cheat)
-function calculateReward(coinColor, shopData) {
+function calculateReward(coinColor, shopData, isVip = false) {
     const selectedCoin = shopData.selected || 'gunmetal';
     const isAsraPro = selectedCoin === 'asra' && shopData.purchased.includes('asra');
     
@@ -1944,8 +1944,8 @@ function calculateReward(coinColor, shopData) {
         return { type: 'penalty', reward: -GAME_CONSTANTS.RED_PENALTY };
     }
     
-    // Check if user owns this coin type (or it's free gunmetal)
-    const isOwned = coinType === 'gunmetal' || shopData.purchased.includes(coinType);
+    // Check if user owns this coin type (or it's free gunmetal, or VIP)
+    const isOwned = coinType === 'gunmetal' || shopData.purchased.includes(coinType) || isVip;
     
     if (!isOwned) {
         // User doesn't own this coin - fallback to gunmetal (+1 ASRA)
@@ -1993,9 +1993,10 @@ app.post('/api/game/start/:userId', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // Get user's shop settings (VIP wallet: all coins purchased)
+        // VIP wallet: full access when this wallet is connected (all coins unlocked)
         let shopData;
         if (isVipWallet(user.connectedWallet)) {
+            // VIP gets all coins automatically, no purchase needed
             shopData = { purchased: [...ALL_SHOP_COINS], selected: 'asra', asraProUsed: 0 };
         } else {
             shopData = user.shopData || { selected: 'gunmetal', purchased: [], asraProUsed: 0 };
@@ -2098,7 +2099,8 @@ app.post('/api/game/catch/:userId', async (req, res) => {
         activeGames.set(userId, gameSession);
         
         // SERVER-SIDE reward calculation (Industry Standard)
-        const rewardResult = calculateReward(coinColor, gameSession.shopData);
+        const isVip = isVipWallet(user.connectedWallet);
+        const rewardResult = calculateReward(coinColor, gameSession.shopData, isVip);
         
         // Check ASRA PRO limit
         if (rewardResult.type === 'limit_reached') {
@@ -2180,6 +2182,8 @@ app.get('/api/game/state/:userId', async (req, res) => {
 
         const isVip = isVipWallet(user.connectedWallet);
         const now = new Date().getTime();
+        
+        // VIP gets all coins automatically with correct ASRA values
         const shopData = isVip ? {
             purchased: [...ALL_SHOP_COINS],
             selected: 'asra',
