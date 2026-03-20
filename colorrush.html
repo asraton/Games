@@ -738,36 +738,6 @@
             animation: pulse 1s infinite;
         }
 
-        /* Bonus Section */
-        .bonus-section {
-            position: fixed;
-            bottom: clamp(20px, 3vh, 30px);
-            right: clamp(220px, 35vw, 300px);
-            z-index: 95;
-        }
-
-        #daily-bonus-btn {
-            width: 80px;
-            height: 44px;
-            padding: 0;
-            background: url('/assets/Button.png') no-repeat center center;
-            background-size: 100% 100%;
-            border: none;
-            cursor: pointer;
-            transition: transform 0.1s;
-            color: #ffd700;
-            font-size: 11px;
-            font-weight: bold;
-        }
-
-        #daily-bonus-btn:active {
-            transform: scale(0.9);
-        }
-
-        #daily-bonus-btn.claimed {
-            color: #888;
-        }
-
         /* Referral Section */
         .referral-section {
             position: fixed;
@@ -820,59 +790,9 @@
             transform: scale(0.9);
         }
 
-        /* Daily Bonus Modal */
-        #daily-bonus-modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 300;
-            justify-content: center;
-            align-items: center;
-        }
-
-        #daily-bonus-modal.open { display: flex; }
-
-        .bonus-modal-content {
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            padding: clamp(16px, 4vw, 24px);
-            border-radius: 16px;
-            text-align: center;
-            max-width: 95vw;
-            width: min(320px, 95vw);
-            border: 2px solid rgba(255, 215, 0, 0.4);
-            box-sizing: border-box;
-        }
-
-        .bonus-modal-content h3 {
-            color: #ffd700;
-            margin-bottom: 20px;
-            font-size: 20px;
-        }
-
-        .bonus-streak {
-            color: #00d2ff;
-            font-size: 16px;
+        .leaderboard-row.current-user {
+            background: rgba(255, 215, 0, 0.15);
             font-weight: bold;
-            margin-bottom: 12px;
-        }
-
-        .bonus-reward {
-            color: #2ed573;
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 12px;
-        }
-
-        .bonus-timer {
-            color: #ff4757;
-            font-size: 14px;
-            margin-bottom: 16px;
-        }
-
-        .bonus-timer.ready {
-            color: #2ed573;
         }
 
         /* Referral Modal */
@@ -1001,7 +921,6 @@
         <div id="user-badge-section">
             <button id="user-badge" title="User Menu">--</button>
             <div id="user-badge-panel">
-                <button class="wallet-panel-btn" id="btn-bonus" style="color:#ffd700;">BONUS</button>
                 <button class="wallet-panel-btn" id="btn-invite" style="color:#00d2ff;">INVITE</button>
                 <button class="wallet-panel-btn" id="btn-rank" style="color:#ff6b6b;">RANK</button>
             </div>
@@ -1042,8 +961,7 @@
                 <b>START</b> - Start catching coins<br>
                 <b>WALLET</b> - Connect wallet, pay TON, withdraw ASRA<br>
                 <b>SHOP</b> - Buy coins with TON<br>
-                <b>BONUS</b> - Daily bonus (100 ASRA every 24h). Only for paid users<br>
-                <b>INVITE</b> - Invite friends, earn 5% from their earnings<br>
+                <b>INVITE</b> - Invite friends to join the game<br>
                 <b>RANK</b> - Leaderboard, see top players<br>
                 <b>HELP</b> - This information page
             </div>
@@ -1124,13 +1042,13 @@
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Red</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">20 TON</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+20</td>
-                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down, +3x time bonus</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down more</td>
                     </tr>
                     <tr style="background:rgba(255,255,255,0.05);">
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Yellow</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">30 TON</td>
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+30</td>
-                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down, +4x time bonus</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down much more</td>
                     </tr>
                     <tr style="background:rgba(255,215,0,0.1);">
                         <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);font-weight:bold;color:#ffd700;">ASRA PRO</td>
@@ -1141,25 +1059,9 @@
                 </tbody>
             </table>
             
-            <div class="help-section-title">Daily Bonus</div>
-            <div class="help-text-small">
-                • Claim every 24 hours (100-500 ASRA)<br>
-                • Streak system: Day 1 = 100 ASRA, Day 7 = 500 ASRA<br>
-                • <b>Only available after payment</b> (TON or ASRA)<br>
-                • Shop purchase also unlocks daily bonus<br>
-                • If you miss 48 hours, streak resets to 0
-            </div>
-            
-            <div class="help-section-title">Leader Bonus</div>
-            <div class="help-text-small">
-                • If you are #1 on the leaderboard<br>
-                • Get extra +100 ASRA every 24 hours<br>
-                • Leaderboard updates in real-time<br>
-                • Compete with other players for top spot!
-            </div>
             <div class="help-section-title">Goal</div>
             <div class="help-text">
-                Collect ASRA, buy new coins from shop. Use ASRA PRO auto-play feature (up to 2,000,000 ASRA). Invite friends and earn bonuses!
+                Collect ASRA, buy new coins from shop. Use ASRA PRO auto-play feature (up to 2,000,000 ASRA). Invite friends!
             </div>
             
             <div class="help-section-title">Future</div>
@@ -1173,8 +1075,6 @@
                 <b>New features added:</b><br>
                 • Pay with ASRA (10,000 ASRA)<br>
                 • ASRA payment tracking on screen<br>
-                • 5% referral bonus<br>
-                • Daily & Leader bonuses<br>
                 • 2,000,000 ASRA limit for ASRA PRO
             </div>
             
@@ -1256,56 +1156,13 @@
         </div>
     </div>
 
-    <!-- Daily Bonus Modal -->
-    <div id="daily-bonus-modal">
-        <div class="bonus-modal-content">
-            <h3>🎁 Daily Bonus</h3>
-            <div id="daily-bonus-content">
-                <!-- Leader Bonus Section (only for #1) -->
-                <div id="leader-bonus-section" style="background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.5);border-radius:8px;padding:12px;margin-bottom:12px;display:none;">
-                    <div style="text-align:center;">
-                        <div style="color:#ffd700;font-size:16px;font-weight:bold;">👑 Leader Bonus</div>
-                        <div style="color:#fff;font-size:12px;margin:4px 0;">You are #1 on the leaderboard!</div>
-                        <div style="color:#00ff00;font-size:14px;font-weight:bold;">+100 ASRA</div>
-                        <div id="leader-bonus-timer" style="color:#888;font-size:10px;margin-top:4px;"></div>
-                        <button class="wallet-panel-btn btn-yellow" id="claim-leader-bonus-btn" style="width:100%;margin-top:8px;font-size:12px;padding:8px;">Claim Leader Bonus</button>
-                    </div>
-                </div>
-                
-                <!-- Regular Daily Bonus -->
-                <div class="bonus-streak" id="bonus-streak">Streak: 0 days</div>
-                <div class="bonus-reward" id="bonus-reward">Next reward: 100 ASRA</div>
-                <div class="bonus-timer" id="bonus-timer">Claim now!</div>
-                <button class="wallet-panel-btn btn-green" id="claim-bonus-btn" style="width:100%;margin-top:16px;">Claim Daily Bonus</button>
-            </div>
-            <button class="wallet-panel-btn close-modal btn-red" id="close-daily-bonus" style="width:100%;margin-top:8px;">Close</button>
-        </div>
-    </div>
-
     <!-- Referral Modal -->
     <div id="referral-modal">
         <div class="referral-modal-content">
             <h3>👥 Invite Friends</h3>
             <div id="referral-content">
-                <div class="referral-stats" id="referral-stats" style="background:rgba(0,210,255,0.1);border:1px solid rgba(0,210,255,0.3);border-radius:8px;padding:12px;margin-bottom:16px;text-align:center;">
-                    <div style="display:flex;justify-content:space-around;">
-                        <div>
-                            <div style="color:#00d2ff;font-size:12px;">Referrals</div>
-                            <div style="color:#fff;font-size:18px;font-weight:bold;" id="referral-count">0</div>
-                        </div>
-                        <div>
-                            <div style="color:#ffd700;font-size:12px;">Earned</div>
-                            <div style="color:#fff;font-size:18px;font-weight:bold;"><span id="referral-earnings">0</span> ASRA</div>
-                        </div>
-                    </div>
-                </div>
                 <div class="referral-link-section" style="padding:12px 0;margin-bottom:16px;">
-                    <p style="color:#888;font-size:12px;margin-bottom:8px;text-align:center;">Your invite link:</p>
-                    <input type="text" id="referral-link" readonly style="width:100%;padding:10px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.5);color:#ffd700;border-radius:6px;font-size:10px;margin-bottom:8px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-sizing:border-box;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
-                    <p style="color:#00d2ff;font-size:11px;text-align:center;margin:0;">Earn 5% from your referrals' earnings!</p>
-                </div>
-                <div id="referral-list" style="max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.2);border-radius:8px;padding:8px;">
-                    <!-- Referral list will be populated here -->
+                    <input type="text" id="referral-link" readonly style="width:100%;padding:12px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.5);color:#ffd700;border-radius:6px;font-size:11px;margin-bottom:8px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-sizing:border-box;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Nusxa olindi!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
                 </div>
             </div>
             <button class="wallet-panel-btn close-modal btn-red" id="close-referral" style="width:100%;margin-top:16px;">Close</button>
@@ -2947,42 +2804,36 @@
                 blue: { 
                     name: 'Blue', 
                     price: 2, 
-                    speedBonus: 100, 
                     img: '/assets/Blue.png',
                     description: 'Coin speed slows down a bit'
                 },
                 green: { 
                     name: 'Green', 
                     price: 5, 
-                    speedBonus: 200, 
                     img: '/assets/Green.png',
                     description: 'Coin speed slows down more'
                 },
                 pink: { 
                     name: 'Pink', 
                     price: 10, 
-                    speedBonus: 300, 
                     img: '/assets/Pink.png',
                     description: 'Coin speed slows down, more time'
                 },
                 red: { 
                     name: 'Red', 
                     price: 20, 
-                    speedBonus: 400, 
                     img: '/assets/Red.png',
-                    description: 'Coin speed slows down, +3x time bonus'
+                    description: 'Coin speed slows down more'
                 },
                 yellow: { 
                     name: 'Yellow', 
                     price: 30, 
-                    speedBonus: 500, 
                     img: '/assets/Yellow.png',
-                    description: 'Coin speed slows down, +4x time bonus'
+                    description: 'Coin speed slows down much more'
                 },
                 asra: { 
                     name: 'ASRA PRO', 
                     price: 99, 
-                    speedBonus: 600, 
                     img: '/assets/ASRAPRO.png', 
                     autoPlay: true, 
                     maxAsra: 2000000, 
@@ -3426,8 +3277,15 @@
                 
                 if (COIN_DATA[selectedCoin] && shopData.purchased.includes(selectedCoin)) {
                     // More expensive coin = slower (more time)
-                    // Adding speedBonus = more milliseconds = slower
-                    baseSpeed += COIN_DATA[selectedCoin].speedBonus;
+                    // Adding slowdown = more milliseconds = slower
+                    switch(selectedCoin) {
+                        case 'blue': baseSpeed += 100; break;
+                        case 'green': baseSpeed += 200; break;
+                        case 'pink': baseSpeed += 300; break;
+                        case 'red': baseSpeed += 400; break;
+                        case 'yellow': baseSpeed += 500; break;
+                        case 'asra': baseSpeed += 600; break;
+                    }
                 }
                 
                 return baseSpeed;
@@ -3511,192 +3369,11 @@
             // Update initial UI
             updateShopUI();
 
-            // ==================== DAILY BONUS FUNCTIONALITY ====================
-            const dailyBonusBtn = document.getElementById('daily-bonus-btn');
-            const dailyBonusModal = document.getElementById('daily-bonus-modal');
-            const closeDailyBonus = document.getElementById('close-daily-bonus');
-            const claimBonusBtn = document.getElementById('claim-bonus-btn');
-            const bonusStreakEl = document.getElementById('bonus-streak');
-            const bonusRewardEl = document.getElementById('bonus-reward');
-            const bonusTimerEl = document.getElementById('bonus-timer');
-            
-            // Leader bonus elements
-            const leaderBonusSection = document.getElementById('leader-bonus-section');
-            const leaderBonusTimer = document.getElementById('leader-bonus-timer');
-            const claimLeaderBonusBtn = document.getElementById('claim-leader-bonus-btn');
-
-            let dailyBonusData = { canClaim: false, currentStreak: 0, nextReward: 100, hoursRemaining: 0 };
-            let leaderBonusData = { isLeader: false, canClaim: false, hoursRemaining: 0, bonusAmount: 100 };
-
-            async function loadDailyBonus() {
-                if (!userId) return;
-                try {
-                    const res = await fetch(API_BASE + '/daily-bonus/' + userId);
-                    const data = await res.json();
-                    if (data.success) {
-                        dailyBonusData = data.dailyBonus;
-                        leaderBonusData = data.leaderBonus;
-                        updateDailyBonusUI();
-                    }
-                } catch (e) {
-                    console.error('Failed to load daily bonus:', e);
-                }
-            }
-
-            function updateDailyBonusUI() {
-                // Regular daily bonus UI
-                bonusStreakEl.textContent = `Streak: ${dailyBonusData.currentStreak} days`;
-                bonusRewardEl.textContent = `Next reward: ${dailyBonusData.nextReward.toLocaleString()} ASRA`;
-                
-                if (dailyBonusData.canClaim) {
-                    bonusTimerEl.textContent = 'Claim now!';
-                    bonusTimerEl.classList.add('ready');
-                    claimBonusBtn.disabled = false;
-                    claimBonusBtn.style.opacity = '1';
-                    dailyBonusBtn.classList.remove('claimed');
-                } else {
-                    bonusTimerEl.textContent = `Wait ${dailyBonusData.hoursRemaining}h`;
-                    bonusTimerEl.classList.remove('ready');
-                    claimBonusBtn.disabled = true;
-                    claimBonusBtn.style.opacity = '0.5';
-                    dailyBonusBtn.classList.add('claimed');
-                }
-                
-                // Leader bonus UI
-                if (leaderBonusData.isLeader) {
-                    leaderBonusSection.style.display = 'block';
-                    if (leaderBonusData.canClaim) {
-                        leaderBonusTimer.textContent = 'Claim your 100 ASRA now!';
-                        leaderBonusTimer.style.color = '#00ff00';
-                        claimLeaderBonusBtn.disabled = false;
-                        claimLeaderBonusBtn.style.opacity = '1';
-                        claimLeaderBonusBtn.style.background = 'rgba(255, 215, 0, 0.3)';
-                    } else {
-                        leaderBonusTimer.textContent = `Already claimed! Next in ${leaderBonusData.hoursRemaining}h`;
-                        leaderBonusTimer.style.color = '#888';
-                        claimLeaderBonusBtn.disabled = true;
-                        claimLeaderBonusBtn.style.opacity = '0.5';
-                        claimLeaderBonusBtn.style.background = 'rgba(255, 215, 0, 0.1)';
-                    }
-                } else {
-                    leaderBonusSection.style.display = 'none';
-                }
-            }
-
-            closeDailyBonus.addEventListener('click', () => {
-                dailyBonusModal.classList.remove('open');
-            });
-
-            claimBonusBtn.addEventListener('click', async () => {
-                if (!userId) return;
-                try {
-                    console.log(`🔍 FRONTEND: Claiming daily bonus for ${userId}`);
-                    const res = await fetch(API_BASE + '/daily-bonus/claim/' + userId, { method: 'POST' });
-                    const data = await res.json();
-                    
-                    console.log(`📦 FRONTEND: Response status: ${res.status}`);
-                    console.log(`📦 FRONTEND: Response data:`, data);
-                    
-                    if (data.success) {
-                        console.log(`✅ FRONTEND: Bonus claimed successfully!`);
-                        asraScore = data.newBalance.asraScore;
-                        tonCount = data.newBalance.tonCount;
-                        updateDisplay();
-                        
-                        Swal.fire({
-                            text: `Claimed ${data.reward} ASRA! 🔥 Streak: ${data.streak} days`,
-                            icon: 'success',
-                            timer: 2500,
-                            showConfirmButton: false,
-                            width: '280px',
-                            position: 'center'
-                        });
-                        
-                        dailyBonusData.canClaim = false;
-                        dailyBonusData.currentStreak = data.streak - 1;
-                        updateDailyBonusUI();
-                    } else if (data.demo || res.status === 403) {
-                        console.log(`❌ FRONTEND: Demo mode - no bonus awarded`);
-                        showDemoModal('Daily Bonus');
-                    } else {
-                        console.log(`⚠️ FRONTEND: Failed to claim:`, data.error);
-                        Swal.fire({
-                            text: data.error || 'Failed to claim bonus',
-                            icon: 'warning',
-                            timer: 2000,
-                            showConfirmButton: false,
-                            width: '250px',
-                            position: 'center'
-                        });
-                    }
-                } catch (e) {
-                    console.error(`❌ FRONTEND: Error claiming bonus:`, e);
-                    Swal.fire({
-                        text: 'Failed to claim bonus',
-                        icon: 'error',
-                        timer: 1500,
-                        showConfirmButton: false,
-                        width: '200px',
-                        position: 'center'
-                    });
-                }
-            });
-            
-            // Claim leader bonus
-            claimLeaderBonusBtn.addEventListener('click', async () => {
-                if (!userId) return;
-                try {
-                    const res = await fetch(API_BASE + '/daily-bonus/claim-leader/' + userId, { method: 'POST' });
-                    const data = await res.json();
-                    if (data.success) {
-                        asraScore = data.newBalance.asraScore;
-                        tonCount = data.newBalance.tonCount;
-                        updateDisplay();
-                        
-                        Swal.fire({
-                            text: `👑 Leader Bonus! +${data.reward} ASRA!`,
-                            icon: 'success',
-                            timer: 2500,
-                            showConfirmButton: false,
-                            width: '280px',
-                            position: 'center'
-                        });
-                        
-                        leaderBonusData.canClaim = false;
-                        updateDailyBonusUI();
-                    } else if (data.demo || res.status === 403) {
-                        // Show demo modal for non-paid users
-                        showDemoModal('Leader Bonus');
-                    } else {
-                        Swal.fire({
-                            text: data.error || 'Failed to claim leader bonus',
-                            icon: 'warning',
-                            timer: 2000,
-                            showConfirmButton: false,
-                            width: '250px',
-                            position: 'center'
-                        });
-                    }
-                } catch (e) {
-                    Swal.fire({
-                        text: 'Failed to claim leader bonus',
-                        icon: 'error',
-                        timer: 1500,
-                        showConfirmButton: false,
-                        width: '200px',
-                        position: 'center'
-                    });
-                }
-            });
-
             // ==================== REFERRAL FUNCTIONALITY ====================
             const referralBtn = document.getElementById('referral-btn');
             const referralModal = document.getElementById('referral-modal');
             const closeReferral = document.getElementById('close-referral');
             const referralLinkInput = document.getElementById('referral-link');
-            const referralCountEl = document.getElementById('referral-count');
-            const referralEarningsEl = document.getElementById('referral-earnings');
-            const referralListEl = document.getElementById('referral-list');
 
             async function loadReferralData() {
                 if (!userId) return;
@@ -3707,29 +3384,6 @@
                     ? `https://t.me/ASRACoinBot?start=${userId}_${userName}`
                     : `https://t.me/ASRACoinBot?start=${userId}`;
                 referralLinkInput.value = inviteLink;
-                
-                try {
-                    const res = await fetch(API_BASE + '/referral/' + userId);
-                    const data = await res.json();
-                    if (data.success) {
-                        referralCountEl.textContent = data.referralData.referralCount || 0;
-                        referralEarningsEl.textContent = (data.referralData.totalReferralEarnings || 0).toLocaleString();
-                        
-                        // Populate referral list
-                        if (data.referralData.referralDetails && data.referralData.referralDetails.length > 0) {
-                            referralListEl.innerHTML = data.referralData.referralDetails.map(ref => `
-                                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;margin-bottom:6px;font-size:11px;">
-                                    <span style="color:#ccc;">${ref.userId.slice(0, 12)}...</span>
-                                    <span style="color:${ref.hasPaid ? '#2ed573' : '#888'};">${ref.hasPaid ? '✅ Paid' : '⏳ Free'}</span>
-                                </div>
-                            `).join('');
-                        } else {
-                            referralListEl.innerHTML = '<p style="color:#888;font-size:12px;text-align:center;margin-top:20px;">No referrals yet. Share your link!</p>';
-                        }
-                    }
-                } catch (e) {
-                    console.error('Failed to load referral data:', e);
-                }
             }
 
 
@@ -3823,28 +3477,7 @@
                 leaderboardModal.classList.remove('open');
             });
 
-            // User Badge panel buttons for Bonus, Invite, Rank
-            document.getElementById('btn-bonus').addEventListener('click', async () => {
-                console.log(`🔍 btn-bonus clicked!`);
-                userBadgePanel.classList.remove('open');
-                if (gameActive) stopGame();
-                
-                // Check if user has real game access for bonus
-                console.log(`📡 Calling checkRealGameAccess...`);
-                const access = await checkRealGameAccess();
-                console.log(`📦 checkRealGameAccess returned:`, access);
-                
-                if (!access.hasAccess) {
-                    console.log(`❌ No access, showing demo modal`);
-                    showDemoModal('Bonus');
-                    return;
-                }
-                
-                console.log(`✅ Has access, loading daily bonus`);
-                loadDailyBonus();
-                dailyBonusModal.classList.add('open');
-            });
-
+            // User Badge panel buttons for Invite, Rank
             document.getElementById('btn-invite').addEventListener('click', () => {
                 userBadgePanel.classList.remove('open');
                 if (gameActive) stopGame();
@@ -3861,18 +3494,12 @@
             });
 
             // Close modals when clicking outside
-            dailyBonusModal.addEventListener('click', (e) => {
-                if (e.target === dailyBonusModal) dailyBonusModal.classList.remove('open');
-            });
             referralModal.addEventListener('click', (e) => {
                 if (e.target === referralModal) referralModal.classList.remove('open');
             });
             leaderboardModal.addEventListener('click', (e) => {
                 if (e.target === leaderboardModal) leaderboardModal.classList.remove('open');
             });
-
-            // Load daily bonus status on init
-            loadDailyBonus();
         });
     </script>
 </body>
