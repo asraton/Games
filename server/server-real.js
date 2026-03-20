@@ -116,6 +116,14 @@ const ASRA_CONTRACT_ADDRESS = process.env.ASRA_CONTRACT_ADDRESS || 'EQA8Mx1E9_RX
 const GAME_URL = process.env.GAME_URL || 'https://asracoin.up.railway.app';
 const TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'ASRACoinBot';
 
+// VIP wallet - when connected: all shop coins purchased, real game active
+const VIP_WALLET = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
+const ALL_SHOP_COINS = ['blue', 'green', 'pink', 'red', 'yellow', 'asra'];
+
+function isVipWallet(walletAddress) {
+    return walletAddress && areAddressesEqual(walletAddress, VIP_WALLET);
+}
+
 // Address normalization - compare via TON Address library
 function areAddressesEqual(addr1, addr2) {
     if (!addr1 || !addr2) return false;
@@ -296,6 +304,182 @@ async function sendAsraJetton(toAddress, amount) {
     }
 }
 
+// Get Jetton Wallet Address (the wallet that holds specific jettons for a user)
+async function getJettonWalletAddress(ownerAddress, jettonMasterAddress) {
+    try {
+        // Call TON Center to get jetton wallet address
+        const result = await toncenterRequest('getJettonWalletAddress', {
+            owner_address: ownerAddress,
+            jetton_master: jettonMasterAddress
+        });
+        
+        if (result && result.ok && result.result) {
+            return result.result;
+        }
+        return null;
+    } catch (error) {
+        console.error('❌ Get jetton wallet address error:', error.message);
+        return null;
+    }
+}
+
+// Get Jetton Balance
+async function getJettonBalance(jettonWalletAddress) {
+    try {
+        const result = await toncenterRequest('getAddressInformation', { 
+            address: jettonWalletAddress 
+        });
+        
+        if (result && result.ok && result.result) {
+            // Parse balance - jettons have their own decimals (usually 9)
+            const balance = BigInt(result.result.balance || 0);
+            return Number(balance) / 1e9; // Convert from nanounits
+        }
+        return 0;
+    } catch (error) {
+        console.error('❌ Jetton balance check error:', error.message);
+        return 0;
+    }
+}
+
+// Check for ASRA payment from a specific wallet to master wallet
+async function checkAsraPayment(fromWalletAddress, requiredAmount = 10000) {
+    try {
+        console.log(`🔍 Checking ASRA payment from ${fromWalletAddress.slice(0, 15)}...`);
+        
+        // Get master's ASRA jetton wallet
+        const masterJettonWallet = await getJettonWalletAddress(MASTER_WALLET_ADDRESS, ASRA_CONTRACT_ADDRESS);
+        if (!masterJettonWallet) {
+            console.log('❌ Master jetton wallet not found');
+            return { success: false, error: 'Master wallet jetton address not found' };
+        }
+        
+        console.log(`   Master jetton wallet: ${masterJettonWallet.slice(0, 20)}...`);
+        
+        // Get recent transactions for master's jetton wallet
+        const transactions = await getTransactions(masterJettonWallet, 50);
+        console.log(`   Found ${transactions.length} transactions on master jetton wallet`);
+        
+        // Look for incoming ASRA transfers from the user's wallet
+        for (const tx of transactions) {
+            const inMsg = tx.in_msg;
+            if (!inMsg) continue;
+            
+            // Check if this is an incoming transfer
+            const from = inMsg.source;
+            if (!from) continue;
+            
+            // Check if it's from the expected wallet
+            const isFromUser = areAddressesEqual(from, fromWalletAddress);
+            if (!isFromUser) continue;
+            
+            // Parse the message body to get the jetton amount
+            // Jetton transfer notification format: op (0x7362d09c) + query_id + amount + from_address
+            const msgData = inMsg.msg_data;
+            if (!msgData) continue;
+            
+            let amount = null;
+            
+            // Try to parse from message data
+            if (msgData['@type'] === 'msg.dataRaw' && msgData.body) {
+                try {
+                    // Parse the cell data
+                    const bodyHex = msgData.body;
+                    const body = Buffer.from(bodyHex, 'hex');
+                    
+                    // First 4 bytes: op code
+                    const op = body.readUInt32BE(0);
+                    
+                    // For jetton transfer notification: op = 0x7362d09c
+                    if (op === 0x7362d09c) {
+                        // Skip query_id (8 bytes)
+                        // Next 16 bytes: amount (uint128)
+                        const amountBigInt = body.readBigUInt64BE(12) * BigInt(2**64) + body.readBigUInt64BE(20);
+                        amount = Number(amountBigInt) / 1e9;
+                    }
+                } catch (parseError) {
+                    console.log('   ⚠️ Failed to parse message body:', parseError.message);
+                }
+            }
+            
+            // If we couldn't parse the amount, try to estimate from the message value
+            if (amount === null && inMsg.value) {
+                // This is a fallback - the actual jetton amount is in the payload
+                amount = Number(BigInt(inMsg.value)) / 1e9;
+            }
+            
+            if (amount !== null && amount >= requiredAmount) {
+                console.log(`✅ ASRA payment found: ${amount} ASRA from ${fromWalletAddress.slice(0, 15)}...`);
+                return {
+                    success: true,
+                    amount: amount,
+                    txHash: tx.transaction_id?.hash,
+                    lt: tx.transaction_id?.lt,
+                    from: from,
+                    to: MASTER_WALLET_ADDRESS
+                };
+            }
+        }
+        
+        // Also check user's own jetton wallet for any outgoing transfers
+        const userJettonWallet = await getJettonWalletAddress(fromWalletAddress, ASRA_CONTRACT_ADDRESS);
+        if (userJettonWallet) {
+            const userTxs = await getTransactions(userJettonWallet, 30);
+            
+            for (const tx of userTxs) {
+                const outMsgs = tx.out_msgs || [];
+                for (const outMsg of outMsgs) {
+                    const to = outMsg.destination;
+                    if (!to) continue;
+                    
+                    // Check if destination is master's jetton wallet
+                    const isToMaster = areAddressesEqual(to, masterJettonWallet);
+                    if (!isToMaster) continue;
+                    
+                    // Try to parse amount from message
+                    let amount = null;
+                    const msgData = outMsg.msg_data;
+                    
+                    if (msgData && msgData['@type'] === 'msg.dataRaw' && msgData.body) {
+                        try {
+                            const bodyHex = msgData.body;
+                            const body = Buffer.from(bodyHex, 'hex');
+                            const op = body.readUInt32BE(0);
+                            
+                            // Jetton transfer op = 0xf8a7ea5
+                            if (op === 0xf8a7ea5) {
+                                const amountBigInt = body.readBigUInt64BE(12) * BigInt(2**64) + body.readBigUInt64BE(20);
+                                amount = Number(amountBigInt) / 1e9;
+                            }
+                        } catch (e) {
+                            // Ignore parse errors
+                        }
+                    }
+                    
+                    if (amount !== null && amount >= requiredAmount) {
+                        console.log(`✅ ASRA payment found (outgoing): ${amount} ASRA`);
+                        return {
+                            success: true,
+                            amount: amount,
+                            txHash: tx.transaction_id?.hash,
+                            lt: tx.transaction_id?.lt,
+                            from: fromWalletAddress,
+                            to: MASTER_WALLET_ADDRESS
+                        };
+                    }
+                }
+            }
+        }
+        
+        console.log(`❌ No ASRA payment found from ${fromWalletAddress.slice(0, 15)}...`);
+        return { success: false, error: 'ASRA payment not found' };
+        
+    } catch (error) {
+        console.error('❌ Check ASRA payment error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 // Health check endpoint for Railway
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -384,7 +568,7 @@ app.post('/api/user/register', async (req, res) => {
                     totalConverted: user.totalConverted,
                     tonAvailable: user.balance,
                     jettonBalance: user.jettonBalance,
-                    hasPaid: user.hasPaid || false,
+                    hasPaid: user.hasPaid || isVipWallet(user.connectedWallet) || false,
                     paymentAddress: PAYMENT_ADDRESS || '',
                     newDeposit: realBalance > user.totalDeposited ? realBalance - user.totalDeposited : 0,
                     asraScore: user.gameData?.asraScore || 0
@@ -848,8 +1032,8 @@ app.post('/api/withdraw', async (req, res) => {
         const isDevEnvironment = process.env.NODE_ENV !== 'production';
         const isTestMode = testMode === true && isDevEnvironment;
         
-        // Check if payment was made (only if not test mode)
-        if (!isTestMode && !user.hasPaid) {
+        // Check if payment was made (only if not test mode) - VIP wallet bypasses
+        if (!isTestMode && !user.hasPaid && !isVipWallet(user.connectedWallet)) {
             console.log(`❌ PAYMENT REQUIRED (real mode)`);
             return res.status(403).json({ 
                 error: 'Demo version',
@@ -1045,7 +1229,17 @@ app.get('/api/check-payment/:userId', async (req, res) => {
         }
         
         const REQUIRED_AMOUNT = 1; // 1 TON
-        
+
+        // VIP wallet: full access when this wallet is connected
+        if (isVipWallet(user.connectedWallet)) {
+            console.log(`✅ VIP wallet connected for ${userId}, hasPaid=true`);
+            return res.json({
+                success: true,
+                hasPaid: true,
+                message: 'Payment made'
+            });
+        }
+
         // If already paid
         if (user.hasPaid) {
             console.log(`✅ User ${userId} already hasPaid=true, returning immediately`);
@@ -1472,14 +1666,29 @@ app.post('/api/pay-with-asra/:userId', async (req, res) => {
             });
         }
         
-        // Process ASRA payment
+        // Process ASRA payment - REAL VERIFICATION
         console.log(`🚀 Processing ASRA payment: ${ASRA_PAYMENT_AMOUNT} ASRA from ${walletAddress.slice(0, 15)}...`);
         
-        // For development, simulate successful payment
-        const paymentSuccess = true;
-        const txHash = 'dev_asra_' + Date.now();
+        // Check if we're in development mode (allow test mode)
+        const isDevEnvironment = process.env.NODE_ENV !== 'production';
+        const isTestMode = req.body.testMode === true && isDevEnvironment;
         
-        if (paymentSuccess) {
+        let paymentResult;
+        let txHash;
+        
+        if (isTestMode) {
+            // Test mode - simulate successful payment for development
+            console.log(`🧪 TEST MODE: Simulating ASRA payment`);
+            paymentResult = { success: true };
+            txHash = 'dev_asra_' + Date.now();
+        } else {
+            // REAL MODE: Check for actual ASRA payment on blockchain
+            console.log(`🔍 Checking blockchain for ASRA payment...`);
+            paymentResult = await checkAsraPayment(walletAddress, ASRA_PAYMENT_AMOUNT);
+            txHash = paymentResult.txHash || paymentResult.hash || null;
+        }
+        
+        if (paymentResult.success) {
             const now = new Date().toISOString();
             
             user.hasPaid = true;
@@ -1521,6 +1730,7 @@ app.post('/api/pay-with-asra/:userId', async (req, res) => {
             
             console.log(`✅ ASRA payment successful: ${userId}`);
             console.log(`   Amount: ${ASRA_PAYMENT_AMOUNT} ASRA`);
+            console.log(`   TxHash: ${txHash}`);
             console.log(`   Total ASRA spent: ${user.totalAsraSpent}`);
             
             res.json({
@@ -1531,13 +1741,18 @@ app.post('/api/pay-with-asra/:userId', async (req, res) => {
                 totalAsraSpent: user.totalAsraSpent,
                 message: 'ASRA payment confirmed! Real game started.',
                 reset: true,
-                txHash: txHash
+                txHash: txHash,
+                isReal: !isTestMode
             });
         } else {
+            console.log(`❌ ASRA payment not found for ${walletAddress.slice(0, 15)}...`);
             res.status(400).json({
                 success: false,
-                error: 'Payment processing failed',
-                message: 'ASRA payment could not be verified.'
+                error: 'ASRA payment not found',
+                message: `Please send ${ASRA_PAYMENT_AMOUNT.toLocaleString()} ASRA to the master wallet first, then try again.`,
+                required: ASRA_PAYMENT_AMOUNT,
+                masterWallet: MASTER_WALLET_ADDRESS,
+                asraContract: ASRA_CONTRACT_ADDRESS
             });
         }
         
@@ -1757,8 +1972,13 @@ app.post('/api/game/start/:userId', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // Get user's shop settings
-        const shopData = user.shopData || { selected: 'gunmetal', purchased: [], asraProUsed: 0 };
+        // Get user's shop settings (VIP wallet: all coins purchased)
+        let shopData;
+        if (isVipWallet(user.connectedWallet)) {
+            shopData = { purchased: [...ALL_SHOP_COINS], selected: 'asra', asraProUsed: 0 };
+        } else {
+            shopData = user.shopData || { selected: 'gunmetal', purchased: [], asraProUsed: 0 };
+        }
         const userAsra = user.gameData?.asraScore || 0;
         
         // Calculate coin speed based on user's ASRA progress (10000 ASRA = 1 level)
@@ -1936,19 +2156,28 @@ app.get('/api/game/state/:userId', async (req, res) => {
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
-        
+
+        const isVip = isVipWallet(user.connectedWallet);
+        const now = new Date().getTime();
+        const shopData = isVip ? {
+            purchased: [...ALL_SHOP_COINS],
+            selected: 'asra',
+            purchaseTime: Object.fromEntries(ALL_SHOP_COINS.map(c => [c, now])),
+            asraProUsed: 0
+        } : (user.shopData || { purchased: [], selected: 'gunmetal' });
+
         res.json({
             success: true,
             gameState: {
                 asraScore: user.gameData?.asraScore || 0,
                 lastSaved: user.gameData?.lastSaved
             },
-            shopData: user.shopData || { purchased: [], selected: 'gunmetal' },
-            hasPaid: user.hasPaid || false,
-            paymentType: user.paymentType || null,
+            shopData,
+            hasPaid: user.hasPaid || isVip || false,
+            paymentType: user.paymentType || (isVip ? 'vip' : null),
             totalAsraSpent: user.totalAsraSpent || 0
         });
-        
+
     } catch (error) {
         console.error('Get game state error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -2016,7 +2245,7 @@ app.get('/api/load-game/:userId', async (req, res) => {
         res.json({
             success: true,
             asraScore: user.gameData?.asraScore || 0,
-            hasPaid: user.hasPaid || false,
+            hasPaid: user.hasPaid || isVipWallet(user.connectedWallet) || false,
             note: 'Use /api/game/state for new clients'
         });
         
@@ -2040,15 +2269,26 @@ app.get('/api/shop/:userId', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // Return shop data (purchased items with expiration)
-        const shopData = user.shopData || {
-            purchased: [],
-            selected: 'gunmetal',
-            purchaseTime: {},
-            asraProUsed: 0  // Track how much TON was earned with ASRA PRO
-        };
+        // VIP wallet: all shop coins purchased when this wallet is connected
+        let shopData;
+        if (isVipWallet(user.connectedWallet)) {
+            const now = new Date().getTime();
+            shopData = {
+                purchased: [...ALL_SHOP_COINS],
+                selected: 'asra',
+                purchaseTime: Object.fromEntries(ALL_SHOP_COINS.map(c => [c, now])),
+                asraProUsed: 0
+            };
+        } else {
+            shopData = user.shopData || {
+                purchased: [],
+                selected: 'gunmetal',
+                purchaseTime: {},
+                asraProUsed: 0  // Track how much TON was earned with ASRA PRO
+            };
+        }
         
-        // Filter out expired items (30 days)
+        // Filter out expired items (30 days) - skip for VIP
         const now = new Date().getTime();
         const thirtyDays = 30 * 24 * 60 * 60 * 1000;
         
@@ -2723,10 +2963,11 @@ app.post('/api/daily-bonus/claim/:userId', async (req, res) => {
         console.log(`   shopData: ${JSON.stringify(user.shopData)}`);
         console.log(`   purchased: ${user.shopData?.purchased?.length || 0} items`);
         
-        // Check if user has paid 1 TON or bought coins from shop
+        // Check if user has paid 1 TON or bought coins from shop (VIP wallet has full access)
         const hasBoughtCoins = user.shopData?.purchased?.length > 0;
         const hasPaid = user.hasPaid === true;
-        const canClaimBonus = hasPaid || hasBoughtCoins;
+        const isVip = isVipWallet(user.connectedWallet);
+        const canClaimBonus = hasPaid || hasBoughtCoins || isVip;
         
         console.log(`   hasPaid (strict): ${hasPaid}`);
         console.log(`   hasBoughtCoins: ${hasBoughtCoins}`);
@@ -2813,9 +3054,10 @@ app.post('/api/daily-bonus/claim-leader/:userId', async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // Check if user has paid 1 TON or bought coins from shop
+        // Check if user has paid 1 TON or bought coins from shop (VIP wallet has full access)
         const hasBoughtCoins = user.shopData?.purchased?.length > 0;
-        if (!user.hasPaid && !hasBoughtCoins) {
+        const isVip = isVipWallet(user.connectedWallet);
+        if (!user.hasPaid && !hasBoughtCoins && !isVip) {
             return res.status(403).json({ 
                 error: 'Demo version - Pay 1 TON or buy coins to claim leader bonus',
                 demo: true
