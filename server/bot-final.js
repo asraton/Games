@@ -3,9 +3,9 @@ const { userDB } = require('./jsonDB.js');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 // GAME_URL - Railway URL (backend + frontend together)
-const GAME_URL = (process.env.GAME_URL || 'https://asracoin.up.railway.app').trim();
+const GAME_URL = (process.env.GAME_URL || 'https://asratongames.up.railway.app').trim();
 // WEBHOOK_URL - Backend URL, Telegram sends updates here
-const WEBHOOK_URL = (process.env.WEBHOOK_URL || 'https://asracoin.up.railway.app/bot-webhook').trim();
+const WEBHOOK_URL = (process.env.WEBHOOK_URL || 'https://asratongames.up.railway.app/bot-webhook').trim();
 
 const useWebhook = process.env.USE_WEBHOOK === 'true';
 

@@ -114,7 +114,7 @@ const ASRA_CONTRACT_ADDRESS = process.env.ASRA_CONTRACT_ADDRESS || 'EQA8Mx1E9_RX
 
 // Game URL for Telegram notifications
 const GAME_URL = process.env.GAME_URL || 'https://asracoin.up.railway.app';
-const TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'ASRACoinBot';
+const TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'asratonbot';
 
 // VIP wallet - when connected: all shop coins purchased, real game active
 const VIP_WALLET = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
