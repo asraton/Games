@@ -1912,13 +1912,23 @@ function calculateCoinSpeed(userLevel, selectedCoin) {
     return baseSpeed + (coin.speedBonus || 0);
 }
 
+// Coin color to coin type mapping
+const COIN_COLOR_MAP = {
+    'pulse-yellow': 'yellow',    // +30 ASRA
+    'pulse-red': 'red',          // -100 ASRA (penalty)
+    'pulse-green': 'green',      // +5 ASRA
+    'pulse-blue': 'blue',        // +2 ASRA
+    'pulse-cyan': 'pink',        // +10 ASRA
+    'pulse-purple': 'pink',      // +10 ASRA
+    'pulse-orange': 'yellow'     // +30 ASRA
+};
+
 // Calculate reward for catching a coin (SERVER-SIDE - anti-cheat)
 function calculateReward(coinColor, shopData) {
-    const isRed = coinColor === 'pulse-red';
     const selectedCoin = shopData.selected || 'gunmetal';
     const isAsraPro = selectedCoin === 'asra' && shopData.purchased.includes('asra');
     
-    // ASRA PRO has no penalty and gives +99 asra
+    // ASRA PRO: all coins give +99 ASRA, no penalties
     if (isAsraPro && COIN_CONFIG.asra.noPenalty) {
         if ((shopData.asraProUsed || 0) >= GAME_CONSTANTS.ASRA_PRO_LIMIT) {
             return { type: 'limit_reached', reward: 0 };
@@ -1926,14 +1936,25 @@ function calculateReward(coinColor, shopData) {
         return { type: 'asra_pro', reward: COIN_CONFIG.asra.price, trackTon: true };
     }
     
-    // Red coin penalty (-100 for all coins except ASRA PRO)
-    if (isRed) {
+    // Map coin color to coin type
+    const coinType = COIN_COLOR_MAP[coinColor] || 'gunmetal';
+    
+    // Red coin penalty (-100 ASRA)
+    if (coinType === 'red') {
         return { type: 'penalty', reward: -GAME_CONSTANTS.RED_PENALTY };
     }
     
-    // Normal reward based on coin price (gunmetal=+1, blue=+2, green=+5, etc.)
-    const coinConfig = COIN_CONFIG[selectedCoin] || COIN_CONFIG.gunmetal;
-    const reward = coinConfig.price || 1; // gunmetal price is 0, so default to 1
+    // Check if user owns this coin type (or it's free gunmetal)
+    const isOwned = coinType === 'gunmetal' || shopData.purchased.includes(coinType);
+    
+    if (!isOwned) {
+        // User doesn't own this coin - fallback to gunmetal (+1 ASRA)
+        return { type: 'fallback', reward: 1, message: 'Coin not owned, using default' };
+    }
+    
+    // Normal reward based on coin type's price
+    const coinConfig = COIN_CONFIG[coinType] || COIN_CONFIG.gunmetal;
+    const reward = coinConfig.price || 1;
     return { type: 'normal', reward: reward === 0 ? 1 : reward };
 }
 
