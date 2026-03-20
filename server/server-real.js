@@ -1150,6 +1150,71 @@ if (process.env.NODE_ENV !== 'production') {
     });
 }
 
+// Webhook setup endpoint
+app.post('/api/setup-webhook', async (req, res) => {
+    try {
+        const { token, url } = req.body;
+        
+        if (!token) {
+            return res.status(400).json({ error: 'Token required' });
+        }
+        
+        const webhookUrl = url || process.env.WEBHOOK_URL || (process.env.GAME_URL + '/bot-webhook');
+        
+        const TelegramBot = require('node-telegram-bot-api');
+        const bot = new TelegramBot(token);
+        
+        // Delete old webhook first
+        await bot.deleteWebHook();
+        
+        // Set new webhook
+        const result = await bot.setWebHook(webhookUrl);
+        
+        // Get webhook info
+        const info = await bot.getWebHookInfo();
+        
+        res.json({
+            success: result,
+            webhookUrl: webhookUrl,
+            webhookInfo: info
+        });
+        
+    } catch (error) {
+        console.error('Webhook setup error:', error);
+        res.status(500).json({ 
+            error: 'Webhook setup failed', 
+            message: error.message 
+        });
+    }
+});
+
+// Get webhook info endpoint
+app.get('/api/webhook-info', async (req, res) => {
+    try {
+        const token = req.query.token || process.env.TELEGRAM_BOT_TOKEN;
+        
+        if (!token) {
+            return res.status(400).json({ error: 'Token required. Provide ?token=YOUR_TOKEN' });
+        }
+        
+        const TelegramBot = require('node-telegram-bot-api');
+        const bot = new TelegramBot(token);
+        const info = await bot.getWebHookInfo();
+        
+        res.json({
+            success: true,
+            webhookInfo: info
+        });
+        
+    } catch (error) {
+        console.error('Webhook info error:', error);
+        res.status(500).json({ 
+            error: 'Failed to get webhook info', 
+            message: error.message 
+        });
+    }
+});
+
 // Debug endpoint - View TON Center transactions (ONLY in development mode)
 if (process.env.NODE_ENV !== 'production') {
     app.get('/api/debug/toncenter', async (req, res) => {

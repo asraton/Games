@@ -1735,7 +1735,23 @@
         async function startNewGame() {
             if (!userId) {
                 console.log('⚠️ No userId, cannot start game');
+                Swal.fire({
+                    text: 'Please open game via Telegram',
+                    icon: 'warning',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    width: '250px',
+                    position: 'center'
+                });
                 return;
+            }
+            
+            // Show loading state on button
+            const stopBtn = document.getElementById('stop-btn');
+            const originalText = stopBtn ? stopBtn.textContent : 'START';
+            if (stopBtn) {
+                stopBtn.textContent = 'LOADING...';
+                stopBtn.style.opacity = '0.7';
             }
             
             try {
@@ -1743,6 +1759,10 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
+                
+                if (!response.ok) {
+                    throw new Error('Server error: ' + response.status);
+                }
                 
                 const data = await response.json();
                 
@@ -1755,14 +1775,33 @@
                     
                     updateDisplay();
                     
-                    stopBtn.textContent = 'STOP';
-                    stopBtn.style.color = '#ff4757';
-                    stopBtn.classList.add('stop-mode');
+                    if (stopBtn) {
+                        stopBtn.textContent = 'STOP';
+                        stopBtn.style.color = '#ff4757';
+                        stopBtn.style.opacity = '1';
+                        stopBtn.classList.add('stop-mode');
+                    }
                     
                     showCoin();
+                } else {
+                    throw new Error(data.error || 'Failed to start game');
                 }
             } catch (err) {
                 console.error('❌ Start game error:', err);
+                // Reset button state
+                if (stopBtn) {
+                    stopBtn.textContent = originalText;
+                    stopBtn.style.opacity = '1';
+                }
+                // Show error to user
+                Swal.fire({
+                    text: 'Error starting game. Please try again.',
+                    icon: 'error',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    width: '250px',
+                    position: 'center'
+                });
             }
         }
 
@@ -1847,8 +1886,8 @@
             }
         }
 
-        // Event listeners
-        stopBtn.addEventListener('click', toggleGame);
+        // Event listeners - moved inside DOMContentLoaded to ensure elements exist
+        // stopBtn.addEventListener('click', toggleGame); // Moved to DOMContentLoaded
 
         // Coin click - prevent text selection
         coin.addEventListener('click', catchCoin);
@@ -2078,6 +2117,34 @@
             const modalBody = document.getElementById('modal-body');
             const modalTitle = document.getElementById('modal-title');
             const closeModal = modal.querySelector('.close-modal');
+            
+            // START button event listener - moved here to ensure DOM is ready
+            const stopBtnInDOM = document.getElementById('stop-btn');
+            if (stopBtnInDOM) {
+                stopBtnInDOM.addEventListener('click', async () => {
+                    if (gameActive) {
+                        stopGame();
+                    } else {
+                        if (!userId) {
+                            Swal.fire({
+                                text: 'Please open game via Telegram',
+                                icon: 'warning',
+                                timer: 2000,
+                                showConfirmButton: false,
+                                width: '250px',
+                                position: 'center'
+                            });
+                            return;
+                        }
+                        if (isFirstStart) {
+                            await startNewGame();
+                            isFirstStart = false;
+                        } else {
+                            await resumeGame();
+                        }
+                    }
+                });
+            }
 
             // Show demo version modal with payment info
             function showDemoModal(buttonName) {
