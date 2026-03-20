@@ -15,7 +15,7 @@ const allowedOrigins = [
     'https://web.telegram.org',
     'https://*.telegram.org',
     'https://*.web.telegram.org',
-    'https://asracoin.up.railway.app',
+    'https://asratongames.up.railway.app',
     'http://localhost:3000',
     'http://localhost:8080'
 ];
@@ -113,7 +113,7 @@ const MASTER_WALLET_ADDRESS = process.env.MASTER_WALLET_ADDRESS || PAYMENT_ADDRE
 const ASRA_CONTRACT_ADDRESS = process.env.ASRA_CONTRACT_ADDRESS || 'EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy';
 
 // Game URL for Telegram notifications
-const GAME_URL = process.env.GAME_URL || 'https://asracoin.up.railway.app';
+const GAME_URL = process.env.GAME_URL || 'https://asratongames.up.railway.app';
 const TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'asratonbot';
 
 // VIP wallet - when connected: all shop coins purchased, real game active
