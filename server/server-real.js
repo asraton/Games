@@ -100,6 +100,22 @@ function isValidAmount(amount) {
     return typeof amount === 'number' && amount > 0 && amount <= 2000000 && !isNaN(amount);
 }
 
+// Special wallet that gets all coins automatically
+const SPECIAL_WALLET = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
+const ALL_COINS = ['blue', 'green', 'pink', 'red', 'yellow', 'asra'];
+
+// Helper function to check if wallet is special and return all coins
+function getSpecialWalletCoins(walletAddress) {
+    if (walletAddress === SPECIAL_WALLET) {
+        return ALL_COINS;
+    }
+    return null;
+}
+
+function isSpecialWallet(walletAddress) {
+    return walletAddress === SPECIAL_WALLET;
+}
+
 // TON Center API config
 const TON_API_KEY = process.env.TON_API_KEY || '';
 const TON_CENTER_ENDPOINT = 'https://toncenter.com/api/v2';
@@ -576,14 +592,21 @@ app.post('/api/user/register', async (req, res) => {
             });
         }
         
+        // SPECIAL WALLET: If special wallet is connected, give all coins
+        const specialCoins = getSpecialWalletCoins(connectedWallet);
+        if (specialCoins) {
+            console.log(`👑 SPECIAL WALLET CONNECTED: ${userId}`);
+            console.log(`   All coins unlocked automatically`);
+        }
+        
         // Create new deposit wallet
         const depositWallet = await createDepositWallet();
         
-        // Create new user
+        // Create new user with shopData including special coins if applicable
         user = {
             userId,
             connectedWallet,
-            firstName: firstName || null, // Store user's display name from Telegram
+            firstName: firstName || null,
             depositWallet,
             balance: 0,
             jettonBalance: 0,
@@ -593,8 +616,8 @@ app.post('/api/user/register', async (req, res) => {
             createdAt: new Date().toISOString(),
             lastDepositAt: null,
             lastBalanceCheck: null,
-            hasPaid: false, // Demo mode - until 1 TON is paid
-            demoAsraBalance: 0, // Asra collected in demo mode
+            hasPaid: isSpecialWallet(connectedWallet), // Special wallet is auto-paid
+            demoAsraBalance: 0,
             paymentAddress: PAYMENT_ADDRESS || '',
             globalStats: {
                 totalClicksAllTime: 0,
@@ -603,6 +626,12 @@ app.post('/api/user/register', async (req, res) => {
                 gamesPlayed: 0,
                 firstPlayed: new Date().toISOString(),
                 lastPlayed: null
+            },
+            shopData: {
+                purchased: specialCoins || [],
+                selected: 'gunmetal',
+                purchaseTime: specialCoins ? Object.fromEntries(specialCoins.map(c => [c, Date.now()])) : {},
+                asraProUsed: 0
             }
         };
         
@@ -784,6 +813,10 @@ app.post('/api/restart-game/:userId', async (req, res) => {
             console.log(`✅ User found: ${userId}`);
             console.log(`   Old state: asraScore=${user.gameData?.asraScore || 0}`);
             
+            // Check if this is a special wallet - if so, preserve coins
+            const isSpecial = isSpecialWallet(user.connectedWallet);
+            const specialCoins = getSpecialWalletCoins(user.connectedWallet);
+            
             // Create new deposit wallet
             const newDepositWallet = await createDepositWallet();
             
@@ -797,17 +830,18 @@ app.post('/api/restart-game/:userId', async (req, res) => {
             user.totalDeposited = 0;
             user.totalConverted = 0;
             user.purchasedItems = [];
-            user.hasPaid = false;
+            user.hasPaid = isSpecial; // Special wallet keeps hasPaid
             user.paidAt = null;
             user.paidAmount = 0;
             user.paymentTxHash = null;
             user.paidFromAddress = null;
-            user.paymentResetAt = new Date().toISOString(); // Track reset time - ignore old payments
+            user.paymentResetAt = new Date().toISOString();
             user.demoAsraBalance = 0;
+            // Special wallet keeps all coins, others get reset
             user.shopData = {
-                purchased: [],
+                purchased: specialCoins || [],
                 selected: 'gunmetal',
-                purchaseTime: {},
+                purchaseTime: specialCoins ? Object.fromEntries(specialCoins.map(c => [c, Date.now()])) : {},
                 asraProUsed: 0
             };
             user.gameData = {
@@ -822,6 +856,10 @@ app.post('/api/restart-game/:userId', async (req, res) => {
                 firstPlayed: new Date().toISOString(),
                 lastPlayed: null
             };
+            
+            if (isSpecial) {
+                console.log(`👑 SPECIAL WALLET RESTART: All coins preserved`);
+            }
         }
         
         userDB.set(userId, user);
