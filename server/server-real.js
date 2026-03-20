@@ -97,7 +97,7 @@ function isValidTonAddress(address) {
 }
 
 function isValidAmount(amount) {
-    return typeof amount === 'number' && amount > 0 && amount <= 10000 && !isNaN(amount);
+    return typeof amount === 'number' && amount > 0 && amount <= 2000000 && !isNaN(amount);
 }
 
 // TON Center API config
