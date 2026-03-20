@@ -74,7 +74,7 @@ function initBot(app) {
 🎮 *Welcome to ASRA Coin game!*
 
 💰 Click coins to collect ASRA in this game
-💸 Withdraw collected TON
+💸 Withdraw collected ASRA
 
 ⬇️ Click the button to play:`;
 

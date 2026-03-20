@@ -1733,8 +1733,10 @@
 
         // INDUSTRY STANDARD: Start game session on server
         async function startNewGame() {
+            console.log('🎮 [START] startNewGame called. userId:', userId, 'isLoadingData:', isLoadingData);
+            
             if (!userId) {
-                console.log('⚠️ No userId, cannot start game');
+                console.log('⚠️ [START] No userId, cannot start game');
                 Swal.fire({
                     text: 'Please open game via Telegram',
                     icon: 'warning',
@@ -1755,16 +1757,20 @@
             }
             
             try {
+                console.log('📡 [START] Sending request to:', API_BASE + '/game/start/' + userId);
                 const response = await fetch(API_BASE + '/game/start/' + userId, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
+                
+                console.log('📦 [START] Response status:', response.status);
                 
                 if (!response.ok) {
                     throw new Error('Server error: ' + response.status);
                 }
                 
                 const data = await response.json();
+                console.log('📦 [START] Response data:', data);
                 
                 if (data.success) {
                     // Update local state from server
@@ -1782,12 +1788,13 @@
                         stopBtn.classList.add('stop-mode');
                     }
                     
+                    console.log('✅ [START] Game started successfully!');
                     showCoin();
                 } else {
                     throw new Error(data.error || 'Failed to start game');
                 }
             } catch (err) {
-                console.error('❌ Start game error:', err);
+                console.error('❌ [START] Start game error:', err);
                 // Reset button state
                 if (stopBtn) {
                     stopBtn.textContent = originalText;
@@ -1953,6 +1960,23 @@
                 });
             }
         }, 30000);
+        
+        // FIX: Reload data when app becomes visible (after restart)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && userId) {
+                console.log('🔄 [VISIBILITY] App visible, reloading game data...');
+                // Stop game if active
+                if (gameActive) {
+                    stopGame();
+                }
+                // Reload game state from server
+                loadGameState().then(data => {
+                    asraScore = data.asraScore;
+                    updateDisplay();
+                    console.log('✅ [VISIBILITY] Data reloaded:', { asraScore });
+                });
+            }
+        });
         
         // First read name from URL (comes from Telegram WebApp)
         let firstName = urlFirstName;
@@ -2122,10 +2146,12 @@
             const stopBtnInDOM = document.getElementById('stop-btn');
             if (stopBtnInDOM) {
                 stopBtnInDOM.addEventListener('click', async () => {
+                    console.log('🎮 [BUTTON] START/STOP clicked. gameActive:', gameActive, 'isLoadingData:', isLoadingData);
                     if (gameActive) {
                         stopGame();
                     } else {
                         if (!userId) {
+                            console.log('❌ [BUTTON] No userId!');
                             Swal.fire({
                                 text: 'Please open game via Telegram',
                                 icon: 'warning',
@@ -2136,14 +2162,30 @@
                             });
                             return;
                         }
+                        if (isLoadingData) {
+                            console.log('⏳ [BUTTON] Waiting for data to load...');
+                            Swal.fire({
+                                text: 'Loading data, please wait...',
+                                icon: 'info',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                width: '250px',
+                                position: 'center'
+                            });
+                            return;
+                        }
                         if (isFirstStart) {
+                            console.log('🎮 [BUTTON] Starting new game...');
                             await startNewGame();
                             isFirstStart = false;
                         } else {
+                            console.log('🎮 [BUTTON] Resuming game...');
                             await resumeGame();
                         }
                     }
                 });
+            } else {
+                console.error('❌ [BUTTON] stop-btn element not found!');
             }
 
             // Show demo version modal with payment info
