@@ -2053,9 +2053,60 @@ app.post('/api/game/start/:userId', async (req, res) => {
             return res.status(400).json({ error: 'userId required' });
         }
         
-        const user = userDB.get(userId);
+        let user = userDB.get(userId);
+        
+        // Auto-create user if not exists (like check-payment endpoint)
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            console.log(`🆕 Auto-creating user for game start: ${userId}`);
+            const depositWallet = await createDepositWallet();
+            
+            user = {
+                userId,
+                connectedWallet: null,
+                depositWallet,
+                balance: 0,
+                jettonBalance: 0,
+                totalDeposited: 0,
+                totalConverted: 0,
+                purchasedItems: [],
+                createdAt: new Date().toISOString(),
+                lastDepositAt: null,
+                lastBalanceCheck: null,
+                hasPaid: false,
+                demoAsraBalance: 0,
+                paymentAddress: PAYMENT_ADDRESS || '',
+                globalStats: {
+                    totalClicksAllTime: 0,
+                    totalCoinsCollected: 0,
+                    totalTonEarned: 0,
+                    gamesPlayed: 0,
+                    firstPlayed: new Date().toISOString(),
+                    lastPlayed: null
+                },
+                gameData: {
+                    asraScore: 0,
+                    lastSaved: null
+                },
+                shopData: {
+                    purchased: [],
+                    selected: 'gunmetal',
+                    purchaseTime: {},
+                    asraProUsed: 0
+                },
+                referralData: {
+                    referredBy: null,
+                    referrals: [],
+                    totalReferralEarnings: 0
+                },
+                dailyBonus: {
+                    lastClaimed: null,
+                    streak: 0,
+                    totalClaimed: 0
+                }
+            };
+            
+            userDB.set(userId, user);
+            console.log(`✅ New user created for game start: ${userId}`);
         }
         
         // VIP wallet: full access when this wallet is connected (all coins unlocked)
