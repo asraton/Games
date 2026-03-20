@@ -1985,23 +1985,14 @@ function calculateCoinSpeed(userLevel, selectedCoin) {
     return baseSpeed + (coin.speedBonus || 0);
 }
 
-// Coin color to coin type mapping
-const COIN_COLOR_MAP = {
-    'pulse-yellow': 'yellow',    // +30 ASRA
-    'pulse-red': 'red',          // -100 ASRA (penalty)
-    'pulse-green': 'green',      // +5 ASRA
-    'pulse-blue': 'blue',        // +2 ASRA
-    'pulse-cyan': 'pink',        // +10 ASRA
-    'pulse-purple': 'pink',      // +10 ASRA
-    'pulse-orange': 'yellow'     // +30 ASRA
-};
-
 // Calculate reward for catching a coin (SERVER-SIDE - anti-cheat)
+// NOTE: coinColor is visual effect (pulse-*), reward based on shopData.selected
+// EXCEPTION: pulse-red always gives -100 penalty (unless ASRA PRO)
 function calculateReward(coinColor, shopData, isVip = false) {
     const selectedCoin = shopData.selected || 'gunmetal';
     const isAsraPro = selectedCoin === 'asra' && shopData.purchased.includes('asra');
     
-    // ASRA PRO: all coins give +99 ASRA, no penalties
+    // ASRA PRO: all coins give +99 ASRA, no penalties (even visual red)
     if (isAsraPro && COIN_CONFIG.asra.noPenalty) {
         if ((shopData.asraProUsed || 0) >= GAME_CONSTANTS.ASRA_PRO_LIMIT) {
             return { type: 'limit_reached', reward: 0 };
@@ -2009,13 +2000,15 @@ function calculateReward(coinColor, shopData, isVip = false) {
         return { type: 'asra_pro', reward: COIN_CONFIG.asra.price, trackTon: true };
     }
     
-    // Map coin color to coin type
-    const coinType = COIN_COLOR_MAP[coinColor] || 'gunmetal';
-    
-    // Red coin penalty (-100 ASRA)
-    if (coinType === 'red') {
+    // Visual red coin (pulse-red) ALWAYS gives -100 ASRA penalty
+    // Regardless of which shop coin is selected
+    if (coinColor === 'pulse-red') {
         return { type: 'penalty', reward: -GAME_CONSTANTS.RED_PENALTY };
     }
+    
+    // For other visual colors: reward is based on SELECTED coin from shop
+    // CSS pulse-* colors are just visual effects (except red)
+    const coinType = selectedCoin;
     
     // Check if user owns this coin type (or it's free gunmetal, or VIP)
     const isOwned = coinType === 'gunmetal' || shopData.purchased.includes(coinType) || isVip;
@@ -2025,7 +2018,7 @@ function calculateReward(coinColor, shopData, isVip = false) {
         return { type: 'fallback', reward: 1, message: 'Coin not owned, using default' };
     }
     
-    // Normal reward based on coin type's price
+    // Normal reward based on selected coin type's price
     const coinConfig = COIN_CONFIG[coinType] || COIN_CONFIG.gunmetal;
     const reward = coinConfig.price || 1;
     return { type: 'normal', reward: reward === 0 ? 1 : reward };
