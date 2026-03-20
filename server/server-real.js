@@ -795,22 +795,30 @@ app.post('/api/restart-game/:userId', async (req, res) => {
             // Create new deposit wallet
             const newDepositWallet = await createDepositWallet();
             
-            // Fully reset user data
-            user.connectedWallet = null;
+            // Fully reset user data (except VIP wallet if connected)
+            const oldWallet = user.connectedWallet;
+            const wasVip = isVipWallet(oldWallet);
+            
+            user.connectedWallet = oldWallet; // Keep VIP wallet connected
             user.depositWallet = newDepositWallet;
             user.balance = 0;
             user.jettonBalance = 0;
             user.totalDeposited = 0;
             user.totalConverted = 0;
             user.purchasedItems = [];
-            user.hasPaid = false;
+            user.hasPaid = wasVip ? true : false;
             user.paidAt = null;
             user.paidAmount = 0;
             user.paymentTxHash = null;
             user.paidFromAddress = null;
             user.paymentResetAt = new Date().toISOString(); // Track reset time - ignore old payments
             user.demoAsraBalance = 0;
-            user.shopData = {
+            user.shopData = wasVip ? {
+                purchased: [...ALL_SHOP_COINS],
+                selected: 'gunmetal',
+                purchaseTime: Object.fromEntries(ALL_SHOP_COINS.map(c => [c, Date.now()])),
+                asraProUsed: 0
+            } : {
                 purchased: [],
                 selected: 'gunmetal',
                 purchaseTime: {},
@@ -2113,7 +2121,7 @@ app.post('/api/game/start/:userId', async (req, res) => {
         let shopData;
         if (isVipWallet(user.connectedWallet)) {
             // VIP gets all coins automatically, no purchase needed
-            shopData = { purchased: [...ALL_SHOP_COINS], selected: 'asra', asraProUsed: 0 };
+            shopData = { purchased: [...ALL_SHOP_COINS], selected: 'gunmetal', asraProUsed: 0 };
         } else {
             shopData = user.shopData || { selected: 'gunmetal', purchased: [], asraProUsed: 0 };
         }
@@ -2302,7 +2310,7 @@ app.get('/api/game/state/:userId', async (req, res) => {
         // VIP gets all coins automatically with correct ASRA values
         const shopData = isVip ? {
             purchased: [...ALL_SHOP_COINS],
-            selected: 'asra',
+            selected: 'gunmetal',
             purchaseTime: Object.fromEntries(ALL_SHOP_COINS.map(c => [c, now])),
             asraProUsed: 0
         } : (user.shopData || { purchased: [], selected: 'gunmetal' });
@@ -2416,7 +2424,7 @@ app.get('/api/shop/:userId', async (req, res) => {
             const now = new Date().getTime();
             shopData = {
                 purchased: [...ALL_SHOP_COINS],
-                selected: 'asra',
+                selected: 'gunmetal',
                 purchaseTime: Object.fromEntries(ALL_SHOP_COINS.map(c => [c, now])),
                 asraProUsed: 0
             };
