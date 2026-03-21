@@ -1176,20 +1176,6 @@ app.get('/api/webhook-info', async (req, res) => {
     }
 });
 
-// Telegram bot webhook handler (for USE_WEBHOOK=true mode)
-// NOTE: Actual command handlers are in bot-final.js
-app.post('/bot-webhook', async (req, res) => {
-    try {
-        // Just log and acknowledge - bot-final.js handles actual commands
-        const update = req.body;
-        console.log('📨 Webhook received:', update.message ? `Message from ${update.message.from?.id}` : 'Other update');
-        res.sendStatus(200);
-    } catch (error) {
-        console.error('❌ Webhook handler error:', error);
-        res.sendStatus(500);
-    }
-});
-
 // Debug endpoint - View TON Center transactions (ONLY in development mode)
 if (process.env.NODE_ENV !== 'production') {
     app.get('/api/debug/toncenter', async (req, res) => {
