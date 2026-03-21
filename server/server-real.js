@@ -317,7 +317,7 @@ async function sendAsraJetton(toAddress, amount) {
         
         // Jetton transfer message body (internal message to jetton wallet)
         // op::transfer = 0xf8a7ea5
-        // Based on successful transaction: forward_ton_amount = 1 nanoTON
+        // Based on TonWeb working example: forward_ton_amount = 0.01 TON
         const transferBody = beginCell()
             .storeUint(0xf8a7ea5, 32) // op: transfer
             .storeUint(0, 64) // query_id
@@ -325,7 +325,7 @@ async function sendAsraJetton(toAddress, amount) {
             .storeAddress(Address.parse(toAddress))
             .storeAddress(Address.parse(MASTER_WALLET_ADDRESS)) // response address
             .storeBit(false) // custom payload (null)
-            .storeCoins(1n) // forward ton amount: 1 nanoTON (as in successful tx)
+            .storeCoins(toNano(0.01)) // forward ton amount: 0.01 TON (10,000,000 nanoTON)
             .storeBit(false) // forward payload (null)
             .endCell();
         
