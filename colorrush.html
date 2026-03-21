@@ -2377,6 +2377,119 @@
                 }
             });
 
+            // Pay with ASRA - from Wallet panel
+            document.getElementById('btn-pay-with-asra').addEventListener('click', async () => {
+                walletPanel.classList.remove('open');
+                
+                // Get config
+                const config = configData || await loadConfig();
+                const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                
+                // ASRA Token contract (Jetton master)
+                const ASRA_TOKEN_CONTRACT = 'EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy';
+                
+                // Create ASRA transfer URL (Jetton transfer via ton://)
+                const ASRA_TRANSFER_URL = `ton://transfer/${ASRA_TOKEN_CONTRACT}?amount=10000000000000&to=${PAYMENT_ADDRESS}&text=${firstName}_${userId}_ASRA_PAYMENT`;
+                const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(ASRA_TRANSFER_URL)}`;
+                
+                modalTitle.textContent = '';
+                modalBody.innerHTML = `
+                    <div style="text-align:center;padding:16px;">
+                        <p style="color:#00d2ff;font-size:16px;margin-bottom:12px;">💎 Pay with ASRA</p>
+                        <p style="color:#fff;font-size:24px;font-weight:bold;margin-bottom:8px;">10,000 ASRA</p>
+                        <p style="color:#888;font-size:11px;margin-bottom:12px;">
+                            Send 10,000 ASRA to unlock real game
+                        </p>
+                        
+                        <p style="color:#888;font-size:11px;margin-bottom:4px;">ASRA Token Contract:</p>
+                        <input type="text" value="${ASRA_TOKEN_CONTRACT}" readonly style="color:#fff;font-size:10px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
+                        
+                        <p style="color:#888;font-size:11px;margin-bottom:4px;">Payment address:</p>
+                        <input type="text" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:11px;margin-bottom:12px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
+                        
+                        <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
+                        
+                        <button id="pay-asra-wallet-btn" class="wallet-panel-btn btn-green" style="width:100%;">
+                            Open Wallet
+                        </button>
+                        
+                        <button class="wallet-panel-btn close-modal btn-red" style="width:100%;margin-top:12px;">
+                            Back
+                        </button>
+                    </div>
+                `;
+                modal.classList.add('open');
+                
+                // ASRA payment via wallet
+                document.getElementById('pay-asra-wallet-btn').addEventListener('click', async () => {
+                    if (tonConnectUI && connectedWalletAddress) {
+                        try {
+                            // Try to send Jetton transfer via TonConnect
+                            // This requires the wallet to support Jetton transfers
+                            const result = await tonConnectUI.sendTransaction({
+                                validUntil: Math.floor(Date.now() / 1000) + 600,
+                                messages: [{
+                                    address: ASRA_TOKEN_CONTRACT,
+                                    amount: '1', // minimal TON for gas
+                                    payload: 'te6ccs4EBQEAATgAAABQAAABZGVwb3NpdF9hc3JhX3BheW1lbnQ='
+                                }]
+                            });
+                            
+                            Swal.fire({
+                                text: 'Payment sent!',
+                                icon: 'success',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                width: '200px',
+                                position: 'center'
+                            });
+                            
+                            // Start checking for payment confirmation
+                            let autoCheckInterval;
+                            const startAutoCheck = () => {
+                                autoCheckInterval = setInterval(async () => {
+                                    try {
+                                        const res = await fetch(API_BASE + '/check-payment/' + userId);
+                                        const data = await res.json();
+                                        if (data.hasPaid) {
+                                            clearInterval(autoCheckInterval);
+                                            
+                                            modalBody.innerHTML = `
+                                                <div style="text-align:center;padding:16px;">
+                                                    <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ Payment confirmed!</p>
+                                                    <p style="color:#fff;font-size:13px;">New game started. All scores reset to 0.</p>
+                                                    <p style="color:#888;font-size:11px;margin-top:8px;">Auto-closing...</p>
+                                                </div>
+                                            `;
+                                            
+                                            setTimeout(() => {
+                                                modal.classList.remove('open');
+                                            }, 3000);
+                                            
+                                            asraScore = 0;
+                                            saveGameData();
+                                            updateDisplay();
+                                            stopGame();
+                                        }
+                                    } catch (e) {
+                                        // Error - checking continues
+                                    }
+                                }, 5000);
+                            };
+                            startAutoCheck();
+                            
+                        } catch (e) {
+                            // If Jetton transfer fails, open wallet directly
+                            window.location.href = ASRA_TRANSFER_URL;
+                        }
+                    } else if (tonConnectUI) {
+                        tonConnectUI.openModal();
+                    } else {
+                        window.location.href = ASRA_TRANSFER_URL;
+                    }
+                });
+            });
+
             // Withdraw ASRA
             document.getElementById('btn-ton-yechish').addEventListener('click', async () => {
                 walletPanel.classList.remove('open');
