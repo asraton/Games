@@ -103,7 +103,7 @@ function isValidAmount(amount) {
 // Special wallet that gets all coins automatically
 const SPECIAL_WALLET = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
 const ALL_COINS = ['blue', 'green', 'pink', 'red', 'yellow', 'asra'];
-const SPECIAL_WALLET_ASRA = 10000; // 10,000 ASRA for special wallet
+const SPECIAL_WALLET_ASRA = 20000; // 20,000 ASRA for special wallet
 
 // Helper function to check if wallet is special and return all coins
 function getSpecialWalletCoins(walletAddress) {
