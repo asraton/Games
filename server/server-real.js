@@ -353,7 +353,7 @@ async function sendAsraJetton(toAddress, amount) {
             messages: [
                 internal({
                     to: masterJettonWallet,
-                    value: toNano(0.15), // Gas for jetton transfer (0.05) + forward (0.05) + extra (0.05)
+                    value: toNano(0.3), // Gas: base + forward_ton_amount (0.01) + extra margin, excess returns to master
                     body: transferBody
                 })
             ]

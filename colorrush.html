@@ -2621,6 +2621,10 @@
                             updateDisplay();
                             await forceSaveGameData(); // Immediate save after withdrawal
                             
+                            // Fetch fresh data from server to ensure UI is up to date
+                            await loadGameData();
+                            updateDisplay();
+                            
                             modalBody.innerHTML = `
                                 <div style="text-align:center;padding:16px;">
                                     <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ ${amount.toLocaleString()} ASRA sent!</p>
@@ -2651,11 +2655,11 @@
                         withdrawBtn.style.opacity = '1';
                         
                         Swal.fire({
-                            text: 'Try again',
-                            icon: 'error',
-                            timer: 1500,
+                            text: 'Processing... Check your wallet!',
+                            icon: 'info',
+                            timer: 3000,
                             showConfirmButton: false,
-                            width: '200px',
+                            width: '220px',
                             position: 'center'
                         });
                     }
