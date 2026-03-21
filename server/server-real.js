@@ -2410,16 +2410,8 @@ app.get('/api/shop/:userId', async (req, res) => {
             asraProUsed: 0
         };
         
-        // Filter out expired items (30 days)
-        const now = new Date().getTime();
-        const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-        
-        if (shopData.purchased && shopData.purchaseTime) {
-            shopData.purchased = shopData.purchased.filter(coin => {
-                const purchaseTime = shopData.purchaseTime[coin];
-                return purchaseTime && (now - purchaseTime < thirtyDays);
-            });
-        }
+        // DISABLED: 30-day expiration filter - now all coins are valid until monthly reset
+        // VIP wallet coins are always preserved
         
         res.json({
             success: true,
@@ -2915,6 +2907,116 @@ app.listen(PORT, async () => {
     // Initialize notification bot
     if (process.env.TELEGRAM_BOT_TOKEN) {
         initNotificationBot();
+    }
+    
+    // MONTHLY RESET: Schedule full database reset on 1st day of every month at 00:00
+    const scheduleMonthlyReset = () => {
+        const now = new Date();
+        const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0);
+        const timeUntilReset = nextReset - now;
+        
+        console.log(`📅 Monthly reset scheduled for: ${nextReset.toISOString()}`);
+        console.log(`   Time until reset: ${Math.floor(timeUntilReset / 1000 / 60 / 60)} hours`);
+        
+        setTimeout(() => {
+            performMonthlyReset();
+            // Schedule next month's reset
+            scheduleMonthlyReset();
+        }, timeUntilReset);
+    };
+    
+    // Start monthly reset scheduler
+    scheduleMonthlyReset();
+});
+
+// MONTHLY RESET FUNCTION: Clear all users except VIP wallet, reset everything
+async function performMonthlyReset() {
+    console.log('🔄 MONTHLY RESET STARTED - 1st day of month');
+    console.log('   Clearing all data except VIP wallet...');
+    
+    try {
+        const users = userDB.getAll();
+        const vipUsers = [];
+        let clearedCount = 0;
+        
+        for (const [userId, user] of Object.entries(users)) {
+            // Check if this is VIP wallet
+            if (isSpecialWallet(user.connectedWallet)) {
+                // VIP user - preserve but reset game data
+                console.log(`👑 VIP user preserved: ${userId}`);
+                vipUsers.push(userId);
+                
+                // Reset game data for VIP too (ASRA, stats)
+                user.gameData = {
+                    asraScore: 0,
+                    lastSaved: new Date().toISOString()
+                };
+                user.globalStats = {
+                    totalClicksAllTime: 0,
+                    totalCoinsCollected: 0,
+                    totalTonEarned: 0,
+                    gamesPlayed: 0,
+                    firstPlayed: new Date().toISOString(),
+                    lastPlayed: null
+                };
+                // VIP keeps shopData with all coins
+                user.shopData = {
+                    purchased: ALL_COINS,
+                    selected: 'gunmetal',
+                    purchaseTime: Object.fromEntries(ALL_COINS.map(c => [c, Date.now()])),
+                    asraProUsed: 0
+                };
+                userDB.set(userId, user);
+            } else {
+                // Regular user - completely delete
+                userDB.delete(userId);
+                clearedCount++;
+            }
+        }
+        
+        console.log(`✅ Monthly reset completed:`);
+        console.log(`   Cleared users: ${clearedCount}`);
+        console.log(`   VIP users preserved: ${vipUsers.length}`);
+        console.log(`   Total users after reset: ${vipUsers.length}`);
+        
+        // Send notification to admin/VIP if needed
+        const adminMessage = `🔄 Monthly Reset Completed\n\n📊 Statistics:\n• Cleared users: ${clearedCount}\n• VIP preserved: ${vipUsers.length}\n• Date: ${new Date().toISOString()}`;
+        
+        // Notify if there's a Telegram bot
+        if (telegramBot && process.env.ADMIN_CHAT_ID) {
+            try {
+                await telegramBot.sendMessage(process.env.ADMIN_CHAT_ID, adminMessage);
+            } catch (e) {
+                console.log('Could not send admin notification');
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Monthly reset error:', error);
+    }
+}
+
+// API endpoint to manually trigger monthly reset (admin only)
+app.post('/api/admin/monthly-reset', async (req, res) => {
+    try {
+        const { adminKey } = req.body;
+        
+        // Simple admin authentication
+        if (adminKey !== process.env.ADMIN_KEY) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        
+        await performMonthlyReset();
+        
+        res.json({
+            success: true,
+            message: 'Monthly reset completed',
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('Manual reset error:', error);
+        res.status(500).json({ error: 'Reset failed' });
     }
 });
 
