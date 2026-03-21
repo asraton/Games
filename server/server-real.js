@@ -416,52 +416,77 @@ async function checkAsraPayment(requiredAmount = 10000) {
         console.log(`   ASRA Contract: ${ASRA_CONTRACT_ADDRESS?.slice(0, 20)}...`);
         
         // Get transactions for payment address
-        const transactions = await getTransactions(PAYMENT_ADDRESS, 30);
+        const transactions = await getTransactions(PAYMENT_ADDRESS, 50);
         console.log(`   Found ${transactions.length} transactions`);
         
-        // Look for Jetton transfers
+        // Look for Jetton transfers in ALL incoming messages
         for (const tx of transactions) {
-            // Check incoming messages
-            if (tx.in_msg) {
-                const source = tx.in_msg.source;
-                const value = tx.in_msg.value;
-                
-                // Check if from ASRA contract (or related)
-                if (source && ASRA_CONTRACT_ADDRESS && 
-                    (source === ASRA_CONTRACT_ADDRESS || 
-                     source.includes(ASRA_CONTRACT_ADDRESS.slice(0, 30)))) {
+            if (tx.in_msg && tx.in_msg.msg_data && tx.in_msg.msg_data.body) {
+                try {
+                    const body = Buffer.from(tx.in_msg.msg_data.body, 'base64');
                     
-                    // Parse Jetton amount from body if available
-                    let jettonAmount = 0;
-                    if (tx.in_msg.msg_data && tx.in_msg.msg_data.body) {
-                        try {
-                            const body = Buffer.from(tx.in_msg.msg_data.body, 'base64');
-                            // Jetton transfer body: op(4) + query_id(8) + amount(var)
-                            // Amount starts at byte 12, encoded as Coins (var uint)
-                            if (body.length > 12) {
-                                // Try to read amount - simplified parsing
-                                const amountHex = body.slice(12, 20).toString('hex');
-                                jettonAmount = parseInt(amountHex, 16) || 0;
+                    // Jetton transfer body structure:
+                    // op (4 bytes) + query_id (8 bytes) + amount (var uint) + destination (MsgAddress) + ...
+                    // op code for transfer: 0xf8a7ea5
+                    
+                    if (body.length >= 12) {
+                        const op = body.readUInt32BE(0);
+                        
+                        // Check if it's a Jetton transfer (op code 0xf8a7ea5)
+                        if (op === 0xf8a7ea5) {
+                            console.log(`   🔍 Found Jetton transfer from ${tx.in_msg.source?.slice(0, 15)}...`);
+                            
+                            // Parse amount - it's after op(4) + query_id(8) = 12 bytes
+                            // Coins in TON are serialized as var uint (1-4 bytes prefix for length)
+                            let offset = 12;
+                            let amount = BigInt(0);
+                            
+                            // Read Coins (variable length uint)
+                            // First byte indicates length: 0x00-0x7F = 0-7 bytes follow
+                            if (body.length > offset) {
+                                const firstByte = body[offset];
+                                let length = 0;
+                                
+                                if (firstByte <= 0x7f) {
+                                    // Short format: value is in first 7 bits
+                                    length = firstByte;
+                                    offset += 1;
+                                } else {
+                                    // Long format: 0x80 + number of bytes to read
+                                    length = firstByte - 0x80;
+                                    if (length > 8) length = 8; // Max 8 bytes
+                                    offset += 1;
+                                    
+                                    // Read the actual value
+                                    for (let i = 0; i < length && offset < body.length; i++) {
+                                        amount = (amount << BigInt(8)) | BigInt(body[offset++]);
+                                    }
+                                }
+                                
+                                if (firstByte <= 0x7f) {
+                                    amount = BigInt(firstByte);
+                                }
                             }
-                        } catch (e) {
-                            jettonAmount = 0;
+                            
+                            // ASRA has 9 decimals
+                            const asraAmount = Number(amount) / 1e9;
+                            console.log(`   💰 Parsed amount: ${asraAmount} ASRA`);
+                            
+                            if (asraAmount >= requiredAmount) {
+                                console.log(`✅ ASRA payment found: ${asraAmount} ASRA`);
+                                return {
+                                    found: true,
+                                    hash: tx.transaction_id?.hash,
+                                    amount: asraAmount,
+                                    from: tx.in_msg.source,
+                                    time: tx.utime
+                                };
+                            }
                         }
                     }
-                    
-                    // ASRA has 9 decimals
-                    const asraAmount = jettonAmount / 1e9;
-                    console.log(`   ASRA Transfer: ${asraAmount} ASRA from ${source?.slice(0, 15)}...`);
-                    
-                    if (asraAmount >= requiredAmount) {
-                        console.log(`✅ ASRA payment found: ${asraAmount} ASRA`);
-                        return {
-                            found: true,
-                            hash: tx.transaction_id?.hash,
-                            amount: asraAmount,
-                            from: source,
-                            time: tx.utime
-                        };
-                    }
+                } catch (e) {
+                    // Skip transactions that can't be parsed
+                    continue;
                 }
             }
         }
