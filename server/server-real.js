@@ -289,17 +289,30 @@ async function sendAsraJetton(toAddress, amount) {
         const jettonAmount = BigInt(Math.floor(amount * Math.pow(10, decimals)));
         console.log(`   Jetton Amount: ${jettonAmount.toString()} (with ${decimals} decimals)`);
         
-        // Get master's jetton wallet address using @ton/ton JettonMaster
-        const { JettonMaster } = require('@ton/ton');
-        const jettonMaster = client.open(JettonMaster.create(Address.parse(ASRA_CONTRACT_ADDRESS)));
-        const masterJettonWallet = await jettonMaster.getWalletAddress(Address.parse(MASTER_WALLET_ADDRESS));
+        // Get master's jetton wallet address
+        let masterJettonWallet;
+        try {
+            // Option 1: Manual override via env (for new tokens that might not be indexed)
+            const manualJettonWallet = process.env.MASTER_JETTON_WALLET_ADDRESS;
+            if (manualJettonWallet) {
+                console.log(`   Using manual jetton wallet: ${manualJettonWallet.slice(0, 20)}...`);
+                masterJettonWallet = Address.parse(manualJettonWallet);
+            } else {
+                // Option 2: Calculate using JettonMaster
+                const { JettonMaster } = require('@ton/ton');
+                const jettonMaster = client.open(JettonMaster.create(Address.parse(ASRA_CONTRACT_ADDRESS)));
+                masterJettonWallet = await jettonMaster.getWalletAddress(Address.parse(MASTER_WALLET_ADDRESS));
+                console.log(`   Calculated jetton wallet: ${masterJettonWallet.toString()}`);
+            }
+        } catch (error) {
+            console.error('   Error getting jetton wallet:', error.message);
+            return { success: false, error: 'Failed to get master jetton wallet address: ' + error.message };
+        }
         
         if (!masterJettonWallet) {
             console.log('❌ Could not get master jetton wallet address');
             return { success: false, error: 'Master jetton wallet not found' };
         }
-        
-        console.log(`   Master Jetton Wallet: ${masterJettonWallet.toString()}`);
         
         // Jetton transfer message body (internal message to jetton wallet)
         // op::transfer = 0xf8a7ea5
