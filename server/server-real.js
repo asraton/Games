@@ -277,18 +277,17 @@ async function sendAsraJetton(toAddress, amount) {
         const decimals = 9;
         const jettonAmount = BigInt(Math.floor(amount * Math.pow(10, decimals)));
         
-        // Get master's jetton wallet address (the wallet that holds ASRA tokens)
-        const masterJettonWallet = await getJettonWalletAddress(
-            MASTER_WALLET_ADDRESS,
-            ASRA_CONTRACT_ADDRESS
-        );
+        // Get master's jetton wallet address using @ton/ton JettonMaster
+        const { JettonMaster } = require('@ton/ton');
+        const jettonMaster = client.open(JettonMaster.create(Address.parse(ASRA_CONTRACT_ADDRESS)));
+        const masterJettonWallet = await jettonMaster.getWalletAddress(Address.parse(MASTER_WALLET_ADDRESS));
         
         if (!masterJettonWallet) {
             console.log('❌ Could not get master jetton wallet address');
             return { success: false, error: 'Master jetton wallet not found' };
         }
         
-        console.log(`   Master jetton wallet: ${masterJettonWallet.slice(0, 15)}...`);
+        console.log(`   Master jetton wallet: ${masterJettonWallet.toString().slice(0, 15)}...`);
         
         // Jetton transfer message body (internal message to jetton wallet)
         // op::transfer = 0xf8a7ea5
@@ -311,7 +310,7 @@ async function sendAsraJetton(toAddress, amount) {
             secretKey: keyPair.secretKey,
             messages: [
                 internal({
-                    to: Address.parse(masterJettonWallet),
+                    to: masterJettonWallet,
                     value: toNano(0.1), // Gas for transfer + forward
                     body: transferBody
                 })
