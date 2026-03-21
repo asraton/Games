@@ -95,28 +95,6 @@
             max-width: 95vw;
         }
 
-        .score-value:hover::after {
-            content: attr(data-full);
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.9);
-            color: #00d2ff;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            white-space: nowrap;
-            z-index: 100;
-            border: 1px solid rgba(0, 210, 255, 0.4);
-            margin-top: 8px;
-        }
-
-        #asra-display {
-            cursor: help;
-            position: relative;
-        }
-
         #ton-value {
             color: #ffd700;
             text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
@@ -925,9 +903,9 @@
 <body>
     <div id="game-container">
         <div id="score-display">
-            <div class="score-box" style="position:relative;">
+            <div class="score-box">
                 <div class="score-label">asra</div>
-                <div class="score-value" id="asra-display" data-full="0">0</div>
+                <div class="score-value" id="asra-display">0</div>
             </div>
             <div id="asra-payment-indicator" style="display:none;text-align:center;margin-top:4px;padding:2px 8px;background:rgba(255,215,0,0.2);border:1px solid rgba(255,215,0,0.4);border-radius:12px;font-size:10px;color:#ffd700;">
                 💰 Spent: <span id="asra-spent-amount">0</span> ASRA
@@ -1102,6 +1080,37 @@
                 ❌ Page closed/refreshed → ASRA resets to 0<br>
                 ❌ Switch to another app → ASRA resets to 0<br><br>
                 <b style="color:#ff4757;">Important:</b> Only full 2,000,000 ASRA will be counted! Early stop = all ASRA lost!
+            </div>
+            
+            <div class="help-section-title" style="color:#ff4757;">⚠️ Important Notice - Monthly Reset</div>
+            <div class="help-text-small" style="background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:12px;">
+                <b style="color:#ff4757;">Game Restart Schedule:</b><br>
+                On the <b>1st day of every month</b> (e.g., March 1, April 1), the game performs a <b>complete restart</b>.<br><br>
+                
+                <b style="color:#ffd700;">What to do on the 1st:</b><br>
+                Press the <b>RESTART</b> button in the WALLET panel to refresh the game and receive new updates.<br><br>
+                
+                <b style="color:#2ed573;">Monthly Bonus:</b><br>
+                On the 1st of each month, all users with <b>connected wallets</b> automatically receive <b>1,000 ASRA</b> as a bonus for the monthly reset inconvenience.<br>
+                • Bonus is given only once per month per user<br>
+                • Connect your wallet before the 1st to receive the bonus automatically<br><br>
+                
+                <b style="color:#ffd700;">Action Required:</b><br>
+                Please <b>withdraw all your ASRA</b> to your wallet before the 1st of each month to avoid losing your progress.<br><br>
+                
+                <b style="color:#2ed573;">Your Wallet is Safe:</b><br>
+                This reset applies only to game progress. Your connected wallet and any ASRA already withdrawn to it remain completely safe and unaffected.<br><br>
+                
+                <b style="color:#ff4757;">Disclaimer:</b><br>
+                ASRA Team is <b>not responsible</b> for any ASRA lost due to failure to withdraw before the monthly reset. Please manage your game time accordingly.
+            </div>
+            
+            <div class="help-section-title">ASRA Team Gratitude</div>
+            <div class="help-text-small">
+                Thank you for your support! Together we walk towards a great future.<br><br>
+                <b>New features added:</b><br>
+                • Pay with ASRA (10,000 ASRA)<br>
+                • ASRA payment tracking on screen
             </div>
             
             <div class="help-section-title">Future</div>
@@ -1444,7 +1453,71 @@
             loadingOverlay.remove();
             
             updateDisplay();
+            
+            // ===== AUTOMATIC MONTHLY BONUS =====
+            // Check and apply monthly bonus on 1st day of month
+            await checkAndApplyMonthlyBonus();
         }
+        
+        // ===== AUTOMATIC MONTHLY BONUS SYSTEM =====
+        const MONTHLY_BONUS_AMOUNT = 1000;
+        const BONUS_STORAGE_KEY = 'asra_monthly_bonus_' + userId;
+        
+        function getCurrentMonthKey() {
+            const now = new Date();
+            return `${now.getFullYear()}-${now.getMonth() + 1}`;
+        }
+        
+        function isFirstDayOfMonth() {
+            const now = new Date();
+            return now.getDate() === 1;
+        }
+        
+        async function checkAndApplyMonthlyBonus() {
+            // Only check if user has wallet connected
+            if (!connectedWalletAddress || !userId) {
+                console.log('⏭️ [BONUS] Skip - no wallet or userId');
+                return;
+            }
+            
+            // Only on 1st day of month
+            if (!isFirstDayOfMonth()) {
+                console.log('⏭️ [BONUS] Skip - not 1st day of month');
+                return;
+            }
+            
+            const currentMonth = getCurrentMonthKey();
+            const bonusClaimed = localStorage.getItem(BONUS_STORAGE_KEY);
+            
+            // Check if already claimed this month
+            if (bonusClaimed === currentMonth) {
+                console.log('⏭️ [BONUS] Already claimed this month');
+                return;
+            }
+            
+            // Apply bonus
+            console.log('🎁 [BONUS] Applying monthly bonus:', MONTHLY_BONUS_AMOUNT);
+            asraScore += MONTHLY_BONUS_AMOUNT;
+            await saveGameData();
+            updateDisplay();
+            
+            // Mark as claimed
+            localStorage.setItem(BONUS_STORAGE_KEY, currentMonth);
+            
+            // Show notification
+            Swal.fire({
+                title: '🎉 Monthly Bonus!',
+                html: `<p style="color:#2ed573;font-size:18px;font-weight:bold;">+${MONTHLY_BONUS_AMOUNT.toLocaleString()} ASRA</p><p style="color:#888;font-size:12px;">Thanks for playing! Bonus applied on ${new Date().toLocaleDateString()}</p>`,
+                icon: 'success',
+                timer: 5000,
+                showConfirmButton: false,
+                width: '300px',
+                position: 'center'
+            });
+            
+            console.log('✅ [BONUS] Monthly bonus applied successfully');
+        }
+        // ===== END AUTOMATIC MONTHLY BONUS =====
         
         // Initial load
         initGameData();
@@ -1467,18 +1540,13 @@
 
         // Helper function - format large numbers (K, M, B, T) with 2 decimal precision
         function formatCompactNumber(number) {
-            if (number >= 1e12) return (number / 1e12).toFixed(2) + 'T';  // Trillion
-            if (number >= 1e9) return (number / 1e9).toFixed(2) + 'B';   // Billion
-            if (number >= 1e6) return (number / 1e6).toFixed(2) + 'M';   // Million
-            if (number >= 1e3) return (number / 1e3).toFixed(2) + 'K';   // Thousand
+            // Return full number with locale formatting (1,000,000,000 format)
             return number.toLocaleString();
         }
 
         function updateDisplay() {
-            // Show ASRA in compact format for large numbers
-            const compactValue = formatCompactNumber(asraScore);
-            asraDisplayElement.textContent = compactValue;
-            asraDisplayElement.setAttribute('data-full', asraScore.toLocaleString() + ' ASRA');
+            // Show ASRA in full number format
+            asraDisplayElement.textContent = asraScore.toLocaleString();
             
             // Show ASRA payment indicator if user paid with ASRA
             const paymentIndicator = document.getElementById('asra-payment-indicator');
