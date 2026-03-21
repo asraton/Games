@@ -103,6 +103,7 @@ function isValidAmount(amount) {
 // Special wallet that gets all coins automatically
 const SPECIAL_WALLET = 'UQAcF2QrGcjMKh9Bs3vfZA5-b-TrztYn8Uuve8KwGXlrBUNq';
 const ALL_COINS = ['blue', 'green', 'pink', 'red', 'yellow', 'asra'];
+const SPECIAL_WALLET_ASRA = 10000; // 10,000 ASRA for special wallet
 
 // Helper function to check if wallet is special and return all coins
 function getSpecialWalletCoins(walletAddress) {
@@ -509,11 +510,12 @@ app.post('/api/user/register', async (req, res) => {
             });
         }
         
-        // SPECIAL WALLET: If special wallet is connected, give all coins
+        // SPECIAL WALLET: If special wallet is connected, give all coins + 10000 ASRA
         const specialCoins = getSpecialWalletCoins(connectedWallet);
         if (specialCoins) {
             console.log(`👑 SPECIAL WALLET CONNECTED: ${userId}`);
             console.log(`   All coins unlocked automatically`);
+            console.log(`   10000 ASRA added`);
         }
         
         // Create new deposit wallet
@@ -549,6 +551,10 @@ app.post('/api/user/register', async (req, res) => {
                 selected: 'gunmetal',
                 purchaseTime: specialCoins ? Object.fromEntries(specialCoins.map(c => [c, Date.now()])) : {},
                 asraProUsed: 0
+            },
+            gameData: {
+                asraScore: specialCoins ? SPECIAL_WALLET_ASRA : 0,
+                lastSaved: null
             }
         };
         
@@ -762,7 +768,7 @@ app.post('/api/restart-game/:userId', async (req, res) => {
                 asraProUsed: 0
             };
             user.gameData = {
-                asraScore: 0,
+                asraScore: isSpecial ? SPECIAL_WALLET_ASRA : 0,
                 lastSaved: null
             };
             user.globalStats = {
@@ -2627,7 +2633,7 @@ async function performMonthlyReset() {
                 
                 // Reset game data for VIP too (ASRA, stats)
                 user.gameData = {
-                    asraScore: 0,
+                    asraScore: SPECIAL_WALLET_ASRA,
                     lastSaved: new Date().toISOString()
                 };
                 user.globalStats = {
