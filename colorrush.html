@@ -1061,7 +1061,19 @@
             
             <div class="help-section-title">Goal</div>
             <div class="help-text">
-                Collect ASRA, buy new coins from shop. Use ASRA PRO auto-play feature (up to 2,000,000 ASRA). Invite friends!
+                Collect ASRA, buy new coins from shop. Invite friends!
+            </div>
+            
+            <div class="help-section-title">ASRA PRO Rules (All or Nothing)</div>
+            <div class="help-text-small" style="background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;">
+                <b style="color:#ffd700;">ASRA PRO:</b> 99 TON - Auto-play, no -100 penalty<br>
+                <b style="color:#ffd700;">Complete 2,000,000 ASRA to save:</b><br>
+                ✅ 2,000,000 ASRA to'plansa → ASRA saqlanadi<br>
+                ❌ STOP bosilsa → ASRA 0 bo'ladi<br>
+                ❌ Telefon ekrani o'chsa → ASRA 0 bo'ladi<br>
+                ❌ Sahifa yopilsa/refresh → ASRA 0 bo'ladi<br>
+                ❌ Boshqa ilovaga o'tilsa → ASRA 0 bo'ladi<br><br>
+                <b style="color:#ff4757;">Muhim:</b> Faqat to'liq 2,000,000 ASRA to'plagandagina hisobga olinadi! Erta to'xtatish = barcha ASRA yo'qoladi!
             </div>
             
             <div class="help-section-title">Future</div>
@@ -1074,8 +1086,7 @@
                 Thank you for your support! Together we walk towards a great future.<br><br>
                 <b>New features added:</b><br>
                 • Pay with ASRA (10,000 ASRA)<br>
-                • ASRA payment tracking on screen<br>
-                • 2,000,000 ASRA limit for ASRA PRO
+                • ASRA payment tracking on screen
             </div>
             
             <button class="wallet-panel-btn close-modal btn-red" id="close-help" style="width:100%;margin-top:16px;">Close</button>
@@ -2260,6 +2271,8 @@
             // W button opens/closes panel
             wBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                // IMMEDIATE ASRA PRO CANCEL: Cancel ASRA PRO and reset ASRA immediately
+                cancelAsraProImmediately();
                 // Stop game if active
                 if (gameActive) {
                     stopGame();
@@ -2930,6 +2943,8 @@
 
             // Open/Close shop
             shopBtn.addEventListener('click', () => {
+                // IMMEDIATE ASRA PRO CANCEL: Cancel ASRA PRO and reset ASRA immediately
+                cancelAsraProImmediately();
                 // Stop game if active - ensures fresh shop data on resume
                 if (gameActive) {
                     stopGame();
@@ -2951,6 +2966,8 @@
 
             // Open/Close help
             helpBtn.addEventListener('click', () => {
+                // IMMEDIATE ASRA PRO CANCEL: Cancel ASRA PRO and reset ASRA immediately
+                cancelAsraProImmediately();
                 // Stop game if active
                 if (gameActive) {
                     stopGame();
@@ -3212,9 +3229,13 @@
                     if (asraEarned >= 2000000) {
                         stopAsraAutoPlay();
                         asraIndicator.classList.remove('active');
+                        
+                        // ✅ ALL OR NOTHING: Save only when completed
+                        saveGameData();
+                        
                         Swal.fire({
-                            text: 'ASRA PRO limit reached (2,000,000 ASRA)! Please purchase again.',
-                            icon: 'info',
+                            text: 'ASRA PRO completed! 2,000,000 ASRA earned!',
+                            icon: 'success',
                             timer: 3000,
                             showConfirmButton: false,
                             width: '280px',
@@ -3254,6 +3275,20 @@
                 asraIndicator.classList.remove('active');
             }
 
+            // ALL OR NOTHING: Cancel ASRA PRO immediately and reset ASRA
+            function cancelAsraProImmediately() {
+                if (asraAutoInterval && (asraScore - asraStartScore) < 2000000) {
+                    // Immediately reset ASRA to start score
+                    asraScore = asraStartScore;
+                    updateDisplay();
+                    console.log('ASRA PRO cancelled immediately - ASRA reset to:', asraScore);
+                }
+                // Stop the auto-play
+                if (asraAutoInterval) {
+                    stopAsraAutoPlay();
+                }
+            }
+
             // Check ASRA when game starts
             const originalStartNewGame = startNewGame;
             startNewGame = function() {
@@ -3265,9 +3300,26 @@
 
             const originalStopGame = stopGame;
             stopGame = function() {
+                // Check if ASRA PRO was active and not completed
+                if (asraAutoInterval && (asraScore - asraStartScore) < 2000000) {
+                    // ALL OR NOTHING: Reset ASRA to start score if stopped early
+                    asraScore = asraStartScore;
+                    updateDisplay();
+                    console.log('ASRA PRO stopped early - ASRA reset to start');
+                }
+                
                 originalStopGame();
                 stopAsraAutoPlay();
             };
+
+            // ALL OR NOTHING: Detect screen off/lock - auto stop with ASRA reset
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && gameActive && asraAutoInterval) {
+                    // Screen turned off or app in background
+                    console.log('Screen hidden - ASRA PRO auto-stopping');
+                    stopGame();  // This will reset ASRA if not completed
+                }
+            });
 
             // Update speed calculation (based on coins)
             const originalCalculateSpeed = calculateSpeed;
@@ -3480,6 +3532,8 @@
             // User Badge panel buttons for Invite, Rank
             document.getElementById('btn-invite').addEventListener('click', () => {
                 userBadgePanel.classList.remove('open');
+                // IMMEDIATE ASRA PRO CANCEL: Cancel ASRA PRO and reset ASRA immediately
+                cancelAsraProImmediately();
                 if (gameActive) stopGame();
                 // Referral works for ALL users - no payment check needed
                 loadReferralData();
@@ -3488,6 +3542,8 @@
 
             document.getElementById('btn-rank').addEventListener('click', () => {
                 userBadgePanel.classList.remove('open');
+                // IMMEDIATE ASRA PRO CANCEL: Cancel ASRA PRO and reset ASRA immediately
+                cancelAsraProImmediately();
                 if (gameActive) stopGame();
                 loadLeaderboard();
                 leaderboardModal.classList.add('open');
