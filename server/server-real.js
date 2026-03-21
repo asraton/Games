@@ -978,25 +978,30 @@ app.post('/api/withdraw', async (req, res) => {
             });
         }
         
-        // Deduct ASRA from gameData
+        // Send real ASRA tokens from Master Wallet (jetton transfer) FIRST
+        let jettonResult = { success: false, error: 'Test mode - no real transfer' };
+        if (!isTestMode) {
+            jettonResult = await sendAsraJetton(toAddress, amount);
+            if (!jettonResult.success) {
+                console.error('❌ Jetton transfer failed:', jettonResult.error);
+                // Jetton transfer failed - do not deduct ASRA from user
+                return res.status(500).json({
+                    success: false,
+                    error: 'Jetton transfer failed',
+                    message: jettonResult.error || 'Failed to send ASRA tokens',
+                    asraScore: asraBalance,
+                    remaining: asraBalance
+                });
+            }
+        }
+        
+        // Only deduct ASRA from gameData if jetton transfer was successful
         user.gameData.asraScore = asraBalance - amount;
         userDB.set(userId, user);
         
         console.log(`✅ ASRA WITHDRAW SUCCESS: ${amount} ASRA`);
         console.log(`   Remaining ASRA: ${user.gameData.asraScore}`);
         console.log(`   To: ${toAddress}`);
-        
-        // Send real ASRA tokens from Master Wallet (jetton transfer)
-        let jettonResult = { success: false, error: 'Test mode - no real transfer' };
-        if (!isTestMode) {
-            jettonResult = await sendAsraJetton(toAddress, amount);
-            if (!jettonResult.success) {
-                console.error('❌ Jetton transfer failed:', jettonResult.error);
-                // Optionally revert the game balance deduction if jetton transfer fails
-                // user.gameData.asraScore = asraBalance;
-                // userDB.set(userId, user);
-            }
-        }
         
         return res.json({
             success: true,
