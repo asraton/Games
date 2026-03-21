@@ -346,7 +346,8 @@ async function sendAsraJetton(toAddress, amount) {
         
         console.log('   Sending transaction...');
         
-        await walletContract.send({
+        // Use sendTransfer for WalletContractV5R1
+        await walletContract.sendTransfer({
             seqno: seqno,
             secretKey: keyPair.secretKey,
             messages: [
