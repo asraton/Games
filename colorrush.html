@@ -1092,7 +1092,7 @@
             
             <div class="help-section-title">Future</div>
             <div class="help-text-small">
-                ASRA game is the gateway to TON ecosystem. In the future, you will be able to buy anything you want with TON. Learn what TON is through the game and join the ecosystem.
+                ASRA game is the gateway to TON ecosystem. In the future, you will be able to buy anything you want with ASRA. Learn what TON is through the game and join the ecosystem.
             </div>
             
             <div class="help-section-title">ASRA Team Gratitude</div>
@@ -2591,15 +2591,27 @@
                         return;
                     }
                     
-                    // Show loading state
+                    // Show loading state with more info
                     const withdrawBtn = document.getElementById('withdraw-submit');
                     const originalBtnText = withdrawBtn.innerHTML;
-                    withdrawBtn.innerHTML = 'Withdrawing...';
+                    withdrawBtn.innerHTML = `
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                            <div style="font-size:12px;">Withdrawing...</div>
+                            <div style="font-size:10px;color:#ffd700;">${amount.toLocaleString()} ASRA</div>
+                            <div style="font-size:9px;color:#888;">To: ${connectedWalletAddress.slice(0,6)}...${connectedWalletAddress.slice(-4)}</div>
+                            <div style="width:20px;height:20px;border:2px solid rgba(0,210,255,0.3);border-top-color:#00d2ff;border-radius:50%;animation:spin 1s linear infinite;margin-top:4px;"></div>
+                        </div>
+                    `;
                     withdrawBtn.disabled = true;
-                    withdrawBtn.style.opacity = '0.7';
+                    withdrawBtn.style.opacity = '1';
+                    withdrawBtn.style.height = 'auto';
+                    withdrawBtn.style.minHeight = '80px';
                     
                     // Backend withdrawal request
                     try {
+                        // Minimum 3 seconds loading time to show info
+                        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 3000));
+                        
                         const res = await fetch(API_BASE + '/withdraw', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -2609,13 +2621,23 @@
                                 toAddress: connectedWalletAddress
                             })
                         });
-                        const result = await res.json();
+                        
+                        // Wait for both request and minimum loading time
+                        const [result] = await Promise.all([res.json(), minLoadingTime]);
                         
                         if (result.success) {
-                            // Use server response to update balance immediately
-                            asraScore = result.asraScore || result.remaining || (asraScore - amount);
+                            // Reduce game ASRA
+                            asraScore -= amount;
                             updateDisplay();
-                            await forceSaveGameData(); // Immediate save after withdrawal
+                            await saveGameData(); // Immediate save after withdrawal
+                            
+                            // Wait for server to process withdrawal before loading fresh data
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            
+                            // Fetch fresh data from server to ensure UI is up to date
+                            const data = await loadGameState();
+                            asraScore = data.asraScore || 0;
+                            updateDisplay();
                             
                             modalBody.innerHTML = `
                                 <div style="text-align:center;padding:16px;">
