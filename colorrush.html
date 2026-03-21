@@ -83,10 +83,38 @@
         }
 
         .score-value {
-            font-size: clamp(11px, 1.6vw, 14px);
+            font-size: clamp(14px, 2.5vw, 22px);
             color: #00d2ff;
-            text-shadow: 0 0 8px rgba(0, 210, 255, 0.6);
+            text-shadow: 0 0 12px rgba(0, 210, 255, 0.8);
             font-family: 'Courier New', monospace;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 95vw;
+        }
+
+        .score-value:hover::after {
+            content: attr(data-full);
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #00d2ff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            white-space: nowrap;
+            z-index: 100;
+            border: 1px solid rgba(0, 210, 255, 0.4);
+            margin-top: 8px;
+        }
+
+        #asra-display {
+            cursor: help;
+            position: relative;
         }
 
         #ton-value {
@@ -897,9 +925,9 @@
 <body>
     <div id="game-container">
         <div id="score-display">
-            <div class="score-box">
+            <div class="score-box" style="position:relative;">
                 <div class="score-label">asra</div>
-                <div class="score-value" id="asra-display">0</div>
+                <div class="score-value" id="asra-display" data-full="0">0</div>
             </div>
             <div id="asra-payment-indicator" style="display:none;text-align:center;margin-top:4px;padding:2px 8px;background:rgba(255,215,0,0.2);border:1px solid rgba(255,215,0,0.4);border-radius:12px;font-size:10px;color:#ffd700;">
                 💰 Spent: <span id="asra-spent-amount">0</span> ASRA
@@ -1437,18 +1465,20 @@
 
         const pulseColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 'pulse-cyan', 'pulse-purple', 'pulse-orange'];
 
-        // Helper function - format large numbers (K, M, B, T)
+        // Helper function - format large numbers (K, M, B, T) with 2 decimal precision
         function formatCompactNumber(number) {
-            if (number >= 1e12) return (number / 1e12).toFixed(1) + 'T';  // Trillion
-            if (number >= 1e9) return (number / 1e9).toFixed(1) + 'B';   // Billion
-            if (number >= 1e6) return (number / 1e6).toFixed(1) + 'M';   // Million
-            if (number >= 1e3) return (number / 1e3).toFixed(1) + 'K';   // Thousand
-            return number.toString();
+            if (number >= 1e12) return (number / 1e12).toFixed(2) + 'T';  // Trillion
+            if (number >= 1e9) return (number / 1e9).toFixed(2) + 'B';   // Billion
+            if (number >= 1e6) return (number / 1e6).toFixed(2) + 'M';   // Million
+            if (number >= 1e3) return (number / 1e3).toFixed(2) + 'K';   // Thousand
+            return number.toLocaleString();
         }
 
         function updateDisplay() {
             // Show ASRA in compact format for large numbers
-            asraDisplayElement.textContent = formatCompactNumber(asraScore);
+            const compactValue = formatCompactNumber(asraScore);
+            asraDisplayElement.textContent = compactValue;
+            asraDisplayElement.setAttribute('data-full', asraScore.toLocaleString() + ' ASRA');
             
             // Show ASRA payment indicator if user paid with ASRA
             const paymentIndicator = document.getElementById('asra-payment-indicator');
@@ -3227,8 +3257,8 @@
                     // Reached 2,000,000 ASRA earned with ASRA PRO?
                     const asraEarned = asraScore - asraStartScore;
                     if (asraEarned >= 2000000) {
-                        stopAsraAutoPlay();
-                        asraIndicator.classList.remove('active');
+                        // Show limit reached message
+                        showAsraProLimitReached();
                         
                         // ✅ ALL OR NOTHING: Save only when completed
                         saveGameData();
@@ -3273,6 +3303,18 @@
                     asraAutoInterval = null;
                 }
                 asraIndicator.classList.remove('active');
+                // Reset indicator text to default
+                asraIndicator.textContent = 'ASRA Auto-playing...';
+            }
+
+            // Helper function to show limit reached state
+            function showAsraProLimitReached() {
+                stopAsraAutoPlay();
+                asraIndicator.textContent = 'ASRA PRO LIMIT 2,000,000 ASRA - STOP to continue';
+                asraIndicator.classList.add('active');
+                asraIndicator.style.background = 'rgba(255, 215, 0, 0.9)';
+                asraIndicator.style.color = '#000';
+                asraIndicator.style.fontWeight = 'bold';
             }
 
             // ALL OR NOTHING: Cancel ASRA PRO immediately and reset ASRA
@@ -3349,7 +3391,8 @@
                 const selectedCoin = shopData.selected;
                 if (selectedCoin === 'asra' && shopData.purchased.includes('asra')) {
                     // Check if ASRA PRO has reached 2,000,000 ASRA limit
-                    if (shopData.asraProUsed >= 2000000) {
+                    const asraEarned = asraScore - asraStartScore;
+                    if (asraEarned >= 2000000 || shopData.asraProUsed >= 2000000) {
                         // Limit reached - fall back to normal coin rules
                         Swal.fire({
                             text: 'ASRA PRO limit reached (2,000,000 ASRA). Please purchase again to continue using.',
@@ -3382,10 +3425,10 @@
                     shopData.asraProUsed = (shopData.asraProUsed || 0) + 1;
                     saveShopDataBackend();
                         
-                    // Check if limit reached
-                    if (shopData.asraProUsed >= 2000000) {
-                        stopAsraAutoPlay();
-                        asraIndicator.classList.remove('active');
+                    // Check if limit reached after this click
+                    const newAsraEarned = asraScore - asraStartScore;
+                    if (newAsraEarned >= 2000000 || shopData.asraProUsed >= 2000000) {
+                        showAsraProLimitReached();
                         Swal.fire({
                             text: 'ASRA PRO limit reached (2,000,000 ASRA)! Please purchase again.',
                             icon: 'info',
