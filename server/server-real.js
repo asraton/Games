@@ -16,6 +16,7 @@ const allowedOrigins = [
     'https://*.telegram.org',
     'https://*.web.telegram.org',
     'https://asratongames.up.railway.app',
+    'https://walletbot.me',
     'http://localhost:3000',
     'http://localhost:8080'
 ];
