@@ -2612,15 +2612,10 @@
                         const result = await res.json();
                         
                         if (result.success) {
-                            // Reduce game ASRA
-                            asraScore -= amount;
+                            // Use server response to update balance immediately
+                            asraScore = result.asraScore || result.remaining || (asraScore - amount);
                             updateDisplay();
                             await forceSaveGameData(); // Immediate save after withdrawal
-                            
-                            // Fetch fresh data from server to ensure UI is up to date
-                            const data = await loadGameState();
-                            asraScore = data.asraScore || 0;
-                            updateDisplay();
                             
                             modalBody.innerHTML = `
                                 <div style="text-align:center;padding:16px;">
