@@ -1176,6 +1176,21 @@ app.get('/api/webhook-info', async (req, res) => {
     }
 });
 
+// Telegram bot webhook handler (for USE_WEBHOOK=true mode)
+app.post('/bot-webhook', async (req, res) => {
+    try {
+        // Process webhook update from Telegram
+        const update = req.body;
+        console.log('📨 Webhook received:', update.message ? `Message from ${update.message.from?.id}` : 'Other update');
+        
+        // Acknowledge receipt
+        res.sendStatus(200);
+    } catch (error) {
+        console.error('❌ Webhook handler error:', error);
+        res.sendStatus(500);
+    }
+});
+
 // Debug endpoint - View TON Center transactions (ONLY in development mode)
 if (process.env.NODE_ENV !== 'production') {
     app.get('/api/debug/toncenter', async (req, res) => {
@@ -2478,8 +2493,27 @@ let telegramBot = null;
 function initNotificationBot() {
     if (process.env.TELEGRAM_BOT_TOKEN && !telegramBot) {
         const TelegramBot = require('node-telegram-bot-api');
-        telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
-        console.log('✅ Notification bot initialized');
+        
+        // Check if webhook mode is enabled
+        const useWebhook = process.env.USE_WEBHOOK === 'true';
+        
+        if (useWebhook && process.env.WEBHOOK_URL) {
+            // Webhook mode - no polling
+            telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
+                webHook: {
+                    port: process.env.PORT || 8080,
+                    autoOpen: false // Webhook is handled by Express
+                }
+            });
+            console.log('✅ Notification bot initialized (webhook mode)');
+            console.log(`   Webhook URL: ${process.env.WEBHOOK_URL}`);
+        } else {
+            // Polling mode (default)
+            telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
+                polling: true
+            });
+            console.log('✅ Notification bot initialized (polling mode)');
+        }
     }
     return telegramBot;
 }
