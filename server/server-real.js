@@ -2494,24 +2494,16 @@ function initNotificationBot() {
     if (process.env.TELEGRAM_BOT_TOKEN && !telegramBot) {
         const TelegramBot = require('node-telegram-bot-api');
         
-        // Check if webhook mode is enabled
-        const useWebhook = process.env.USE_WEBHOOK === 'true';
+        // Always use polling mode for bot (works for sending notifications)
+        // Webhook for receiving updates is handled separately by Express endpoint
+        telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
+            polling: true
+        });
         
-        if (useWebhook && process.env.WEBHOOK_URL) {
-            // Webhook mode - no polling
-            telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
-                webHook: {
-                    port: process.env.PORT || 8080,
-                    autoOpen: false // Webhook is handled by Express
-                }
-            });
-            console.log('✅ Notification bot initialized (webhook mode)');
-            console.log(`   Webhook URL: ${process.env.WEBHOOK_URL}`);
+        const useWebhook = process.env.USE_WEBHOOK === 'true';
+        if (useWebhook) {
+            console.log('✅ Notification bot initialized (webhook receiving mode)');
         } else {
-            // Polling mode (default)
-            telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
-                polling: true
-            });
             console.log('✅ Notification bot initialized (polling mode)');
         }
     }
