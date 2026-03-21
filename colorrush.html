@@ -2380,6 +2380,10 @@
             document.getElementById('btn-ton-yechish').addEventListener('click', async () => {
                 walletPanel.classList.remove('open');
                 
+                // Load fresh data from server first
+                await loadGameData();
+                updateDisplay();
+                
                 // Helper function - show error message
                 function showErrorModal(message, color = '#ff6b6b') {
                     modalTitle.textContent = 'Withdraw ASRA';
