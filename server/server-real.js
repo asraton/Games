@@ -330,10 +330,23 @@ async function sendAsraJetton(toAddress, amount) {
         
         // Send message through master wallet to its jetton wallet
         const seqno = await walletContract.getSeqno();
-        console.log(`   Seqno: ${seqno}`);
+        console.log(`   Seqno: ${seqno} (type: ${typeof seqno})`);
+        console.log(`   SecretKey type: ${typeof keyPair.secretKey}, length: ${keyPair.secretKey?.length}`);
+        
+        if (typeof seqno !== 'number' || isNaN(seqno)) {
+            console.log('❌ Invalid seqno:', seqno);
+            return { success: false, error: 'Invalid seqno from wallet' };
+        }
+        
+        if (!keyPair.secretKey || keyPair.secretKey.length === 0) {
+            console.log('❌ Invalid secretKey');
+            return { success: false, error: 'Invalid secretKey' };
+        }
+        
+        console.log('   Sending transaction...');
         
         await walletContract.send({
-            seqno,
+            seqno: seqno,
             secretKey: keyPair.secretKey,
             messages: [
                 internal({
