@@ -273,32 +273,47 @@ async function sendAsraJetton(toAddress, amount) {
         
         const walletContract = client.open(masterWallet);
         
-        // ASRA has 9 decimals (from the metadata you provided)
+        // ASRA has 9 decimals
         const decimals = 9;
         const jettonAmount = BigInt(Math.floor(amount * Math.pow(10, decimals)));
         
-        // Jetton transfer forward payload
-        // Format: op (32 bits) + query_id (64 bits) + amount (128 bits) + to_address (Address) + response_address (Address) + custom_payload (Maybe Cell) + forward_ton_amount (Coins) + forward_payload (Maybe Cell)
-        const forwardPayload = beginCell()
+        // Get master's jetton wallet address (the wallet that holds ASRA tokens)
+        const masterJettonWallet = await getJettonWalletAddress(
+            MASTER_WALLET_ADDRESS,
+            ASRA_CONTRACT_ADDRESS
+        );
+        
+        if (!masterJettonWallet) {
+            console.log('❌ Could not get master jetton wallet address');
+            return { success: false, error: 'Master jetton wallet not found' };
+        }
+        
+        console.log(`   Master jetton wallet: ${masterJettonWallet.slice(0, 15)}...`);
+        
+        // Jetton transfer message body (internal message to jetton wallet)
+        // op::transfer = 0xf8a7ea5
+        const transferBody = beginCell()
             .storeUint(0xf8a7ea5, 32) // op: transfer
             .storeUint(0, 64) // query_id
             .storeCoins(jettonAmount)
             .storeAddress(Address.parse(toAddress))
             .storeAddress(Address.parse(MASTER_WALLET_ADDRESS)) // response address
-            .storeMaybeRef(null) // custom payload
+            .storeBit(false) // custom payload (null)
             .storeCoins(toNano(0.05)) // forward ton amount
-            .storeMaybeRef(null) // forward payload
+            .storeBit(false) // forward payload (null)
             .endCell();
         
-        // Send jetton transfer
-        await walletContract.sendTransfer({
-            seqno: await walletContract.getSeqno(),
+        // Send message through master wallet to its jetton wallet
+        const seqno = await walletContract.getSeqno();
+        
+        await walletContract.send({
+            seqno,
             secretKey: keyPair.secretKey,
             messages: [
                 internal({
-                    to: Address.parse(ASRA_CONTRACT_ADDRESS),
-                    value: toNano(0.1), // Gas for jetton transfer
-                    body: forwardPayload
+                    to: Address.parse(masterJettonWallet),
+                    value: toNano(0.1), // Gas for transfer + forward
+                    body: transferBody
                 })
             ]
         });
