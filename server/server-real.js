@@ -1183,6 +1183,60 @@ app.post('/bot-webhook', async (req, res) => {
         const update = req.body;
         console.log('📨 Webhook received:', update.message ? `Message from ${update.message.from?.id}` : 'Other update');
         
+        // Handle /start command
+        if (update.message && update.message.text === '/start') {
+            const chatId = update.message.chat.id;
+            const userName = update.message.from.first_name || 'Player';
+            
+            // Send welcome message
+            const bot = initNotificationBot();
+            if (bot) {
+                await bot.sendMessage(chatId, 
+                    `🎮 Welcome ${userName}!\n\n` +
+                    `Play ASRA Coin Game and earn real ASRA tokens!\n\n` +
+                    `🌐 Game: https://asratongames.up.railway.app\n\n` +
+                    `Commands:\n` +
+                    `/play - Open the game\n` +
+                    `/help - How to play`
+                );
+                console.log(`✅ /start response sent to ${chatId}`);
+            }
+        }
+        
+        // Handle /play command
+        if (update.message && update.message.text === '/play') {
+            const chatId = update.message.chat.id;
+            const bot = initNotificationBot();
+            if (bot) {
+                await bot.sendMessage(chatId, 
+                    `🎮 Click to play:`,
+                    {
+                        reply_markup: {
+                            inline_keyboard: [[
+                                { text: '🎮 Play Now', web_app: { url: 'https://asratongames.up.railway.app' } }
+                            ]]
+                        }
+                    }
+                );
+            }
+        }
+        
+        // Handle /help command
+        if (update.message && update.message.text === '/help') {
+            const chatId = update.message.chat.id;
+            const bot = initNotificationBot();
+            if (bot) {
+                await bot.sendMessage(chatId, 
+                    `📖 How to Play:\n\n` +
+                    `1️⃣ Connect your TON wallet\n` +
+                    `2️⃣ Pay 1 TON to start\n` +
+                    `3️⃣ Catch coins and earn ASRA\n` +
+                    `4️⃣ Withdraw ASRA to your wallet!\n\n` +
+                    `💡 Tip: Buy better coins from shop for more ASRA!`
+                );
+            }
+        }
+        
         // Acknowledge receipt
         res.sendStatus(200);
     } catch (error) {
