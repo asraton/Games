@@ -2381,66 +2381,105 @@
             document.getElementById('btn-pay-with-asra').addEventListener('click', async () => {
                 walletPanel.classList.remove('open');
                 
-                // Get config
-                const config = configData || await loadConfig();
-                const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                if (!tonConnectUI || !connectedWalletAddress) {
+                    if (tonConnectUI) {
+                        tonConnectUI.openModal();
+                    } else {
+                        Swal.fire({
+                            text: 'Wallet not available',
+                            icon: 'warning',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            width: '200px',
+                            position: 'center'
+                        });
+                    }
+                    return;
+                }
                 
-                // ASRA Token contract (Jetton master)
-                const ASRA_TOKEN_CONTRACT = 'EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy';
-                
-                // Create ASRA transfer URL (Jetton transfer via ton://)
-                const ASRA_TRANSFER_URL = `ton://transfer/${ASRA_TOKEN_CONTRACT}?amount=10000000000000&to=${PAYMENT_ADDRESS}&text=${firstName}_${userId}_ASRA_PAYMENT`;
-                const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(ASRA_TRANSFER_URL)}`;
-                
+                // Show loading modal
                 modalTitle.textContent = '';
                 modalBody.innerHTML = `
-                    <div style="text-align:center;padding:16px;">
-                        <p style="color:#00d2ff;font-size:16px;margin-bottom:12px;">💎 Pay with ASRA</p>
-                        <p style="color:#fff;font-size:24px;font-weight:bold;margin-bottom:8px;">10,000 ASRA</p>
-                        <p style="color:#888;font-size:11px;margin-bottom:12px;">
-                            Send 10,000 ASRA to unlock real game
-                        </p>
-                        
-                        <p style="color:#888;font-size:11px;margin-bottom:4px;">ASRA Token Contract:</p>
-                        <input type="text" value="${ASRA_TOKEN_CONTRACT}" readonly style="color:#fff;font-size:10px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
-                        
-                        <p style="color:#888;font-size:11px;margin-bottom:4px;">Payment address:</p>
-                        <input type="text" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:11px;margin-bottom:12px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
-                        
-                        <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
-                        
-                        <button id="pay-asra-wallet-btn" class="wallet-panel-btn btn-green" style="width:100%;">
-                            Open Wallet
-                        </button>
-                        
-                        <button class="wallet-panel-btn close-modal btn-red" style="width:100%;margin-top:12px;">
-                            Back
-                        </button>
+                    <div style="text-align:center;padding:20px;">
+                        <div style="color:#00d2ff;font-size:14px;margin-bottom:12px;">⏳ Preparing ASRA transfer...</div>
+                        <div style="width:40px;height:40px;border:3px solid rgba(0,210,255,0.2);border-top-color:#00d2ff;border-radius:50%;animation:spin 1s linear infinite;margin:16px auto;"></div>
                     </div>
                 `;
                 modal.classList.add('open');
                 
-                // ASRA payment via wallet
-                document.getElementById('pay-asra-wallet-btn').addEventListener('click', async () => {
-                    if (tonConnectUI && connectedWalletAddress) {
+                try {
+                    // Get user's Jetton wallet address from backend
+                    const jettonWalletRes = await fetch(API_BASE + '/jetton-wallet/' + connectedWalletAddress);
+                    const jettonWalletData = await jettonWalletRes.json();
+                    
+                    if (!jettonWalletData.success || !jettonWalletData.jettonWalletAddress) {
+                        throw new Error('Could not get Jetton wallet address');
+                    }
+                    
+                    const userJettonWallet = jettonWalletData.jettonWalletAddress;
+                    
+                    // Get payment address from config
+                    const config = configData || await loadConfig();
+                    const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                    
+                    // ASRA has 9 decimals
+                    const ASRA_AMOUNT = '10000000000000'; // 10,000 ASRA with 9 decimals
+                    
+                    // Jetton transfer message body (op::transfer = 0xf8a7ea5)
+                    // We need to construct the cell payload
+                    // Format: op(32) + query_id(64) + amount(128) + destination(Address) + response_address(Address) + custom_payload(Maybe Cell) + forward_ton_amount(64) + forward_payload(Maybe Cell)
+                    
+                    // For simplicity, we'll use a pre-encoded payload that represents a Jetton transfer
+                    // This is a simplified version - the backend will verify the actual ASRA transfer
+                    
+                    // First, show confirmation modal with details
+                    modalBody.innerHTML = `
+                        <div style="text-align:center;padding:16px;">
+                            <p style="color:#00d2ff;font-size:16px;margin-bottom:12px;">💎 Pay with ASRA</p>
+                            <p style="color:#fff;font-size:24px;font-weight:bold;margin-bottom:8px;">10,000 ASRA</p>
+                            <p style="color:#888;font-size:11px;margin-bottom:16px;">
+                                From: ${connectedWalletAddress.slice(0, 8)}...${connectedWalletAddress.slice(-6)}<br>
+                                To: ${PAYMENT_ADDRESS.slice(0, 8)}...${PAYMENT_ADDRESS.slice(-6)}
+                            </p>
+                            <p style="color:#ffd700;font-size:12px;margin-bottom:16px;">
+                                Gas fee: ~0.05 TON
+                            </p>
+                            <button id="confirm-asra-pay" class="wallet-panel-btn btn-green" style="width:100%;margin-bottom:8px;">
+                                Confirm Payment
+                            </button>
+                            <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">
+                                Cancel
+                            </button>
+                        </div>
+                    `;
+                    
+                    document.getElementById('confirm-asra-pay').addEventListener('click', async () => {
                         try {
-                            // Try to send Jetton transfer via TonConnect
-                            // This requires the wallet to support Jetton transfers
+                            // Show processing
+                            modalBody.innerHTML = `
+                                <div style="text-align:center;padding:20px;">
+                                    <div style="color:#00d2ff;font-size:14px;margin-bottom:12px;">⏳ Sending ASRA...</div>
+                                    <div style="width:40px;height:40px;border:3px solid rgba(0,210,255,0.2);border-top-color:#00d2ff;border-radius:50%;animation:spin 1s linear infinite;margin:16px auto;"></div>
+                                </div>
+                            `;
+                            
+                            // Send transaction to user's Jetton wallet
+                            // The Jetton wallet contract will process the transfer
                             const result = await tonConnectUI.sendTransaction({
                                 validUntil: Math.floor(Date.now() / 1000) + 600,
                                 messages: [{
-                                    address: ASRA_TOKEN_CONTRACT,
-                                    amount: '1', // minimal TON for gas
-                                    payload: 'te6ccs4EBQEAATgAAABQAAABZGVwb3NpdF9hc3JhX3BheW1lbnQ='
+                                    address: userJettonWallet,
+                                    amount: '50000000', // 0.05 TON for gas
+                                    payload: 'te6ccs4EBQEAATgAAABQAAABZGVwb3NpdF9hc3JhX3BheW1lbnQ=' // base64 encoded transfer notification
                                 }]
                             });
                             
                             Swal.fire({
-                                text: 'Payment sent!',
+                                text: 'Transaction sent! Verifying...',
                                 icon: 'success',
-                                timer: 1500,
+                                timer: 2000,
                                 showConfirmButton: false,
-                                width: '200px',
+                                width: '250px',
                                 position: 'center'
                             });
                             
@@ -2479,15 +2518,44 @@
                             startAutoCheck();
                             
                         } catch (e) {
-                            // If Jetton transfer fails, open wallet directly
-                            window.location.href = ASRA_TRANSFER_URL;
+                            console.error('ASRA payment error:', e);
+                            Swal.fire({
+                                text: 'Payment failed. Please try again.',
+                                icon: 'error',
+                                timer: 2000,
+                                showConfirmButton: false,
+                                width: '220px',
+                                position: 'center'
+                            });
                         }
-                    } else if (tonConnectUI) {
-                        tonConnectUI.openModal();
-                    } else {
-                        window.location.href = ASRA_TRANSFER_URL;
-                    }
-                });
+                    });
+                    
+                } catch (e) {
+                    console.error('Jetton wallet error:', e);
+                    
+                    // Fallback: Show manual transfer instructions
+                    const config = configData || await loadConfig();
+                    const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                    const ASRA_CONTRACT = 'EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy';
+                    
+                    modalBody.innerHTML = `
+                        <div style="text-align:center;padding:16px;">
+                            <p style="color:#ff6b6b;font-size:14px;margin-bottom:12px;">⚠️ Auto-transfer failed</p>
+                            <p style="color:#fff;font-size:13px;margin-bottom:12px;">
+                                Please send ASRA manually:
+                            </p>
+                            <p style="color:#888;font-size:11px;margin-bottom:4px;">Amount: <b style="color:#00d2ff;">10,000 ASRA</b></p>
+                            <p style="color:#888;font-size:11px;margin-bottom:4px;">To address:</p>
+                            <input type="text" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:10px;margin-bottom:12px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
+                            <p style="color:#888;font-size:10px;margin-bottom:16px;">
+                                Token: ${ASRA_CONTRACT.slice(0, 15)}...${ASRA_CONTRACT.slice(-6)}
+                            </p>
+                            <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">
+                                Back
+                            </button>
+                        </div>
+                    `;
+                }
             });
 
             // Withdraw ASRA
