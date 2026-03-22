@@ -1,0 +1,3553 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <!-- API_BASE - Railway backend URL (e.g.: https://xxx.railway.app/api) -->
+    <meta name="api-base" content="https://asratongames.up.railway.app/api">
+    <title>Ton Game</title>
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        * {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            touch-action: manipulation;
+        }
+
+        html, body {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            touch-action: pan-y pinch-zoom;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #00122e;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            margin: 0;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #score-display {
+            position: fixed;
+            top: clamp(5px, 1.5vh, 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffd700;
+            font-size: clamp(10px, 1.5vw, 12px);
+            background: rgba(0, 0, 0, 0.6);
+            padding: clamp(4px, 0.8vh, 6px) clamp(8px, 2vw, 12px);
+            border-radius: clamp(10px, 1.5vw, 15px);
+            z-index: 90;
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            display: flex;
+            gap: clamp(5px, 1vw, 8px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+        }
+
+        .score-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: clamp(3px, 0.6vh, 5px) clamp(8px, 1.5vw, 12px);
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: clamp(8px, 1vw, 10px);
+            border: 1px solid rgba(0, 210, 255, 0.2);
+            min-width: clamp(70px, 12vw, 100px);
+        }
+
+        .score-label {
+            font-size: clamp(8px, 1vw, 10px);
+            color: #aaa;
+            margin-bottom: 0.3vh;
+            text-transform: uppercase;
+        }
+
+        .score-value {
+            font-size: clamp(14px, 2.5vw, 22px);
+            color: #00d2ff;
+            text-shadow: 0 0 12px rgba(0, 210, 255, 0.8);
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 95vw;
+        }
+
+        #ton-value {
+            color: #ffd700;
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+        }
+
+        .game-controls {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 30px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+        }
+
+        #stop-btn {
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            color: #00ff00;
+            padding: clamp(12px, 2vh, 15px) clamp(35px, 4vw, 50px);
+            font-size: clamp(16px, 2vw, 18px);
+            font-weight: bold;
+            cursor: pointer;
+            min-width: clamp(150px, 20vw, 180px);
+            transition: transform 0.1s;
+        }
+
+        #stop-btn:active {
+            transform: scale(0.95);
+        }
+
+        .game-coin {
+            position: absolute;
+            width: clamp(180px, 25vw, 280px);
+            height: clamp(180px, 25vw, 280px);
+            cursor: pointer;
+            z-index: 50;
+            display: none;
+            transition: transform 0.1s;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .game-coin:active {
+            transform: scale(0.9);
+        }
+
+        .game-coin img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+            -webkit-user-drag: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        @keyframes shrinkOut {
+            0% { transform: scale(1); opacity: 1; filter: brightness(1); }
+            50% { transform: scale(1.2); opacity: 0.8; filter: brightness(1.5); }
+            100% { transform: scale(0); opacity: 0; filter: brightness(2); }
+        }
+
+        @keyframes coinAppear {
+            0% { transform: scale(0) translateY(30px); opacity: 0; }
+            30% { transform: scale(1.1) translateY(-5px); opacity: 1; }
+            50% { transform: scale(0.95) translateY(2px); }
+            70% { transform: scale(1.02) translateY(-1px); }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        .coin-pop {
+            animation: coinAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .coin-shrink {
+            animation: shrinkOut 0.2s ease-in forwards;
+        }
+
+        .float-text {
+            position: absolute;
+            font-size: clamp(20px, 3vw, 28px);
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 1.2s ease-out forwards;
+            z-index: 60;
+            text-shadow: 0 0 20px currentColor;
+        }
+
+        .float-plus { color: #ffd700; }
+        .float-minus { color: #ff4757; }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            50% { transform: translateY(clamp(-20px, -4vh, -30px)) scale(1.3); }
+            100% { transform: translateY(clamp(-35px, -6vh, -50px)) scale(0.8); opacity: 0; }
+        }
+
+        #coin img.pulse-yellow { animation: pulseYellow 0.3s ease-in-out infinite; }
+        #coin img.pulse-red { animation: pulseRed 0.6s ease-in-out infinite; }
+        #coin img.pulse-green { animation: pulseGreen 0.3s ease-in-out infinite; }
+        #coin img.pulse-blue { animation: pulseBlue 0.3s ease-in-out infinite; }
+        #coin img.pulse-cyan { animation: pulseCyan 0.3s ease-in-out infinite; }
+        #coin img.pulse-purple { animation: pulsePurple 0.3s ease-in-out infinite; }
+        #coin img.pulse-orange { animation: pulseOrange 0.3s ease-in-out infinite; }
+
+        @keyframes pulseYellow { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 215, 0, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 215, 0, 1)); } }
+        @keyframes pulseRed { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 50, 50, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 50, 50, 1)); } }
+        @keyframes pulseGreen { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 255, 100, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 255, 100, 1)); } }
+        @keyframes pulseBlue { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 150, 255, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 150, 255, 1)); } }
+        @keyframes pulseCyan { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(0, 255, 255, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(0, 255, 255, 1)); } }
+        @keyframes pulsePurple { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(200, 0, 255, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(200, 0, 255, 1)); } }
+        @keyframes pulseOrange { 0%, 100% { filter: brightness(1.1) drop-shadow(0 0 15px rgba(255, 150, 0, 0.9)); } 50% { filter: brightness(1.3) drop-shadow(0 0 30px rgba(255, 150, 0, 1)); } }
+        /* W button - top position */
+        .wallet-section {
+            position: fixed;
+            top: clamp(5px, 1.5vh, 12px);
+            left: clamp(10px, 2vw, 20px);
+            z-index: 95;
+        }
+
+        #w-btn {
+            width: 80px;
+            height: 44px;
+            padding: 0;
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: #00ff00;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        #w-btn:active {
+            transform: scale(0.9);
+        }
+
+        #w-btn.connected {
+            filter: brightness(1.2);
+        }
+
+        /* User initials badge - top right corner */
+        #user-badge-section {
+            position: fixed;
+            top: clamp(5px, 1.5vh, 12px);
+            right: clamp(10px, 2vw, 20px);
+            z-index: 95;
+        }
+
+        #user-badge {
+            width: 80px;
+            height: 44px;
+            padding: 0 10px;
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: #00ff00;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #user-badge:active {
+            transform: scale(0.9);
+        }
+
+        /* User badge panel - opens when badge is clicked */
+        #user-badge-panel {
+            display: none;
+            position: fixed;
+            top: 60px;
+            right: 10px;
+            z-index: 96;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 12px;
+            padding: 12px;
+            min-width: 200px;
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+
+        #user-badge-panel.open { display: block; }
+
+        /* Wallet panel - opens when W is clicked */
+        #wallet-panel {
+            display: none;
+            position: fixed;
+            top: 75px;
+            left: 10px;
+            z-index: 96;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 12px;
+            padding: 12px;
+            min-width: 200px;
+            border: 2px solid rgba(0, 136, 204, 0.4);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+
+        #wallet-panel.open { display: block; }
+
+        .wallet-panel-btn {
+            display: block;
+            width: 100%;
+            background: url('/assets/Button.png') no-repeat center center !important;
+            background-size: 100% 100% !important;
+            background-color: transparent !important;
+            border: none !important;
+            color: #ff4757;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .wallet-panel-btn:active {
+            transform: scale(0.95);
+        }
+
+        .wallet-panel-btn:last-child {
+            margin-bottom: 0;
+        }
+
+        .btn-green { color: #00ff00 !important; }
+        .btn-red { color: #ff4757 !important; }
+
+        .wallet-address {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+            word-break: break-all;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+        }
+
+        /* Balance and Withdraw modal */
+        #wallet-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #wallet-modal.open { display: flex; }
+
+        .wallet-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: clamp(16px, 4vw, 24px);
+            border-radius: 16px;
+            text-align: center;
+            max-width: 95vw;
+            width: min(340px, 95vw);
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 2px solid rgba(0, 136, 204, 0.4);
+            box-sizing: border-box;
+        }
+
+        .wallet-modal-content h3 {
+            color: #ffd700;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .balance-display {
+            font-size: 24px;
+            color: #00d2ff;
+            margin: 15px 0;
+        }
+
+        .close-modal {
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            color: #ff4757;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: transform 0.1s;
+        }
+
+        .close-modal:active {
+            transform: scale(0.95);
+        }
+
+        #withdraw-amount {
+            width: 100%;
+            min-width: 0;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 2px solid rgba(0,136,204,0.5);
+            background: rgba(0,0,0,0.3);
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+            -moz-appearance: textfield;
+            appearance: textfield;
+            flex: 1;
+        }
+        
+        #withdraw-amount::-webkit-outer-spin-button,
+        #withdraw-amount::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        #max-btn {
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            color: #ff4757;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+            transition: transform 0.1s;
+        }
+
+        #max-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .withdraw-input-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin: 10px 0;
+            width: 100%;
+        }
+
+        #withdraw-submit {
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            color: #ff4757;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: transform 0.1s;
+        }
+
+        #withdraw-submit:active {
+            transform: scale(0.95);
+        }
+
+        /* Shop Section Styles */
+        .shop-section {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 30px);
+            left: clamp(10px, 2vw, 20px);
+            z-index: 95;
+        }
+
+        #shop-btn {
+            width: 80px;
+            height: 44px;
+            padding: 0;
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: #ffd700;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        #shop-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* Help Section Styles */
+        .help-section {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 30px);
+            right: clamp(10px, 2vw, 20px);
+            z-index: 95;
+        }
+
+        #help-btn {
+            width: 80px;
+            height: 44px;
+            padding: 0;
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: #00d2ff;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        #help-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* Help Modal */
+        #help-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #help-modal.open { display: flex; }
+
+        .help-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: clamp(16px, 4vw, 24px);
+            border-radius: 16px;
+            text-align: left;
+            max-width: 95vw;
+            width: min(360px, 95vw);
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 2px solid rgba(0, 210, 255, 0.4);
+            box-sizing: border-box;
+        }
+
+        .help-modal-content h3 {
+            color: #00d2ff;
+            margin-bottom: 16px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .help-section-title {
+            color: #ffd700;
+            font-size: 13px;
+            font-weight: bold;
+            margin: 12px 0 6px 0;
+        }
+
+        .help-text {
+            color: #ccc;
+            font-size: 11px;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .help-text-small {
+            color: #ccc;
+            font-size: 10px;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .help-footer {
+            color: #00d2ff;
+            font-size: 11px;
+            text-align: center;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0, 210, 255, 0.3);
+        }
+
+        /* Shop Modal */
+        #shop-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #shop-modal.open { display: flex; }
+
+        .shop-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: clamp(16px, 4vw, 24px);
+            border-radius: 16px;
+            text-align: center;
+            max-width: 95vw;
+            width: min(380px, 95vw);
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            box-sizing: border-box;
+        }
+
+        .shop-modal-content h3 {
+            color: #ffd700;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .coin-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .coin-item {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 2px;
+            border: 2px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            overflow: hidden;
+        }
+
+        .coin-item:hover {
+            border-color: rgba(255,215,0,0.5);
+            transform: scale(1.02);
+        }
+
+        .coin-item.purchased {
+            border-color: #2ed573;
+            background: rgba(46, 213, 115, 0.1);
+        }
+
+        .coin-item.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255,215,0,0.3);
+        }
+
+        .coin-item img {
+            width: 80px !important;
+            height: 80px !important;
+            max-width: 80px !important;
+            max-height: 80px !important;
+            object-fit: contain;
+        }
+
+        .coin-name {
+            color: #fff;
+            font-size: 8px;
+            font-weight: bold;
+        }
+
+        .coin-price {
+            color: #ffd700;
+            font-size: 8px;
+            font-weight: bold;
+        }
+
+        .coin-info {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            width: 100%;
+        }
+
+        .coin-check {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 20px;
+            height: 20px;
+            background: #2ed573;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 12px;
+        }
+
+        .coin-item.purchased .coin-check {
+            display: flex;
+        }
+
+        .coin-status {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            font-size: 9px;
+            font-weight: bold;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .coin-item.selected .coin-status {
+            color: #ffd700;
+            font-size: 11px;
+        }
+
+        .shop-info {
+            color: #888;
+            font-size: 11px;
+            margin-top: 12px;
+            padding: 8px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .asra-auto-indicator {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 50, 50, 0.9);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: none;
+            z-index: 80;
+        }
+
+        .asra-auto-indicator.active {
+            display: block;
+            animation: pulse 1s infinite;
+        }
+
+        /* Referral Section */
+        .referral-section {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 30px);
+            right: clamp(120px, 25vw, 200px);
+            z-index: 95;
+        }
+
+        #referral-btn {
+            width: 80px;
+            height: 44px;
+            padding: 0;
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: #00d2ff;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        #referral-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* Leaderboard Section */
+        .leaderboard-section {
+            position: fixed;
+            bottom: clamp(20px, 3vh, 30px);
+            right: clamp(10px, 2vw, 20px);
+            z-index: 95;
+        }
+
+        #leaderboard-btn {
+            width: 80px;
+            height: 44px;
+            padding: 0;
+            background: url('/assets/Button.png') no-repeat center center;
+            background-size: 100% 100%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            color: #ff6b6b;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        #leaderboard-btn:active {
+            transform: scale(0.9);
+        }
+
+        .leaderboard-row.current-user {
+            background: rgba(255, 215, 0, 0.15);
+            font-weight: bold;
+        }
+
+        /* Referral Modal */
+        #referral-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #referral-modal.open { display: flex; }
+
+        .referral-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: clamp(16px, 4vw, 24px);
+            border-radius: 16px;
+            text-align: center;
+            max-width: 95vw;
+            width: min(340px, 95vw);
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 2px solid rgba(46, 213, 115, 0.4);
+            box-sizing: border-box;
+        }
+
+        .referral-modal-content h3 {
+            color: #2ed573;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .referral-stats {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        .referral-stats div {
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .referral-stats span {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        /* Leaderboard Modal */
+        #leaderboard-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #leaderboard-modal.open { display: flex; }
+
+        .leaderboard-modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: clamp(16px, 4vw, 24px);
+            border-radius: 16px;
+            text-align: center;
+            max-width: 95vw;
+            width: min(400px, 95vw);
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 2px solid rgba(255, 107, 107, 0.4);
+            box-sizing: border-box;
+        }
+
+        .leaderboard-modal-content h3 {
+            color: #ff6b6b;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .leaderboard-row {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .leaderboard-row:nth-child(even) {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .leaderboard-row.current-user {
+            background: rgba(255, 215, 0, 0.15);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="score-display">
+            <div class="score-box">
+                <div class="score-label">asra</div>
+                <div class="score-value" id="asra-display">0</div>
+            </div>
+        </div>
+
+        <div class="wallet-section">
+            <button id="w-btn" title="Wallet">WALLET</button>
+            <div id="wallet-panel">
+                <div id="wallet-address-display" class="wallet-address" style="display:none"></div>
+                <button class="wallet-panel-btn btn-green" id="btn-wallet-action">Connect Wallet</button>
+                <button class="wallet-panel-btn btn-green" id="btn-pay-from-wallet">Pay with TON</button>
+                <button class="wallet-panel-btn btn-green" id="btn-pay-with-asra">ASRA ↔ SWAP</button>
+                <button class="wallet-panel-btn btn-green" id="btn-ton-yechish">Withdraw ASRA</button>
+                <button class="wallet-panel-btn btn-red" id="btn-restart">RESTART</button>
+            </div>
+        </div>
+
+        <!-- User Badge - Top Right -->
+        <div id="user-badge-section">
+            <button id="user-badge" title="User Menu">--</button>
+            <div id="user-badge-panel">
+                <button class="wallet-panel-btn" id="btn-invite" style="color:#00d2ff;">INVITE</button>
+                <button class="wallet-panel-btn" id="btn-rank" style="color:#ff6b6b;">RANK</button>
+            </div>
+        </div>
+
+        <div class="shop-section">
+            <button id="shop-btn" title="Shop">SHOP</button>
+        </div>
+
+        <div class="help-section">
+            <button id="help-btn" title="Help">HELP</button>
+        </div>
+
+        <div class="game-controls">
+            <button id="stop-btn">START</button>
+        </div>
+    </div>
+
+    <!-- ASRA Auto-play indicator -->
+    <div id="asra-auto-indicator" class="asra-auto-indicator">ASRA Auto-playing...</div>
+
+    <!-- Help Modal -->
+    <div id="help-modal">
+        <div class="help-modal-content">
+            <h3>Game Information</h3>
+            
+            <div class="help-text" style="background:rgba(0,210,255,0.1);border:1px solid rgba(0,210,255,0.3);border-radius:8px;padding:12px;margin-bottom:15px;font-size:12px;color:#00d2ff;text-align:center;">
+                <a href="https://dyor.io/ru/token/EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy" target="_blank" style="color:#00d2ff;text-decoration:underline;">🔗 Buy or exchange ASRA here</a>
+            </div>
+            
+            <div class="help-section-title">How to Play?</div>
+            <div class="help-text">
+                Press START and quickly click on coins appearing on screen. Earn ASRA based on your selected coin price. Red glow behind coin = -100 ASRA penalty.
+            </div>
+            
+            <div class="help-section-title">Game Buttons</div>
+            <div class="help-text-small">
+                <b>START</b> - Start catching coins<br>
+                <b>WALLET</b> - Connect wallet, pay TON, withdraw ASRA<br>
+                <b>SHOP</b> - Buy coins with TON<br>
+                <b>INVITE</b> - Invite friends to join the game<br>
+                <b>RANK</b> - Leaderboard, see top players<br>
+                <b>HELP</b> - This information page
+            </div>
+            
+            <div class="help-section-title">Your Profile</div>
+            <div class="help-text">
+                The badge in top right corner shows your Telegram name initials. Your wallet address is also saved after connecting wallet.
+            </div>
+            
+            <div class="help-section-title">Wallet Connection</div>
+            <div class="help-text">
+                First connect your wallet using the Wallet button to withdraw ASRA. Connect Telegram Wallet, Tonkeeper or other wallets via TON Connect. For security, withdrawals are only allowed to your own wallet address.
+            </div>
+            
+            <div class="help-section-title">Withdraw ASRA</div>
+            <div class="help-text-small">
+                • Collect at least 10,000 ASRA<br>
+                • 10,000 ASRA stays as commission (cannot withdraw)<br>
+                • Can withdraw: balance - 10,000 ASRA<br>
+                • Example: 25,000 ASRA → withdraw 15,000 (10,000 stays)<br>
+                • Wallet connection required<br>
+                • Need 10,000 ASRA minimum to withdraw again
+            </div>
+            
+            <div class="help-section-title">Pay TON</div>
+            <div class="help-text-small">
+                • Pay 1 TON to start real game<br>
+                • Pay via QR code or from wallet<br>
+                • Can withdraw ASRA after payment
+            </div>
+            
+            <div class="help-section-title">Shop - About Coins</div>
+            <table style="width:100%;border-collapse:collapse;margin:10px 0;font-size:11px;color:#ccc;">
+                <thead>
+                    <tr style="background:rgba(0,210,255,0.2);">
+                        <th style="padding:6px;border:1px solid rgba(0,210,255,0.3);text-align:left;color:#00d2ff;">Coin</th>
+                        <th style="padding:6px;border:1px solid rgba(0,210,255,0.3);text-align:center;color:#00d2ff;">Price</th>
+                        <th style="padding:6px;border:1px solid rgba(0,210,255,0.3);text-align:center;color:#00d2ff;">Asra</th>
+                        <th style="padding:6px;border:1px solid rgba(0,210,255,0.3);text-align:left;color:#00d2ff;">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Gunmetal</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">Free</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+1</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Default coin, normal speed</td>
+                    </tr>
+                    <tr style="background:rgba(255,255,255,0.05);">
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Blue</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">2 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+2</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down a bit</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Green</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">5 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+5</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down more</td>
+                    </tr>
+                    <tr style="background:rgba(255,255,255,0.05);">
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Pink</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">10 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+10</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down, more time</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Red</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">20 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+20</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">High reward, no speed change</td>
+                    </tr>
+                    <tr style="background:rgba(255,255,255,0.05);">
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Yellow</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;">30 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;">+30</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Coin speed slows down much more</td>
+                    </tr>
+                    <tr style="background:rgba(255,215,0,0.1);">
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);font-weight:bold;color:#ffd700;">ASRA PRO</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#ffd700;font-weight:bold;">99 TON</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);text-align:center;color:#00ff00;font-weight:bold;">+99</td>
+                        <td style="padding:6px;border:1px solid rgba(255,255,255,0.1);">Auto-play, no -100 penalty, up to 2,000,000 ASRA</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            
+            <div class="help-section-title">ASRA PRO Rules (All or Nothing)</div>
+            <div class="help-text-small" style="background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;">
+                <b style="color:#ffd700;">ASRA PRO:</b> 99 TON - Auto-play, no -100 penalty<br>
+                <b style="color:#ffd700;">Complete 2,000,000 ASRA to save:</b><br>
+                ✅ Collect 2,000,000 ASRA → ASRA is saved<br>
+                ❌ STOP pressed → ASRA resets to 0<br>
+                ❌ Phone screen turns off → ASRA resets to 0<br>
+                ❌ Page closed/refreshed → ASRA resets to 0<br>
+                ❌ Switch to another app → ASRA resets to 0<br><br>
+                <b style="color:#ff4757;">Important:</b> Only full 2,000,000 ASRA will be counted! Early stop = all ASRA lost!
+            </div>
+            
+            <div class="help-section-title" style="color:#ff4757;">⚠️ Important Notice - Monthly Reset</div>
+            <div class="help-text-small" style="background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:12px;">
+                <b style="color:#ff4757;">Game Restart Schedule:</b><br>
+                On the <b>1st day of every month</b>, the game performs a <b>complete restart</b>.<br><br>
+                
+                <b style="color:#ffd700;">What to do on the 1st:</b><br>
+                Press the <b>RESTART</b> button in the WALLET panel to refresh the game and receive new updates.<br><br>
+                
+                <b style="color:#2ed573;">Monthly Bonus:</b><br>
+                On the 1st of each month, all users with <b>connected wallets</b> automatically receive <b>1,000 ASRA</b> as a bonus for the monthly reset inconvenience.<br>
+                • Bonus is given only once per month per user<br>
+                • Connect your wallet before the 1st to receive the bonus automatically<br><br>
+                
+                <b style="color:#ffd700;">Action Required:</b><br>
+                Please <b>withdraw all your ASRA</b> to your wallet before the 1st of each month to avoid losing your progress.<br><br>
+                
+                <b style="color:#2ed573;">Your Wallet is Safe:</b><br>
+                This reset applies only to game progress. Your connected wallet and any ASRA already withdrawn to it remain completely safe and unaffected.<br><br>
+                
+                <b style="color:#ff4757;">Disclaimer:</b><br>
+                ASRA Team is <b>not responsible</b> for any ASRA lost due to failure to withdraw before the monthly reset. Please manage your game time accordingly.
+            </div>
+            
+            <div class="help-section-title">Future</div>
+            <div class="help-text-small">
+                ASRA game is the gateway to TON ecosystem. In the future, you will be able to buy anything you want with ASRA. Learn what TON is through the game and join the ecosystem.
+            </div>
+            
+            <div class="help-section-title">ASRA Team Gratitude</div>
+            <div class="help-text-small">
+                Thank you for your support! Together we walk towards a great future.<br><br>
+                <b>New features added:</b><br>
+                • Monthly bonus system<br>
+                • Auto-play ASRA PRO mode
+            </div>
+            
+            <button class="wallet-panel-btn close-modal btn-red" id="close-help" style="width:100%;margin-top:16px;">Close</button>
+            
+            <div class="help-footer">
+                ASRA Coin Team
+            </div>
+        </div>
+    </div>
+
+    <!-- Shop Modal -->
+    <div id="shop-modal">
+        <div class="shop-modal-content">
+            <h3>Coin Shop</h3>
+            <div class="coin-grid" id="coin-grid">
+                <!-- Blue Coin - 2 TON -->
+                <div class="coin-item" data-coin="blue" data-price="2">
+                    <div class="coin-check"></div>
+                    <div class="coin-status">off</div>
+                    <div class="coin-info">
+                        <div class="coin-name">Blue</div>
+                        <div class="coin-price">2 TON</div>
+                    </div>
+                    <img src="/assets/Blue.png" alt="Blue">
+                </div>
+                <!-- Green Coin - 5 TON -->
+                <div class="coin-item" data-coin="green" data-price="5">
+                    <div class="coin-check"></div>
+                    <div class="coin-status">off</div>
+                    <div class="coin-info">
+                        <div class="coin-name">Green</div>
+                        <div class="coin-price">5 TON</div>
+                    </div>
+                    <img src="/assets/Green.png" alt="Green">
+                </div>
+                <!-- Pink Coin - 10 TON -->
+                <div class="coin-item" data-coin="pink" data-price="10">
+                    <div class="coin-check"></div>
+                    <div class="coin-status">off</div>
+                    <div class="coin-info">
+                        <div class="coin-name">Pink</div>
+                        <div class="coin-price">10 TON</div>
+                    </div>
+                    <img src="/assets/Pink.png" alt="Pink">
+                </div>
+                <!-- Red Coin - 20 TON -->
+                <div class="coin-item" data-coin="red" data-price="20">
+                    <div class="coin-check"></div>
+                    <div class="coin-status">off</div>
+                    <div class="coin-info">
+                        <div class="coin-name">Red</div>
+                        <div class="coin-price">20 TON</div>
+                    </div>
+                    <img src="/assets/Red.png" alt="Red">
+                </div>
+                <!-- Yellow Coin - 30 TON -->
+                <div class="coin-item" data-coin="yellow" data-price="30">
+                    <div class="coin-check"></div>
+                    <div class="coin-status">off</div>
+                    <div class="coin-info">
+                        <div class="coin-name">Yellow</div>
+                        <div class="coin-price">30 TON</div>
+                    </div>
+                    <img src="/assets/Yellow.png" alt="Yellow">
+                </div>
+                <!-- ASRA Coin - 99 TON -->
+                <div class="coin-item" data-coin="asra" data-price="99">
+                    <div class="coin-check"></div>
+                    <div class="coin-status">off</div>
+                    <div class="coin-info">
+                        <div class="coin-name">ASRA PRO</div>
+                        <div class="coin-price">99 TON</div>
+                    </div>
+                    <img src="/assets/ASRAPRO.png" alt="ASRA PRO">
+                </div>
+            </div>
+            <button class="wallet-panel-btn close-modal btn-red" id="close-shop" style="width:100%;">Close</button>
+        </div>
+    </div>
+
+    <!-- Referral Modal -->
+    <div id="referral-modal">
+        <div class="referral-modal-content">
+            <h3>👥 Invite Friends</h3>
+            <div id="referral-content">
+                <div class="referral-link-section" style="padding:12px 0;margin-bottom:16px;">
+                    <input type="text" id="referral-link" readonly style="width:100%;padding:12px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.5);color:#ffd700;border-radius:6px;font-size:11px;margin-bottom:8px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-sizing:border-box;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
+                </div>
+            </div>
+            <button class="wallet-panel-btn close-modal btn-red" id="close-referral" style="width:100%;margin-top:16px;">Close</button>
+        </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div id="leaderboard-modal">
+        <div class="leaderboard-modal-content">
+            <h3>🏆 Leaderboard</h3>
+            <div id="leaderboard-content">
+                <div class="user-rank" id="user-rank" style="background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;margin-bottom:16px;text-align:center;">
+                    <div style="color:#ffd700;font-size:14px;">Your Rank: #-</div>
+                    <div style="color:#888;font-size:11px;">Total ASRA: 0</div>
+                </div>
+                <table style="width:100%;border-collapse:collapse;font-size:11px;" id="leaderboard-table">
+                    <thead>
+                        <tr style="background:rgba(0,210,255,0.2);">
+                            <th style="padding:6px 4px;border:1px solid rgba(0,210,255,0.3);color:#00d2ff;width:30px;">#</th>
+                            <th style="padding:6px 4px;border:1px solid rgba(0,210,255,0.3);color:#00d2ff;width:70px;">User</th>
+                            <th style="padding:6px 4px;border:1px solid rgba(0,210,255,0.3);color:#00d2ff;">Coins</th>
+                            <th style="padding:6px 4px;border:1px solid rgba(0,210,255,0.3);color:#00d2ff;width:50px;">ASRA</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Leaderboard rows will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+            <button class="wallet-panel-btn close-modal btn-red" id="close-leaderboard" style="width:100%;margin-top:16px;">Close</button>
+        </div>
+    </div>
+
+    <div id="wallet-modal">
+        <div class="wallet-modal-content" id="modal-content">
+            <h3 id="modal-title"></h3>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <div id="coin" class="game-coin">
+        <img src="/assets/Gunmetal.png" alt="ASRA" id="coin-img">
+    </div>
+
+    <script>
+        // API - set via meta name="api-base" content="https://RAILWAY-URL.railway.app/api"
+        const metaApi = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
+        const API_BASE = metaApi || (window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '');
+        
+        // Offline warning function
+        function showOfflineWarning() {
+            if (gameActive) {
+                stopGame();
+                Swal.fire({
+                    title: 'Internet disconnected',
+                    text: 'Game paused. Please connect to internet to continue.',
+                    icon: 'warning',
+                    allowOutsideClick: false,
+                    confirmButtonText: 'Resume'
+                }).then(() => {
+                    if (navigator.onLine) {
+                        startNewGame();
+                    }
+                });
+            }
+        }
+        
+        // Monitor online/offline status
+        window.addEventListener('offline', () => {
+            console.log('📡 Internet disconnected');
+            showOfflineWarning();
+        });
+        
+        // userId - from Telegram URL OR localStorage (for page refresh)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlUserId = urlParams.get('userId') || urlParams.get('user_id') || '';
+        
+        // Get userId from Telegram WebApp initData (in case URL loses it on restart)
+        let tgUserId = '';
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe?.user?.id) {
+            tgUserId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+        }
+        
+        // Try to get userId from localStorage if not in URL (for page refresh recovery)
+        let storedUserId = '';
+        try {
+            storedUserId = localStorage.getItem('asra_userId') || '';
+        } catch (e) {
+            console.log('⚠️ localStorage not available');
+        }
+        
+        // userId - Priority: URL > Telegram WebApp > localStorage
+        const userId = urlUserId || tgUserId || storedUserId || '';
+        
+        // Save userId to localStorage for page refresh recovery
+        if (userId) {
+            try {
+                localStorage.setItem('asra_userId', userId);
+                console.log('💾 [INIT] userId saved to localStorage:', userId);
+            } catch (e) {
+                console.log('⚠️ Cannot save to localStorage');
+            }
+        }
+        
+        const urlFirstName = decodeURIComponent(urlParams.get('firstName') || '');
+        const urlLastName = decodeURIComponent(urlParams.get('lastName') || '');
+
+        // Save game data to backend AND localStorage (for backup)
+        async function saveGameData() {
+            if (!userId) {
+                console.log('⚠️ [SAVE] No userId, cannot save');
+                return;
+            }
+            
+            console.log('💾 [SAVE] Saving. asraScore:', asraScore);
+            
+            // Always save to localStorage first (as backup)
+            try {
+                localStorage.setItem('asra_score_' + userId, JSON.stringify({
+                    asraScore: asraScore,
+                    savedAt: new Date().toISOString()
+                }));
+                console.log('✅ [SAVE] Saved to localStorage');
+            } catch (e) {
+                console.error('❌ [SAVE] localStorage error:', e);
+            }
+            
+            // Then save to backend
+            try {
+                const response = await fetch(API_BASE + '/save-game/' + userId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        asraScore: asraScore
+                    })
+                });
+                console.log('✅ [SAVE] Backend response:', response.status);
+            } catch (e) {
+                console.error('❌ [SAVE] Backend error:', e);
+                showOfflineWarning();
+            }
+        }
+
+        // INDUSTRY STANDARD: Load game state from server
+        async function loadGameState() {
+            if (!userId) {
+                console.log('⚠️ [LOAD] No userId, starting with 0');
+                return { asraScore: 0 };
+            }
+            
+            try {
+                const url = API_BASE + '/game/state/' + userId + '?_=' + Date.now();
+                console.log('📡 [LOAD] Loading from server:', url);
+                
+                const res = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                
+                const data = await res.json();
+                console.log('📦 [LOAD] Server response:', data);
+                
+                if (data.success) {
+                    console.log('✅ [LOAD] Loaded from server:', data.gameState);
+                    
+                    return {
+                        asraScore: data.gameState.asraScore || 0
+                    };
+                } else {
+                    console.log('❌ [LOAD] Server error:', data.error);
+                }
+            } catch (e) {
+                console.error('❌ [LOAD] Error:', e);
+                showOfflineWarning();
+            }
+            
+            return { asraScore: 0 };
+        }
+
+        // Load saved data from server
+        let asraScore = 0;
+        let dataLoaded = false;
+        let isLoadingData = true;
+        
+        // Create loading overlay
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'loading-overlay';
+        loadingOverlay.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: #00122e;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 9999;
+                color: #00d2ff;
+                font-size: 18px;
+            ">
+                <div style="margin-bottom: 20px;">Loading game data...</div>
+                <div style="
+                    width: 50px;
+                    height: 50px;
+                    border: 3px solid rgba(0,210,255,0.3);
+                    border-top-color: #00d2ff;
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                "></div>
+            </div>
+            <style>
+                @keyframes spin { to { transform: rotate(360deg); } }
+            </style>
+        `;
+        document.body.appendChild(loadingOverlay);
+        
+        // Initialize game data
+        async function initGameData() {
+            console.log('🔄 [INIT] Loading game data from server...');
+            isLoadingData = true;
+            
+            const data = await loadGameState();
+            
+            asraScore = data.asraScore;
+            dataLoaded = true;
+            isLoadingData = false;
+            
+            console.log('✅ [INIT] Data loaded:', { asraScore });
+            
+            // Remove loading overlay
+            loadingOverlay.remove();
+            
+            updateDisplay();
+            
+            // ===== AUTOMATIC MONTHLY BONUS =====
+            // Check and apply monthly bonus on 1st day of month
+            await checkAndApplyMonthlyBonus();
+        }
+        
+        // ===== AUTOMATIC MONTHLY BONUS SYSTEM =====
+        const MONTHLY_BONUS_AMOUNT = 1000;
+        const BONUS_STORAGE_KEY = 'asra_monthly_bonus_' + userId;
+        
+        function getCurrentMonthKey() {
+            const now = new Date();
+            return `${now.getFullYear()}-${now.getMonth() + 1}`;
+        }
+        
+        function isFirstDayOfMonth() {
+            const now = new Date();
+            return now.getDate() === 1;
+        }
+        
+        async function checkAndApplyMonthlyBonus() {
+            // Only check if user has wallet connected
+            if (!connectedWalletAddress || !userId) {
+                console.log('⏭️ [BONUS] Skip - no wallet or userId');
+                return;
+            }
+            
+            // Only on 1st day of month
+            if (!isFirstDayOfMonth()) {
+                console.log('⏭️ [BONUS] Skip - not 1st day of month');
+                return;
+            }
+            
+            const currentMonth = getCurrentMonthKey();
+            const bonusClaimed = localStorage.getItem(BONUS_STORAGE_KEY);
+            
+            // Check if already claimed this month
+            if (bonusClaimed === currentMonth) {
+                console.log('⏭️ [BONUS] Already claimed this month');
+                return;
+            }
+            
+            // Apply bonus
+            console.log('🎁 [BONUS] Applying monthly bonus:', MONTHLY_BONUS_AMOUNT);
+            asraScore += MONTHLY_BONUS_AMOUNT;
+            await saveGameData();
+            updateDisplay();
+            
+            // Mark as claimed
+            localStorage.setItem(BONUS_STORAGE_KEY, currentMonth);
+            
+            // Show notification
+            Swal.fire({
+                title: '🎉 Monthly Bonus!',
+                html: `<p style="color:#2ed573;font-size:18px;font-weight:bold;">+${MONTHLY_BONUS_AMOUNT.toLocaleString()} ASRA</p><p style="color:#888;font-size:12px;">Thanks for playing! Bonus applied on ${new Date().toLocaleDateString()}</p>`,
+                icon: 'success',
+                timer: 5000,
+                showConfirmButton: false,
+                width: '300px',
+                position: 'center'
+            });
+            
+            console.log('✅ [BONUS] Monthly bonus applied successfully');
+        }
+        // ===== END AUTOMATIC MONTHLY BONUS =====
+        
+        // Initial load
+        initGameData();
+        
+        let gameActive = false;
+        let isPaused = false;
+
+        // Elements
+        const asraDisplayElement = document.getElementById('asra-display');
+        const stopBtn = document.getElementById('stop-btn');
+
+        // NOTE: Don't call updateDisplay() here - wait for data to load
+
+        const coin = document.getElementById('coin');
+        let coinTimeout = null;
+        let coinVisible = false;
+        let currentCoinColor = '';
+
+        const pulseColors = ['pulse-yellow', 'pulse-red', 'pulse-green', 'pulse-blue', 'pulse-cyan', 'pulse-purple', 'pulse-orange'];
+
+        // Helper function - format large numbers (K, M, B, T) with 2 decimal precision
+        function formatCompactNumber(number) {
+            // Return full number with locale formatting (1,000,000,000 format)
+            return number.toLocaleString();
+        }
+
+        function updateDisplay() {
+            // Show ASRA in full number format
+            asraDisplayElement.textContent = asraScore.toLocaleString();
+        }
+
+        // Calculate speed based on ASRA score (10000 ASRA = 1 level)
+        function calculateSpeed() {
+            const userLevel = Math.floor(asraScore / 10000);
+            return Math.max(200, 1500 - (userLevel + 1) * 200);
+        }
+
+        function getRandomPosition(coinSize) {
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            const minMargin = 10;
+            
+            // Calculate max positions ensuring coin stays fully visible
+            const maxX = Math.max(minMargin, screenWidth - coinSize - minMargin);
+            const maxY = Math.max(minMargin, screenHeight - coinSize - minMargin);
+            
+            return {
+                x: minMargin + Math.random() * (maxX - minMargin),
+                y: minMargin + Math.random() * (maxY - minMargin)
+            };
+        }
+
+        function showCoin() {
+            if (!gameActive || isPaused) return;
+
+            const coinImg = coin.querySelector('img');
+            pulseColors.forEach(c => coinImg.classList.remove(c));
+            currentCoinColor = pulseColors[Math.floor(Math.random() * pulseColors.length)];
+            coinImg.classList.add(currentCoinColor);
+
+            const coinSize = Math.min(280, Math.max(180, window.innerWidth * 0.25));
+            const pos = getRandomPosition(coinSize);
+
+            coin.style.left = pos.x + 'px';
+            coin.style.top = pos.y + 'px';
+            coin.style.display = 'block';
+            coin.classList.add('coin-pop');
+            coinVisible = true;
+
+            setTimeout(() => coin.classList.remove('coin-pop'), 500);
+
+            const visibleTime = calculateSpeed();
+            clearTimeout(coinTimeout);
+            coinTimeout = setTimeout(() => {
+                if (gameActive && !isPaused) hideCoin();
+            }, visibleTime);
+        }
+
+        function hideCoin() {
+            clearTimeout(coinTimeout);
+            coin.classList.add('coin-shrink');
+            setTimeout(() => {
+                coin.style.display = 'none';
+                coin.classList.remove('coin-shrink');
+                coinVisible = false;
+                if (gameActive && !isPaused) {
+                    showCoin();
+                }
+            }, 200);
+        }
+
+        function showFloatText(x, y, text, isNegative) {
+            const floatEl = document.createElement('div');
+            floatEl.className = 'float-text ' + (isNegative ? 'float-minus' : 'float-plus');
+            floatEl.textContent = text;
+            floatEl.style.left = (x - 40) + 'px';
+            floatEl.style.top = y + 'px';
+            document.body.appendChild(floatEl);
+            setTimeout(() => floatEl.remove(), 1000);
+        }
+
+        // INDUSTRY STANDARD: Frontend sends coin catch to server, server calculates reward
+        async function catchCoin(e) {
+            e.preventDefault();
+            if (!gameActive || isPaused || !coinVisible) return;
+            
+            clearTimeout(coinTimeout);
+            
+            const x = e.clientX || (e.touches && e.touches[0].clientX);
+            const y = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            // OPTIMIZED: Coin disappears immediately (don't wait for server)
+            const coinImg = coin.querySelector('img');
+            pulseColors.forEach(c => coinImg.classList.remove(c));
+            
+            coin.classList.add('coin-shrink');
+            setTimeout(() => {
+                coin.style.display = 'none';
+                coin.classList.remove('coin-shrink');
+                coinVisible = false;
+                showCoin();
+            }, 200);
+            
+
+            // Show temporary animation immediately - red for penalty coin, yellow for normal
+            const isRedCoin = currentCoinColor === 'pulse-red';
+            const tempText = isRedCoin ? 'Penalty' : 'ASRA';
+            showFloatText(x, y - 50, tempText, isRedCoin);
+            
+            // Send to server in BACKGROUND - don't wait
+            fetch(API_BASE + '/game/catch/' + userId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    coinColor: currentCoinColor,
+                    timestamp: Date.now()
+                })
+            }).then(response => response.json())
+              .then(data => {
+                if (data.success) {
+                    // Update from server response
+                    asraScore = data.gameState.asraScore;
+                    
+            // Show server reward number: +1 for normal, -100 for penalty
+            const isNegative = data.type === 'penalty';
+            const floatText = isNegative ? data.reward.toString() : '+' + data.reward;
+            showFloatText(x, y - 50, floatText, isNegative);
+                    
+                    // Update display
+                    updateDisplay();
+                    
+                    // Check ASRA PRO limit
+                    if (data.limitReached) {
+                        Swal.fire({
+                            text: 'ASRA PRO limit reached (200 ASRA). Please purchase again.',
+                            icon: 'warning',
+                            timer: 3000,
+                            showConfirmButton: false,
+                            width: '280px',
+                            position: 'center'
+                        });
+                    }
+                }
+            }).catch(err => {
+                console.error('❌ Catch coin error:', err);
+            });
+        }
+
+        // INDUSTRY STANDARD: Start game session on server
+        async function startNewGame() {
+            console.log('🎮 [START] startNewGame called. userId:', userId, 'isLoadingData:', isLoadingData);
+            
+            if (!userId) {
+                console.log('⚠️ [START] No userId, cannot start game');
+                Swal.fire({
+                    text: 'Please open game via Telegram',
+                    icon: 'warning',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    width: '250px',
+                    position: 'center'
+                });
+                return;
+            }
+            
+            // Show loading state on button
+            const stopBtn = document.getElementById('stop-btn');
+            const originalText = stopBtn ? stopBtn.textContent : 'START';
+            if (stopBtn) {
+                stopBtn.textContent = 'LOADING...';
+                stopBtn.style.opacity = '0.7';
+            }
+            
+            try {
+                console.log('📡 [START] Sending request to:', API_BASE + '/game/start/' + userId);
+                const response = await fetch(API_BASE + '/game/start/' + userId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                console.log('📦 [START] Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error('Server error: ' + response.status);
+                }
+                
+                const data = await response.json();
+                console.log('📦 [START] Response data:', data);
+                
+                if (data.success) {
+                    // Update local state from server
+                    asraScore = data.gameState.asraScore;
+                    
+                    gameActive = true;
+                    isPaused = false;
+                    
+                    updateDisplay();
+                    
+                    if (stopBtn) {
+                        stopBtn.textContent = 'STOP';
+                        stopBtn.style.color = '#ff4757';
+                        stopBtn.style.opacity = '1';
+                        stopBtn.classList.add('stop-mode');
+                    }
+                    
+                    console.log('✅ [START] Game started successfully!');
+                    showCoin();
+                } else {
+                    throw new Error(data.error || 'Failed to start game');
+                }
+            } catch (err) {
+                console.error('❌ [START] Start game error:', err);
+                // Reset button state
+                if (stopBtn) {
+                    stopBtn.textContent = originalText;
+                    stopBtn.style.opacity = '1';
+                }
+                // Show error to user
+                Swal.fire({
+                    text: 'Error starting game. Please try again.',
+                    icon: 'error',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    width: '250px',
+                    position: 'center'
+                });
+            }
+        }
+
+        // INDUSTRY STANDARD: Stop game session on server
+        async function stopGame() {
+            isPaused = true;
+            gameActive = false;
+            clearTimeout(coinTimeout);
+            coin.style.display = 'none';
+            
+            stopBtn.textContent = 'START';
+            stopBtn.style.color = '#00ff00';
+            stopBtn.classList.remove('stop-mode');
+            
+            // Notify server
+            if (userId) {
+                try {
+                    await fetch(API_BASE + '/game/stop/' + userId, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                } catch (err) {
+                    console.error('❌ Stop game error:', err);
+                }
+            }
+        }
+
+        // Check if user has real game access (paid 1 TON or bought coins from shop)
+        async function checkRealGameAccess() {
+            console.log(`🔍 checkRealGameAccess called for user: ${userId}`);
+            
+            if (!userId) {
+                console.log(`❌ No userId, returning no access`);
+                return { hasAccess: false, reason: 'nouser' };
+            }
+            
+            try {
+                // Check payment status
+                console.log(`📡 Fetching check-payment for ${userId}`);
+                const res = await fetch(API_BASE + '/check-payment/' + userId);
+                const paymentData = await res.json();
+                console.log(`📦 check-payment response:`, paymentData);
+                
+                // Check if user has purchased coins from shop
+                console.log(`📡 Fetching shop data for ${userId}`);
+                const shopRes = await fetch(API_BASE + '/shop/' + userId);
+                const shopData = await shopRes.json();
+                console.log(`📦 shop response:`, shopData);
+                
+                const hasBoughtCoins = shopData.success && shopData.shopData?.purchased?.length > 0;
+                console.log(`🔍 hasPaid: ${paymentData.hasPaid}, hasBoughtCoins: ${hasBoughtCoins}`);
+                
+                if (paymentData.hasPaid || hasBoughtCoins) {
+                    console.log(`✅ User has access!`);
+                    return { hasAccess: true, hasPaid: paymentData.hasPaid, hasBoughtCoins };
+                }
+                
+                console.log(`❌ User has NO access`);
+                return { hasAccess: false, reason: 'nopayment' };
+            } catch (e) {
+                console.error('❌ Error checking game access:', e);
+                return { hasAccess: false, reason: 'error' };
+            }
+        }
+
+        async function resumeGame() {
+            await startNewGame();
+        }
+
+        let isFirstStart = true;
+
+        async function toggleGame() {
+            if (gameActive) {
+                stopGame();
+            } else {
+                if (isFirstStart) {
+                    startNewGame();
+                    isFirstStart = false;
+                } else {
+                    resumeGame();
+                }
+            }
+        }
+
+        // Event listeners - moved inside DOMContentLoaded to ensure elements exist
+        // stopBtn.addEventListener('click', toggleGame); // Moved to DOMContentLoaded
+
+        // Coin click - prevent text selection
+        coin.addEventListener('click', catchCoin);
+        coin.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            catchCoin(e);
+        }, { passive: false });
+        
+        // Completely disable text selection
+        coin.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // Load config from backend (PAYMENT_ADDRESS, etc.)
+        let configData = null;
+        async function loadConfig() {
+            try {
+                const res = await fetch(API_BASE + '/config');
+                configData = await res.json();
+                console.log('⚙️ Config loaded:', configData);
+                return configData;
+            } catch (e) {
+                console.error('❌ Failed to load config:', e);
+                // Fallback values
+                return {
+                    success: true,
+                    paymentAddress: 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM',
+                    paymentAmount: 1,
+                    paymentNano: 1000000000
+                };
+            }
+        }
+        
+        // Load config on startup
+        loadConfig();
+        
+        // HTML Escape function - for XSS protection
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // INDUSTRY STANDARD: Stop game when page unloads
+        window.addEventListener('beforeunload', () => {
+            if (userId && gameActive) {
+                // Just notify server that game stopped
+                // Data is already saved via /api/game/catch
+                navigator.sendBeacon(API_BASE + '/game/stop/' + userId, '');
+            }
+        });
+        
+        // Sync with server periodically (every 30 seconds)
+        setInterval(() => {
+            if (dataLoaded && userId && !gameActive) {
+                // Refresh game state when not playing
+                loadGameState().then(data => {
+                    asraScore = data.asraScore;
+                    updateDisplay();
+                });
+            }
+        }, 30000);
+        
+        // FIX: Reload data when app becomes visible (after restart)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && userId) {
+                console.log('🔄 [VISIBILITY] App visible, reloading game data...');
+                // Stop game if active
+                if (gameActive) {
+                    stopGame();
+                }
+                // Reload game state from server
+                loadGameState().then(data => {
+                    asraScore = data.asraScore;
+                    updateDisplay();
+                    console.log('✅ [VISIBILITY] Data reloaded:', { asraScore });
+                });
+            }
+        });
+        
+        // First read name from URL (comes from Telegram WebApp)
+        let firstName = urlFirstName;
+        let lastName = urlLastName;
+        
+        // If not in URL, get from Telegram WebApp data
+        if (window.Telegram && window.Telegram.WebApp) {
+            
+            try {
+                Telegram.WebApp.ready();
+                Telegram.WebApp.expand();
+                
+                // Get user initials from Telegram
+                let tgUser = Telegram.WebApp.initDataUnsafe?.user;
+                
+                // If initDataUnsafe is empty, parse from initData
+                if (!tgUser && Telegram.WebApp.initData) {
+                    try {
+                        const params = new URLSearchParams(Telegram.WebApp.initData);
+                        const userJson = params.get('user');
+                        if (userJson) {
+                            tgUser = JSON.parse(userJson);
+                        }
+                    } catch (e) {
+                        // initData parse error
+                    }
+                }
+                
+                if (tgUser) {
+                    // If no name in URL, get from Telegram
+                    if (!firstName) firstName = tgUser.first_name || '';
+                    if (!lastName) lastName = tgUser.last_name || '';
+                }
+            } catch (e) {
+                // Telegram WebApp error
+            }
+        }
+        
+        // Generate display name (first name only)
+        let userDisplayName;
+        
+        // Security check - account for empty strings
+        const safeFirstName = escapeHtml((firstName || '').trim());
+        const safeLastName = escapeHtml((lastName || '').trim());
+        
+        if (safeFirstName) {
+            // Show first name only (truncated if too long)
+            userDisplayName = safeFirstName;
+        } else if (safeLastName) {
+            // If only last name available, show it
+            userDisplayName = safeLastName;
+        } else {
+            // If no name, use userId
+            userDisplayName = userId ? userId.toString().slice(-2) : 'U';
+        }
+        
+
+        // W button and Wallet panel
+        let tonConnectUI = null;
+        let connectedWalletAddress = null;
+
+        // Helper function - shorten address (ABC...XYZ format)
+        function shortenAddress(address) {
+            if (!address || address.length < 18) return address;
+            return address.slice(0, 8) + '...' + address.slice(-8);
+        }
+
+        // Helper function - convert address to EQ/UQ format
+        function getUserFriendlyAddress(wallet) {
+            if (!wallet || !wallet.account) return null;
+            
+            try {
+                // 1. Get direct userFriendlyAddress (best option)
+                if (wallet.account.userFriendlyAddress) {
+                    return wallet.account.userFriendlyAddress;
+                }
+                
+                // 2. If address exists and is already in EQ/UQ format
+                if (wallet.account.address && 
+                    (wallet.account.address.startsWith('EQ') || wallet.account.address.startsWith('UQ'))) {
+                    return wallet.account.address;
+                }
+                
+                // 3. Convert raw address (0:...) to EQ/UQ format
+                if (wallet.account.address && wallet.account.address.includes(':')) {
+                    // Use TON Connect UI library
+                    if (typeof TON_CONNECT_UI !== 'undefined' && TON_CONNECT_UI.toUserFriendlyAddress) {
+                        return TON_CONNECT_UI.toUserFriendlyAddress(wallet.account.address);
+                    }
+                }
+                
+                return wallet.account.address || null;
+            } catch (e) {
+                // getUserFriendlyAddress error
+                return wallet.account?.address || null;
+            }
+        }
+
+        function updateWalletUI() {
+            const walletActionBtn = document.getElementById('btn-wallet-action');
+            const walletAddressDisplay = document.getElementById('wallet-address-display');
+            const wBtn = document.getElementById('w-btn');
+            
+            if (connectedWalletAddress) {
+                wBtn.classList.add('connected');
+                walletActionBtn.textContent = 'Disconnect Wallet';
+                walletActionBtn.classList.remove('btn-green');
+                walletActionBtn.classList.add('btn-red');
+                
+                // Show SHORTENED address (ABC...XYZ format)
+                const shortAddress = shortenAddress(connectedWalletAddress);
+                walletAddressDisplay.innerHTML = `
+                    <strong style="color:#888">Connected Wallet:</strong> 
+                    <span style="color:#fff; font-family:monospace;">${shortAddress}</span>
+                `;
+                walletAddressDisplay.style.display = 'block';
+            } else {
+                wBtn.classList.remove('connected');
+                walletActionBtn.textContent = 'Connect Wallet';
+                walletActionBtn.classList.remove('btn-red');
+                walletActionBtn.classList.add('btn-green');
+                walletAddressDisplay.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // User Badge - set initials and toggle panel
+            const userBadge = document.getElementById('user-badge');
+            const userBadgePanel = document.getElementById('user-badge-panel');
+            
+            if (userBadge && userDisplayName) {
+                userBadge.textContent = userDisplayName;
+                userBadge.style.display = 'flex';
+            }
+            
+            // Toggle user badge panel
+            if (userBadge && userBadgePanel) {
+                userBadge.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Stop game if active
+                    if (gameActive) {
+                        stopGame();
+                    }
+                    // Close wallet panel if open
+                    walletPanel.classList.remove('open');
+                    // Toggle user badge panel
+                    userBadgePanel.classList.toggle('open');
+                });
+                
+                // Close when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!userBadge.contains(e.target) && !userBadgePanel.contains(e.target)) {
+                        userBadgePanel.classList.remove('open');
+                    }
+                });
+                
+                // Prevent panel click from closing
+                userBadgePanel.addEventListener('click', (e) => e.stopPropagation());
+            }
+            
+            const wBtn = document.getElementById('w-btn');
+            const walletPanel = document.getElementById('wallet-panel');
+            const modal = document.getElementById('wallet-modal');
+            const modalBody = document.getElementById('modal-body');
+            const modalTitle = document.getElementById('modal-title');
+            const closeModal = modal.querySelector('.close-modal');
+            
+            // START button event listener - moved here to ensure DOM is ready
+            const stopBtnInDOM = document.getElementById('stop-btn');
+            if (stopBtnInDOM) {
+                stopBtnInDOM.addEventListener('click', async () => {
+                    console.log('🎮 [BUTTON] START/STOP clicked. gameActive:', gameActive, 'isLoadingData:', isLoadingData);
+                    if (gameActive) {
+                        stopGame();
+                    } else {
+                        if (!userId) {
+                            console.log('❌ [BUTTON] No userId!');
+                            Swal.fire({
+                                text: 'Please open game via Telegram',
+                                icon: 'warning',
+                                timer: 2000,
+                                showConfirmButton: false,
+                                width: '250px',
+                                position: 'center'
+                            });
+                            return;
+                        }
+                        if (isLoadingData) {
+                            console.log('⏳ [BUTTON] Waiting for data to load...');
+                            Swal.fire({
+                                text: 'Loading data, please wait...',
+                                icon: 'info',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                width: '250px',
+                                position: 'center'
+                            });
+                            return;
+                        }
+                        if (isFirstStart) {
+                            console.log('🎮 [BUTTON] Starting new game...');
+                            await startNewGame();
+                            isFirstStart = false;
+                        } else {
+                            console.log('🎮 [BUTTON] Resuming game...');
+                            await resumeGame();
+                        }
+                    }
+                });
+            } else {
+                console.error('❌ [BUTTON] stop-btn element not found!');
+            }
+
+            // Show demo version modal with payment info
+            function showDemoModal(buttonName) {
+                const config = configData || { paymentAddress: 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM', paymentNano: 1000000000 };
+                const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                const PAYMENT_NANO = config.paymentNano || 1000000000;
+                const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${firstName}_${userId}`;
+                const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
+                
+                modalTitle.textContent = '';
+                modalBody.innerHTML = `
+                    <div style="text-align:center;padding:16px;">
+                        <p style="color:#ff6b6b;font-size:14px;margin-bottom:12px;">⚠️ Demo version</p>
+                        <p style="color:#fff;font-size:13px;margin-bottom:8px;">
+                            <b>${buttonName}</b> locked in demo mode
+                        </p>
+                        <p style="color:#ffd700;font-size:11px;margin-bottom:16px;">
+                            Choose payment method to unlock:
+                        </p>
+                        
+                        <!-- TON Payment Option -->
+                        <div style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);border-radius:8px;padding:12px;margin-bottom:12px;">
+                            <p style="color:#00d2ff;font-size:14px;margin-bottom:4px;">💎 Pay with TON</p>
+                            <p style="color:#fff;font-size:18px;font-weight:bold;margin-bottom:8px;">1 TON</p>
+                            <button id="pay-ton-btn" class="wallet-panel-btn btn-green" style="width:100%;">Pay with TON</button>
+                        </div>
+                        
+                        <p style="color:#888;font-size:10px;margin-bottom:8px;">
+                            Or buy any coin from SHOP to unlock
+                        </p>
+                        <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:8px;">Back</button>
+                    </div>
+                `;
+                modal.classList.add('open');
+                
+                // TON Payment Handler
+                document.getElementById('pay-ton-btn').addEventListener('click', () => {
+                    showTonPaymentModal();
+                });
+            }
+            
+            // Show TON payment modal
+            function showTonPaymentModal() {
+                const config = configData || { paymentAddress: 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM', paymentNano: 1000000000 };
+                const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                const PAYMENT_NANO = config.paymentNano || 1000000000;
+                const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${firstName}_${userId}`;
+                const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
+                
+                modalBody.innerHTML = `
+                    <div style="text-align:center;padding:16px;">
+                        <p style="color:#00d2ff;font-size:16px;margin-bottom:12px;">💎 Pay with TON</p>
+                        <p style="color:#fff;font-size:24px;font-weight:bold;margin-bottom:8px;">1 TON</p>
+                        <p style="color:#888;font-size:11px;margin-bottom:12px;">Send 1 TON to unlock real game</p>
+                        
+                        <p style="color:#888;font-size:11px;margin-bottom:4px;">TON address:</p>
+                        <input type="text" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:10px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
+                        <img src="${QR_CODE_URL}" alt="QR" style="width:180px;height:180px;margin:8px auto;display:block;background:#fff;padding:6px;border-radius:8px;">
+                        <button id="ton-wallet-btn" class="wallet-panel-btn btn-green" style="width:100%;margin-top:8px;">Open Wallet</button>
+                        <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:8px;">Back</button>
+                    </div>
+                `;
+                
+                document.getElementById('ton-wallet-btn').addEventListener('click', async () => {
+                    if (tonConnectUI && connectedWalletAddress) {
+                        try {
+                            const result = await tonConnectUI.sendTransaction({
+                                validUntil: Math.floor(Date.now() / 1000) + 600,
+                                messages: [{
+                                    address: PAYMENT_ADDRESS,
+                                    amount: PAYMENT_NANO.toString()
+                                }]
+                            });
+                            Swal.fire({
+                                text: 'Payment sent!',
+                                icon: 'success',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                width: '200px',
+                                position: 'center'
+                            });
+                        } catch (e) {
+                            Swal.fire({
+                                text: 'Payment cancelled',
+                                icon: 'error',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                width: '200px',
+                                position: 'center'
+                            });
+                        }
+                    } else if (tonConnectUI) {
+                        tonConnectUI.openModal();
+                    } else {
+                        window.location.href = TON_TRANSFER_URL;
+                    }
+                });
+            }
+
+            // W button opens/closes panel
+            wBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // IMMEDIATE ASRA PRO CANCEL: Cancel ASRA PRO and reset ASRA immediately
+                cancelAsraProImmediately();
+                // Stop game if active
+                if (gameActive) {
+                    stopGame();
+                }
+                // Close user badge panel if open
+                userBadgePanel.classList.remove('open');
+                walletPanel.classList.toggle('open');
+            });
+            document.addEventListener('click', () => walletPanel.classList.remove('open'));
+            walletPanel.addEventListener('click', (e) => e.stopPropagation());
+
+            // Delegation for dynamically created close buttons
+            modal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('close-modal')) {
+                    modal.classList.remove('open');
+                }
+            });
+
+            // TON Connect UI (Telegram Wallet, Tonkeeper, etc.)
+            if (typeof TON_CONNECT_UI !== 'undefined') {
+                // Manifest URL - auto detect
+                const manifestUrl = window.location.origin + '/tonconnect-manifest.json';
+                
+                tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+                    manifestUrl: manifestUrl,
+                    walletsListSource: 'https://raw.githubusercontent.com/ton-blockchain/wallets-list/main/wallets.json'
+                });
+                
+                
+                // Check manifest loading
+                fetch(manifestUrl)
+                    .then(r => r.json())
+                    .catch(e => {
+                        // Manifest loading error
+                    });
+                
+                // Watch wallet connection
+                let userRegisteredThisSession = false;
+                
+                tonConnectUI.onStatusChange((wallet) => {
+                    connectedWalletAddress = getUserFriendlyAddress(wallet);
+                    
+                    // Register only first time - not on page reload
+                    if (connectedWalletAddress && userId && !userRegisteredThisSession) {
+                        userRegisteredThisSession = true;
+                        console.log('📝 [REGISTER] First time registration:', userId);
+                        fetch(API_BASE + '/user/register', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId, connectedWallet: connectedWalletAddress, firstName: safeFirstName || null })
+                        }).catch(err => {
+                            console.error('❌ [REGISTER] Error:', err);
+                        });
+                    }
+                    
+                    updateWalletUI();
+                });
+                
+                // Restore previous connection
+                tonConnectUI.connectionRestored.then((restored) => {
+                    if (restored && tonConnectUI.wallet) {
+                        connectedWalletAddress = getUserFriendlyAddress(tonConnectUI.wallet);
+                        updateWalletUI();
+                    }
+                });
+            }
+
+            // Connect/Disconnect wallet - TON Connect modal
+            document.getElementById('btn-wallet-action').addEventListener('click', () => {
+                walletPanel.classList.remove('open');
+                if (!tonConnectUI) {
+                    alert('TON Connect not loaded');
+                    return;
+                }
+                if (connectedWalletAddress) {
+                    // Disconnect wallet
+                    tonConnectUI.disconnect();
+                } else {
+                    // Connect wallet
+                    tonConnectUI.openModal();
+                }
+            });
+
+            // Pay from Wallet - from Wallet panel
+            document.getElementById('btn-pay-from-wallet').addEventListener('click', async () => {
+                // Get config (use cached or fetch new)
+                const config = configData || await loadConfig();
+                const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                const PAYMENT_NANO = config.paymentNano || 1000000000;
+                
+                const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${firstName}_${userId}`;
+                const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
+                
+                modalTitle.textContent = '';
+                modalBody.innerHTML = `
+                    <div style="text-align:center;padding:16px;">
+                        <p style="color:#fff;font-size:13px;margin-bottom:8px;">
+                            Pay <b>1 TON</b> to start real game
+                        </p>
+                        <p style="color:#ffd700;font-size:11px;margin-bottom:12px;">
+                            Or buy any coin from SHOP to unlock
+                        </p>
+                        <p style="color:#888;font-size:11px;margin-bottom:4px;">TON network address:</p>
+                        <input type="text" id="payment-address-input" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:11px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
+                        
+                        <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
+                        
+                        <button id="pay-wallet-btn-panel" class="wallet-panel-btn btn-green" style="width:100%;">
+                            Open Wallet
+                        </button>
+                        
+                        <button class="wallet-panel-btn close-modal btn-red" style="width:100%;margin-top:16px;">
+                            Back
+                        </button>
+                    </div>
+                `;
+                modal.classList.add('open');
+                
+                const payBtnPanel = document.getElementById('pay-wallet-btn-panel');
+                if (payBtnPanel) {
+                    payBtnPanel.addEventListener('click', async () => {
+                        if (tonConnectUI && connectedWalletAddress) {
+                            try {
+                                const result = await tonConnectUI.sendTransaction({
+                                    validUntil: Math.floor(Date.now() / 1000) + 600,
+                                    messages: [{
+                                        address: PAYMENT_ADDRESS,
+                                        amount: PAYMENT_NANO.toString()
+                                    }]
+                                });
+                                Swal.fire({
+                                    text: 'Payment sent!',
+                                    icon: 'success',
+                                    timer: 1500,
+                                    showConfirmButton: false,
+                                    width: '200px',
+                                    position: 'center'
+                                });
+                            } catch (e) {
+                                Swal.fire({
+                                    text: 'Try again',
+                                    icon: 'error',
+                                    timer: 1500,
+                                    showConfirmButton: false,
+                                    width: '200px',
+                                    position: 'center'
+                                });
+                            }
+                        } else if (tonConnectUI) {
+                            tonConnectUI.openModal();
+                        } else {
+                            window.location.href = TON_TRANSFER_URL;
+                        }
+                    });
+                }
+            });
+
+            // TON → ASRA - Redirect to dyor.io swap site
+            document.getElementById('btn-pay-with-asra').addEventListener('click', () => {
+                walletPanel.classList.remove('open');
+                // Open dyor.io ASRA token page in new tab
+                window.open('https://dyor.io/token/EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy', '_blank');
+            });
+
+            // Withdraw ASRA
+            document.getElementById('btn-ton-yechish').addEventListener('click', async () => {
+                walletPanel.classList.remove('open');
+                
+                // Helper function - show error message
+                function showErrorModal(message, color = '#ff6b6b') {
+                    modalTitle.textContent = 'Withdraw ASRA';
+                    modalBody.innerHTML = `
+                        <p style="color:${color};margin-bottom:16px;">${message}</p>
+                        <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Back</button>
+                    `;
+                    modal.classList.add('open');
+                }
+                
+                if (!userId) {
+                    showErrorModal('Open via Telegram');
+                    return;
+                }
+                if (!connectedWalletAddress) {
+                    showErrorModal('Connect Wallet first!', '#ff9500');
+                    return;
+                }
+                
+                // Check payment status
+                modalTitle.textContent = ''; // Title empty
+                let paymentStatus = null;
+                let apiError = null;
+                try {
+                    console.log('🔍 Frontend: Checking payment for userId:', userId);
+                    console.log('🔍 Frontend: API_BASE =', API_BASE);
+                    const res = await fetch(API_BASE + '/check-payment/' + userId);
+                    console.log('🔍 Frontend: Response status:', res.status);
+                    if (!res.ok) {
+                        throw new Error('HTTP error! status: ' + res.status);
+                    }
+                    paymentStatus = await res.json();
+                    console.log('📦 Frontend: Payment status response:', paymentStatus);
+                    console.log('📦 Frontend: Response hasPaid:', paymentStatus?.hasPaid);
+                    console.log('📦 Frontend: Response success:', paymentStatus?.success);
+                } catch (e) {
+                    console.error('❌ Frontend: Payment check error:', e);
+                    apiError = e.message;
+                    // If API fails, assume no payment (show demo modal)
+                    paymentStatus = { hasPaid: false, error: true, apiError: e.message };
+                }
+                
+                // Real mode: Payment check
+                console.log('🔍 Frontend: hasPaid =', paymentStatus?.hasPaid);
+                console.log('🔍 Frontend: paymentStatus object:', JSON.stringify(paymentStatus));
+                const needsPayment = !paymentStatus || !paymentStatus.hasPaid;
+                console.log('🔍 Frontend: needsPayment =', needsPayment);
+                
+                if (needsPayment) {
+                    console.log('❌ Frontend: Payment not detected, showing demo modal');
+                    console.log('hasPaid:', paymentStatus?.hasPaid);
+                    console.log('needsPayment:', needsPayment);
+                    // Get config (use cached or fetch new)
+                    const config = configData || await loadConfig();
+                    const PAYMENT_ADDRESS = config.paymentAddress || 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                    const PAYMENT_AMOUNT = config.paymentAmount || 1; // 1 TON
+                    const PAYMENT_NANO = config.paymentNano || 1000000000; // 1 TON in nanoton
+                    // TON Connect transfer URL - for automatic wallet opening
+                    const TON_TRANSFER_URL = `ton://transfer/${PAYMENT_ADDRESS}?amount=${PAYMENT_NANO}&text=${firstName}_${userId}`;
+                    // QR code URL - dynamic creation
+                    const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(TON_TRANSFER_URL)}`;
+                    
+                    modalBody.innerHTML = `
+                        <div style="text-align:center;padding:16px;">
+                            <p style="color:#ff6b6b;font-size:14px;margin-bottom:12px;">⚠️ Demo version</p>
+                            <p style="color:#fff;font-size:13px;margin-bottom:8px;">
+                                Pay <b>1 TON</b> to start real game
+                            </p>
+                            <p style="color:#ffd700;font-size:11px;margin-bottom:8px;">
+                                Or buy any coin from SHOP to unlock
+                            </p>
+                            <p style="color:#00d2ff;font-size:12px;margin-bottom:16px;">
+                                Can withdraw ASRA in real game
+                            </p>
+                            
+                            <!-- Only Back button -->
+                            <button class="wallet-panel-btn close-modal" style="width:100%;margin-top:16px;">
+                                Back
+                            </button>
+                        </div>
+                    `;
+                    modal.classList.add('open');
+                    
+                    // Auto check - every 5 seconds
+                    let autoCheckInterval;
+                    const startAutoCheck = () => {
+                        autoCheckInterval = setInterval(async () => {
+                            try {
+                                const res = await fetch(API_BASE + '/check-payment/' + userId);
+                                const data = await res.json();
+                                if (data.hasPaid) {
+                                    clearInterval(autoCheckInterval);
+                                    
+                                    // Confirm payment on backend
+                                    try {
+                                        await fetch(API_BASE + '/confirm-payment/' + userId, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' }
+                                        });
+                                    } catch (e) {
+                                        // Confirmation error - but hasPaid is already true
+                                    }
+                                    
+                                    // Ensure modal is open before showing confirmation
+                                    modal.classList.add('open');
+                                    
+                                    modalBody.innerHTML = `
+                                        <div style="text-align:center;padding:16px;">
+                                            <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ Payment confirmed!</p>
+                                            <p style="color:#fff;font-size:13px;">New game started. All scores reset to 0.</p>
+                                            <p style="color:#888;font-size:11px;margin-top:8px;">Auto-closing...</p>
+                                        </div>
+                                    `;
+                                    
+                                    // Auto-close modal after 3 seconds
+                                    setTimeout(() => {
+                                        modal.classList.remove('open');
+                                    }, 3000);
+                                    
+                                    asraScore = 0;
+                                    tonCount = 0;
+                                    saveGameData();
+                                    updateDisplay();
+                                    stopGame();
+                                }
+                            } catch (e) {
+                                // Error - checking continues
+                            }
+                        }, 5000);
+                    };
+                    startAutoCheck();
+                    
+                    return; // Stop until payment is made
+                }
+                
+                // Payment made - normal withdrawal from game balance
+                modalTitle.textContent = '';
+                
+                // Get game ASRA balance
+                const gameAsraBalance = asraScore;
+                const minRequiredAmount = 10000; // Minimum 10000 ASRA required to withdraw
+                const feeReserve = 10000; // 10,000 ASRA stays as commission (cannot withdraw)
+                const maxWithdrawAmount = Math.max(0, gameAsraBalance - feeReserve);
+                
+                if (gameAsraBalance < minRequiredAmount) {
+                    modalBody.innerHTML = `
+                        <div style="text-align:center;padding:16px;">
+                            <p style="color:#ff6b6b;font-size:16px;margin-bottom:12px;">⚠️ Not enough ASRA</p>
+                            <p style="color:#fff;font-size:14px;margin-bottom:8px;">You have: ${gameAsraBalance.toLocaleString()} ASRA</p>
+                            <p style="color:#00d2ff;font-size:13px;margin-bottom:16px;">Minimum 10,000 ASRA required to withdraw</p>
+                            <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Back</button>
+                        </div>
+                    `;
+                    modal.classList.add('open');
+                    return;
+                }
+                
+                modalBody.innerHTML = `
+                    <div style="text-align:center;padding:16px;">
+                        <p style="color:#888;font-size:18px;margin-bottom:12px;margin-top:20px;">💸 Withdraw ASRA</p>
+                        <p style="color:#ffd700;font-size:18px;margin-bottom:12px;">💰 Your Game Balance</p>
+                        <p style="color:#00d2ff;font-size:32px;font-weight:bold;margin-bottom:8px;">${gameAsraBalance.toLocaleString()} ASRA</p>
+                        <p style="color:#ff6b6b;font-size:12px;margin-bottom:8px;">⚠️ 10,000 ASRA stays as commission (cannot withdraw)</p>
+                        <p style="color:#888;font-size:11px;margin-bottom:16px;">Can withdraw: ${maxWithdrawAmount.toLocaleString()} ASRA</p>
+                        
+                        <p style="color:#888;font-size:11px;margin-bottom:4px;">Withdrawal address: your connected wallet address</p>
+                        <p style="color:#fff;font-size:12px;margin-bottom:16px;word-break:break-all;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;">${connectedWalletAddress}</p>
+                        
+                        <div class="withdraw-input-row" style="margin:16px 0;">
+                            <input type="number" id="withdraw-amount" placeholder="Amount (min 10,000)" min="10000" max="${maxWithdrawAmount}" step="100" style="flex:1;">
+                            <button id="max-btn" style="white-space:nowrap;">MAX</button>
+                        </div>
+                        <p style="color:#888;font-size:10px;margin-bottom:16px;">Min: 10,000 ASRA | Max: ${maxWithdrawAmount.toLocaleString()} ASRA (10,000 stays)</p>
+                        
+                        <button class="wallet-panel-btn withdraw" id="withdraw-submit" style="width:100%;margin-bottom:8px;">Withdraw</button>
+                        <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Back</button>
+                    </div>
+                `;
+                modal.classList.add('open');
+                
+                // Max button functionality
+                document.getElementById('max-btn').addEventListener('click', () => {
+                    document.getElementById('withdraw-amount').value = maxWithdrawAmount;
+                });
+                
+                // Withdraw button
+                document.getElementById('withdraw-submit').addEventListener('click', async () => {
+                    const amount = parseInt(document.getElementById('withdraw-amount').value);
+                    if (!amount || amount < 10000) {
+                        Swal.fire({
+                            text: 'Minimum 10,000 ASRA',
+                            icon: 'warning',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            width: '200px',
+                            position: 'center'
+                        });
+                        return;
+                    }
+                    if (amount > maxWithdrawAmount) {
+                        Swal.fire({
+                            text: `Max ${maxWithdrawAmount.toLocaleString()} ASRA`,
+                            icon: 'warning',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            width: '200px',
+                            position: 'center'
+                        });
+                        return;
+                    }
+                    
+                    // Show loading state - update modal body with info
+                    const withdrawBtn = document.getElementById('withdraw-submit');
+                    const originalBtnText = withdrawBtn.innerHTML;
+                    
+                    // Show loading info in modal body instead of button
+                    modalBody.innerHTML = `
+                        <div style="text-align:center;padding:20px;">
+                            <div style="color:#00d2ff;font-size:14px;margin-bottom:12px;">⏳ Processing Withdrawal...</div>
+                            <div style="color:#ffd700;font-size:24px;font-weight:bold;margin-bottom:8px;">${amount.toLocaleString()} ASRA</div>
+                            <div style="color:#888;font-size:11px;margin-bottom:16px;">To: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</div>
+                            <div style="width:40px;height:40px;border:3px solid rgba(0,210,255,0.2);border-top-color:#00d2ff;border-radius:50%;animation:spin 1s linear infinite;margin:16px auto;"></div>
+                            <div style="color:#666;font-size:10px;margin-top:12px;">Please wait...</div>
+                        </div>
+                    `;
+                    
+                    withdrawBtn.disabled = true;
+                    withdrawBtn.style.opacity = '0.5';
+                    
+                    // Backend withdrawal request
+                    try {
+                        // Minimum 3 seconds loading time to show info
+                        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 3000));
+                        
+                        const res = await fetch(API_BASE + '/withdraw', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                userId: userId,
+                                amount: amount,
+                                toAddress: connectedWalletAddress
+                            })
+                        });
+                        
+                        // Wait for both request and minimum loading time
+                        const [result] = await Promise.all([res.json(), minLoadingTime]);
+                        
+                        if (result.success) {
+                            // Reduce game ASRA
+                            asraScore -= amount;
+                            updateDisplay();
+                            await saveGameData(); // Immediate save after withdrawal
+                            
+                            // Wait for server to process withdrawal before loading fresh data
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            
+                            // Fetch fresh data from server to ensure UI is up to date
+                            const data = await loadGameState();
+                            asraScore = data.asraScore || 0;
+                            updateDisplay();
+                            
+                            modalBody.innerHTML = `
+                                <div style="text-align:center;padding:16px;">
+                                    <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ ${amount.toLocaleString()} ASRA sent!</p>
+                                    <p style="color:#fff;font-size:13px;margin-bottom:8px;">Remaining balance: ${asraScore.toLocaleString()} ASRA</p>
+                                    <p style="color:#888;font-size:11px;margin-bottom:16px;">Wallet: ${connectedWalletAddress.slice(0,8)}...${connectedWalletAddress.slice(-6)}</p>
+                                    <button class="wallet-panel-btn close-modal btn-red" style="width:100%;">Back</button>
+                                </div>
+                            `;
+                        } else {
+                            // Restore button
+                            withdrawBtn.innerHTML = originalBtnText;
+                            withdrawBtn.disabled = false;
+                            withdrawBtn.style.opacity = '1';
+                            
+                            Swal.fire({
+                                text: result.message || 'Withdrawal error',
+                                icon: 'error',
+                                timer: 2000,
+                                showConfirmButton: false,
+                                width: '200px',
+                                position: 'center'
+                            });
+                        }
+                    } catch (e) {
+                        // Restore button
+                        withdrawBtn.innerHTML = originalBtnText;
+                        withdrawBtn.disabled = false;
+                        withdrawBtn.style.opacity = '1';
+                        
+                        Swal.fire({
+                            text: 'Processing... Check your wallet!',
+                            icon: 'info',
+                            timer: 3000,
+                            showConfirmButton: false,
+                            width: '220px',
+                            position: 'center'
+                        });
+                    }
+                });
+            });
+
+            // RESTART - Restart game
+            document.getElementById('btn-restart').addEventListener('click', async () => {
+                walletPanel.classList.remove('open');
+                
+                // Show warning modal
+                modalTitle.textContent = '';
+                modalBody.innerHTML = `
+                    <div style="text-align:center;padding:16px;">
+                        <p style="color:#ff4757;font-size:20px;margin-bottom:16px;font-weight:bold;">ATTENTION!</p>
+                        <p style="color:#ff6b6b;font-size:14px;margin-bottom:12px;">
+                            All your data will be deleted:
+                        </p>
+                        <ul style="color:#fff;text-align:left;margin-bottom:16px;font-size:13px;">
+                            <li>🪙 ASRA coin: 0</li>
+                            <li>🛒 Purchased coins: 0 (all reset)</li>
+                            <li>💳 Payment status: cancelled</li>
+                            <li>👛 Wallet disconnected</li>
+                            <li>⚠️ 1 TON payment will not be refunded</li>
+                        </ul>
+                        <p style="color:#ffd700;font-size:13px;margin-bottom:20px;">
+                            Do you want to start fresh?
+                        </p>
+                        <button class="wallet-panel-btn" id="confirm-restart" style="width:100%;margin-bottom:8px;">
+                            YES, RESTART
+                        </button>
+                        <button class="wallet-panel-btn close-modal btn-green" style="width:100%;">
+                            CANCEL
+                        </button>
+                    </div>
+                `;
+                modal.classList.add('open');
+                
+                // Confirm button
+                document.getElementById('confirm-restart').addEventListener('click', async () => {
+                    try {
+                        // Backend restart request
+                        const res = await fetch(API_BASE + '/restart-game/' + userId, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        const result = await res.json();
+                        
+                        if (result.success) {
+                            // Disconnect wallet
+                            if (tonConnectUI && connectedWalletAddress) {
+                                tonConnectUI.disconnect();
+                            }
+                            
+                            // Reset variables
+                            asraScore = 0;
+                            tonCount = 0;
+                            connectedWalletAddress = null;
+                            
+                            // Update display
+                            updateDisplay();
+                            updateWalletUI();
+                            
+                            modalBody.innerHTML = `
+                                <div style="text-align:center;padding:16px;">
+                                    <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ RESTART COMPLETED!</p>
+                                    <p style="color:#fff;font-size:13px;margin-bottom:8px;">Game restarted from scratch</p>
+                                    <p style="color:#888;font-size:11px;">Refresh page</p>
+                                </div>
+                            `;
+                            
+                            // Refresh page after 2 seconds
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        } else {
+                            Swal.fire({
+                                text: result.message || 'Restart error',
+                                icon: 'error',
+                                timer: 2000,
+                                showConfirmButton: false,
+                                width: '200px',
+                                position: 'center'
+                            });
+                        }
+                    } catch (e) {
+                        Swal.fire({
+                            text: 'Try again',
+                            icon: 'error',
+                            timer: 1500,
+                            showConfirmButton: false,
+                            width: '200px',
+                            position: 'center'
+                        });
+                    }
+                });
+            });
+
+            // ==================== SHOP FUNCTIONALITY ====================
+            const shopBtn = document.getElementById('shop-btn');
+            const shopModal = document.getElementById('shop-modal');
+            const closeShop = document.getElementById('close-shop');
+            const coinGrid = document.getElementById('coin-grid');
+            const asraIndicator = document.getElementById('asra-auto-indicator');
+            const coinImg = document.getElementById('coin-img');
+
+            // Shop data
+            const COIN_DATA = {
+                blue: { 
+                    name: 'Blue', 
+                    price: 2, 
+                    img: '/assets/Blue.png',
+                    description: 'Coin speed slows down a bit'
+                },
+                green: { 
+                    name: 'Green', 
+                    price: 5, 
+                    img: '/assets/Green.png',
+                    description: 'Coin speed slows down more'
+                },
+                pink: { 
+                    name: 'Pink', 
+                    price: 10, 
+                    img: '/assets/Pink.png',
+                    description: 'Coin speed slows down, more time'
+                },
+                red: { 
+                    name: 'Red', 
+                    price: 20, 
+                    img: '/assets/Red.png',
+                    description: 'Coin speed slows down more'
+                },
+                yellow: { 
+                    name: 'Yellow', 
+                    price: 30, 
+                    img: '/assets/Yellow.png',
+                    description: 'Coin speed slows down much more'
+                },
+                asra: { 
+                    name: 'ASRA PRO', 
+                    price: 99, 
+                    img: '/assets/ASRAPRO.png', 
+                    autoPlay: true, 
+                    maxAsra: 2000000, 
+                    noPenalty: true,
+                    description: 'Auto-play, no -100 penalty, up to 2,000,000 ASRA'
+                }
+            };
+
+            // Load shop data from backend ONLY (no localStorage)
+            async function loadShopDataFromBackend() {
+                if (!userId) {
+                    console.log('⚠️ No userId, returning default shop data');
+                    return { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 };
+                }
+                
+                try {
+                    const response = await fetch(API_BASE + '/shop/' + userId);
+                    const result = await response.json();
+                    
+                    if (result.success && result.shopData) {
+                        console.log('✅ Shop data loaded from backend:', result.shopData);
+                        return result.shopData;
+                    }
+                } catch (e) {
+                    console.error('❌ Failed to load shop from backend:', e);
+                    showOfflineWarning();
+                }
+                
+                // Return default if backend fails
+                return { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 };
+            }
+
+            // Save shop data to backend ONLY (no localStorage)
+            async function saveShopDataBackend() {
+                if (!userId) {
+                    console.log('⚠️ No userId, cannot save shop data');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(API_BASE + '/shop/' + userId, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(shopData)
+                    });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        console.log('✅ Shop data saved to backend');
+                    } else {
+                        console.error('❌ Backend save failed:', result.error);
+                    }
+                } catch (e) {
+                    console.error('❌ Failed to save shop to backend:', e);
+                    showOfflineWarning();
+                }
+            }
+
+            // Initialize shop data from backend
+            let shopData = { purchased: [], selected: 'gunmetal', purchaseTime: {}, asraProUsed: 0 };
+            
+            // Load shop data on init
+            loadShopDataFromBackend().then(data => {
+                shopData = data;
+                updateShopUI();
+            });
+
+            // Update Shop UI
+            function updateShopUI() {
+                const coinItems = coinGrid.querySelectorAll('.coin-item');
+                coinItems.forEach(item => {
+                    const coinType = item.dataset.coin;
+                    const statusEl = item.querySelector('.coin-status');
+                    item.classList.remove('purchased', 'selected');
+                    
+                    if (shopData.purchased.includes(coinType)) {
+                        item.classList.add('purchased');
+                    }
+                    if (shopData.selected === coinType) {
+                        item.classList.add('selected');
+                        if (statusEl) statusEl.textContent = 'ON';
+                    } else {
+                        if (statusEl) statusEl.textContent = 'off';
+                    }
+                });
+
+                // Update main coin image
+                if (shopData.selected && shopData.selected !== 'gunmetal' && shopData.purchased.includes(shopData.selected)) {
+                    coinImg.src = COIN_DATA[shopData.selected].img;
+                } else {
+                    coinImg.src = '/assets/Gunmetal.png';
+                }
+            }
+
+            // Open/Close shop
+            shopBtn.addEventListener('click', () => {
+                // IMMEDIATE ASRA PRO CANCEL: Cancel ASRA PRO and reset ASRA immediately
+                cancelAsraProImmediately();
+                // Stop game if active - ensures fresh shop data on resume
+                if (gameActive) {
+                    stopGame();
+                }
+                // Close user badge panel if open
+                userBadgePanel.classList.remove('open');
+                shopModal.classList.add('open');
+                updateShopUI();
+            });
+
+            closeShop.addEventListener('click', () => {
+                shopModal.classList.remove('open');
+            });
+
+            // ==================== HELP FUNCTIONALITY ====================
+            const helpBtn = document.getElementById('help-btn');
+            const helpModal = document.getElementById('help-modal');
+            const closeHelp = document.getElementById('close-help');
+
+            // Open/Close help
+            helpBtn.addEventListener('click', () => {
+                // IMMEDIATE ASRA PRO CANCEL: Cancel ASRA PRO and reset ASRA immediately
+                cancelAsraProImmediately();
+                // Stop game if active
+                if (gameActive) {
+                    stopGame();
+                }
+                // Close user badge panel if open
+                userBadgePanel.classList.remove('open');
+                helpModal.classList.add('open');
+            });
+
+            closeHelp.addEventListener('click', () => {
+                helpModal.classList.remove('open');
+            });
+
+            // Close help when clicking outside
+            helpModal.addEventListener('click', (e) => {
+                if (e.target === helpModal) {
+                    helpModal.classList.remove('open');
+                }
+            });
+
+            // When coin is clicked
+            coinGrid.addEventListener('click', async (e) => {
+                const coinItem = e.target.closest('.coin-item');
+                if (!coinItem) return;
+
+                const coinType = coinItem.dataset.coin;
+                const price = parseInt(coinItem.dataset.price);
+
+                // If purchased - toggle (select/deselect)
+                if (shopData.purchased.includes(coinType)) {
+                    if (shopData.selected === coinType) {
+                        // If already selected - deselect (back to gunmetal)
+                        shopData.selected = 'gunmetal';
+                    } else {
+                        // Select
+                        shopData.selected = coinType;
+                    }
+                    saveShopDataBackend();
+                    updateShopUI();
+                    return;
+                }
+
+                // Purchase process
+                if (!connectedWalletAddress) {
+                    Swal.fire({
+                        text: 'Connect Wallet first!',
+                        icon: 'warning',
+                        timer: 2000,
+                        showConfirmButton: false,
+                        width: '200px',
+                        position: 'center'
+                    });
+                    return;
+                }
+
+                const coinInfo = COIN_DATA[coinType];
+                
+                Swal.fire({
+                    html: `
+                        <div style="text-align:center;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:0;margin:0;overflow:hidden;background:transparent;">
+                            <img src="${coinInfo.img}" style="width:45vmin;height:45vmin;margin-top:25vmin;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(0,0,0,0.8));animation:none !important;transition:none !important;">
+                            <div style="margin-top:8vmin;display:flex;gap:20px;justify-content:center;animation:none !important;">
+                                <button id="btn-buy-coin" style="
+                                    background: url('/assets/Button.png') no-repeat center center;
+                                    background-size: cover;
+                                    border: none;
+                                    width: 130px;
+                                    height: 48px;
+                                    color: #2ed573;
+                                    font-size: 16px;
+                                    font-weight: bold;
+                                    cursor: pointer;
+                                    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+                                    animation: none !important;
+                                    transition: none !important;
+                                ">Buy</button>
+                                <button id="btn-cancel-coin" style="
+                                    background: url('/assets/Button.png') no-repeat center center;
+                                    background-size: cover;
+                                    border: none;
+                                    width: 130px;
+                                    height: 48px;
+                                    color: #ff4757;
+                                    font-size: 16px;
+                                    font-weight: bold;
+                                    cursor: pointer;
+                                    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+                                    animation: none !important;
+                                    transition: none !important;
+                                ">Cancel</button>
+                            </div>
+                        </div>
+                    `,
+                    showCancelButton: false,
+                    showConfirmButton: false,
+                    background: 'transparent',
+                    width: '100vw',
+                    padding: '0',
+                    grow: 'fullscreen',
+                    customClass: {
+                        popup: 'coin-purchase-popup'
+                    },
+                    didOpen: () => {
+                        document.getElementById('btn-buy-coin').addEventListener('click', async () => {
+                            Swal.close();
+                            const SHOP_PAYMENT_ADDRESS = 'UQCtlk8bgwbSOt8OFnVe4KuFdQDo7kCbrZEhAOW1UUgUtIVM';
+                            const nanoAmount = price * 1000000000;
+                            
+                            if (!tonConnectUI) {
+                                Swal.fire({
+                                    text: 'Wallet not connected',
+                                    icon: 'error',
+                                    timer: 1500,
+                                    showConfirmButton: false,
+                                    width: '200px',
+                                    position: 'center'
+                                });
+                                return;
+                            }
+                            
+                            try {
+                                const txResult = await tonConnectUI.sendTransaction({
+                                    validUntil: Math.floor(Date.now() / 1000) + 600,
+                                    messages: [{
+                                        address: SHOP_PAYMENT_ADDRESS,
+                                        amount: nanoAmount.toString()
+                                    }]
+                                });
+
+                                // Successful payment - call backend buy endpoint
+                                try {
+                                    const buyResponse = await fetch(API_BASE + '/shop/buy/' + userId, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ coin: coinType })
+                                    });
+                                    const buyResult = await buyResponse.json();
+                                    
+                                    if (buyResult.success) {
+                                        // Update shop data from backend response
+                                        shopData.purchased = buyResult.gameState?.shopData?.purchased || [...shopData.purchased, coinType];
+                                        if (!shopData.purchased.includes(coinType)) {
+                                            shopData.purchased.push(coinType);
+                                        }
+                                        shopData.purchaseTime[coinType] = new Date().getTime();
+                                        shopData.selected = coinType;
+                                        updateShopUI();
+                                        
+                                        // Check if this unlocked real game (first purchase)
+                                        if (buyResult.unlockedRealGame) {
+                                            // Reset game scores to 0
+                                            asraScore = 0;
+                                            updateDisplay();
+                                            
+                                            // Close Swal first, then show unlock modal
+                                            Swal.close();
+                                            
+                                            // Show unlock modal after short delay (after Swal closes)
+                                            setTimeout(() => {
+                                                const unlockModal = document.getElementById('wallet-modal');
+                                                const unlockModalBody = document.getElementById('modal-body');
+                                                const unlockModalTitle = document.getElementById('modal-title');
+                                                
+                                                unlockModalTitle.textContent = '';
+                                                unlockModalBody.innerHTML = `
+                                                    <div style="text-align:center;padding:16px;">
+                                                        <p style="color:#2ed573;font-size:18px;margin-bottom:12px;">✅ Real game unlocked!</p>
+                                                        <p style="color:#fff;font-size:13px;">New game started. All scores reset to 0.</p>
+                                                        <p style="color:#888;font-size:11px;margin-top:8px;">Auto-closing...</p>
+                                                    </div>
+                                                `;
+                                                unlockModal.classList.add('open');
+                                                
+                                                // Auto-close after 3 seconds
+                                                setTimeout(() => {
+                                                    unlockModal.classList.remove('open');
+                                                }, 3000);
+                                            }, 300); // Wait for Swal to close
+                                            
+                                            stopGame();
+                                        } else {
+                                            // Normal purchase (not first unlock)
+                                            Swal.fire({
+                                                text: `${coinInfo.name} purchased!`,
+                                                icon: 'success',
+                                                timer: 2000,
+                                                showConfirmButton: false,
+                                                width: '250px',
+                                                position: 'center'
+                                            });
+                                        }
+                                    } else {
+                                        // Backend error - fallback to local update
+                                        shopData.purchased.push(coinType);
+                                        shopData.purchaseTime[coinType] = new Date().getTime();
+                                        shopData.selected = coinType;
+                                        saveShopDataBackend();
+                                        updateShopUI();
+                                        
+                                        Swal.fire({
+                                            text: `${coinInfo.name} purchased!`,
+                                            icon: 'success',
+                                            timer: 2000,
+                                            showConfirmButton: false,
+                                            width: '250px',
+                                            position: 'center'
+                                        });
+                                    }
+                                } catch (backendError) {
+                                    // Backend call failed - fallback to local update
+                                    shopData.purchased.push(coinType);
+                                    shopData.purchaseTime[coinType] = new Date().getTime();
+                                    shopData.selected = coinType;
+                                    saveShopDataBackend();
+                                    updateShopUI();
+                                    
+                                    Swal.fire({
+                                        text: `${coinInfo.name} purchased!`,
+                                        icon: 'success',
+                                        timer: 2000,
+                                        showConfirmButton: false,
+                                        width: '250px',
+                                        position: 'center'
+                                    });
+                                }
+                            } catch (e) {
+                                Swal.fire({
+                                    text: 'Payment cancelled',
+                                    icon: 'error',
+                                    timer: 1500,
+                                    showConfirmButton: false,
+                                    width: '200px',
+                                    position: 'center'
+                                });
+                            }
+                        });
+                        
+                        document.getElementById('btn-cancel-coin').addEventListener('click', () => {
+                            Swal.close();
+                        });
+                    }
+                });
+            });
+
+            // ASRA auto-play function
+            let asraAutoInterval = null;
+            let asraStartScore = 0;
+
+            function startAsraAutoPlay() {
+                if (asraAutoInterval) clearInterval(asraAutoInterval);
+                asraStartScore = asraScore;
+                asraIndicator.classList.add('active');
+                
+                asraAutoInterval = setInterval(() => {
+                    if (!gameActive || isPaused) return;
+                    
+                    // Reached 2,000,000 ASRA earned with ASRA PRO?
+                    const asraEarned = asraScore - asraStartScore;
+                    if (asraEarned >= 2000000) {
+                        // Show limit reached message
+                        showAsraProLimitReached();
+                        
+                        // ✅ ALL OR NOTHING: Save only when completed
+                        saveGameData();
+                        
+                        Swal.fire({
+                            text: 'ASRA PRO completed! 2,000,000 ASRA earned!',
+                            icon: 'success',
+                            timer: 3000,
+                            showConfirmButton: false,
+                            width: '280px',
+                            position: 'center'
+                        });
+                        return;
+                    }
+
+                    // Auto-click - fixed 99 ASRA reward
+                    if (coinVisible) {
+                        const reward = 99;
+                        asraScore += reward;
+                        
+                        updateDisplay();
+                        
+                        // Visual effect
+                        const coinEl = document.getElementById('coin');
+                        const x = parseInt(coinEl.style.left) + coinEl.offsetWidth / 2;
+                        const y = parseInt(coinEl.style.top) + coinEl.offsetHeight / 2;
+                        showFloatText(x, y, '+' + reward + ' asra (AUTO)', false);
+                        
+                        // Refresh coin
+                        coin.classList.add('coin-shrink');
+                        setTimeout(() => {
+                            coin.classList.remove('coin-shrink');
+                            showCoin();
+                        }, 200);
+                    }
+                }, 1000); // Every 1 second
+            }
+
+            function stopAsraAutoPlay() {
+                if (asraAutoInterval) {
+                    clearInterval(asraAutoInterval);
+                    asraAutoInterval = null;
+                }
+                asraIndicator.classList.remove('active');
+                // Reset indicator text to default
+                asraIndicator.textContent = 'ASRA Auto-playing...';
+            }
+
+            // Helper function to show limit reached state
+            function showAsraProLimitReached() {
+                stopAsraAutoPlay();
+                asraIndicator.textContent = 'ASRA PRO LIMIT 2,000,000 ASRA - STOP to continue';
+                asraIndicator.classList.add('active');
+                asraIndicator.style.background = 'rgba(255, 215, 0, 0.9)';
+                asraIndicator.style.color = '#000';
+                asraIndicator.style.fontWeight = 'bold';
+            }
+
+            // ALL OR NOTHING: Cancel ASRA PRO immediately and reset ASRA
+            function cancelAsraProImmediately() {
+                if (asraAutoInterval && (asraScore - asraStartScore) < 2000000) {
+                    // Immediately reset ASRA to start score
+                    asraScore = asraStartScore;
+                    updateDisplay();
+                    console.log('ASRA PRO cancelled immediately - ASRA reset to:', asraScore);
+                }
+                // Stop the auto-play
+                if (asraAutoInterval) {
+                    stopAsraAutoPlay();
+                }
+            }
+
+            // Check ASRA when game starts
+            const originalStartNewGame = startNewGame;
+            startNewGame = function() {
+                originalStartNewGame();
+                if (shopData.selected === 'asra' && shopData.purchased.includes('asra')) {
+                    startAsraAutoPlay();
+                }
+            };
+
+            const originalStopGame = stopGame;
+            stopGame = function() {
+                // Check if ASRA PRO was active and not completed
+                if (asraAutoInterval && (asraScore - asraStartScore) < 2000000) {
+                    // ALL OR NOTHING: Reset ASRA to start score if stopped early
+                    asraScore = asraStartScore;
+                    updateDisplay();
+                    console.log('ASRA PRO stopped early - ASRA reset to start');
+                }
+                
+                originalStopGame();
+                stopAsraAutoPlay();
+            };
+
+            // ALL OR NOTHING: Detect screen off/lock - auto stop with ASRA reset
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && gameActive && asraAutoInterval) {
+                    // Screen turned off or app in background
+                    console.log('Screen hidden - ASRA PRO auto-stopping');
+                    stopGame();  // This will reset ASRA if not completed
+                }
+            });
+
+            // Update speed calculation (based on coins)
+            const originalCalculateSpeed = calculateSpeed;
+            calculateSpeed = function() {
+                let baseSpeed = originalCalculateSpeed();
+                const selectedCoin = shopData.selected;
+                
+                if (COIN_DATA[selectedCoin] && shopData.purchased.includes(selectedCoin)) {
+                    // More expensive coin = slower (more time)
+                    // Adding slowdown = more milliseconds = slower
+                    switch(selectedCoin) {
+                        case 'blue': baseSpeed += 100; break;
+                        case 'green': baseSpeed += 200; break;
+                        case 'pink': baseSpeed += 300; break;
+                        case 'red': baseSpeed += 400; break;
+                        case 'yellow': baseSpeed += 500; break;
+                        case 'asra': baseSpeed += 600; break;
+                    }
+                }
+                
+                return baseSpeed;
+            };
+
+            // ASRA PRO coin has no -100 penalty (with auto-play)
+            const originalCatchCoin = catchCoin;
+            catchCoin = function(e) {
+                const selectedCoin = shopData.selected;
+                if (selectedCoin === 'asra' && shopData.purchased.includes('asra')) {
+                    // Check if ASRA PRO has reached 2,000,000 ASRA limit
+                    const asraEarned = asraScore - asraStartScore;
+                    if (asraEarned >= 2000000 || shopData.asraProUsed >= 2000000) {
+                        // Limit reached - fall back to normal coin rules
+                        Swal.fire({
+                            text: 'ASRA PRO limit reached (2,000,000 ASRA). Please purchase again to continue using.',
+                            icon: 'warning',
+                            timer: 3000,
+                            showConfirmButton: false,
+                            width: '280px',
+                            position: 'center'
+                        });
+                        // Reset to gunmetal
+                        shopData.selected = 'gunmetal';
+                        saveShopDataBackend();
+                        updateShopUI();
+                        originalCatchCoin(e);
+                        return;
+                    }
+                    
+                    // ASRA PRO coin - no penalty, auto-play
+                    e.preventDefault();
+                    if (!gameActive || isPaused || !coinVisible) return;
+
+                    clearTimeout(coinTimeout);
+                    
+                    // Always positive reward - fixed 99 ASRA
+                    const reward = 99;
+                    asraScore += reward;
+                    const rewardText = '+99 asra';
+                    
+                    // Track ASRA PRO usage (count clicks, not TON)
+                    shopData.asraProUsed = (shopData.asraProUsed || 0) + 1;
+                    saveShopDataBackend();
+                        
+                    // Check if limit reached after this click
+                    const newAsraEarned = asraScore - asraStartScore;
+                    if (newAsraEarned >= 2000000 || shopData.asraProUsed >= 2000000) {
+                        showAsraProLimitReached();
+                        Swal.fire({
+                            text: 'ASRA PRO limit reached (2,000,000 ASRA)! Please purchase again.',
+                            icon: 'info',
+                            timer: 3000,
+                            showConfirmButton: false,
+                            width: '280px',
+                            position: 'center'
+                        });
+                    }
+
+                    const x = e.clientX || (e.touches && e.touches[0].clientX);
+                    const y = e.clientY || (e.touches && e.touches[0].clientY);
+
+                    if (x && y) showFloatText(x, y - 50, rewardText, false);
+
+                    updateDisplay();
+                    
+                    const coinImg = coin.querySelector('img');
+                    pulseColors.forEach(c => coinImg.classList.remove(c));
+                    coin.classList.add('coin-shrink');
+                    setTimeout(() => {
+                        coin.style.display = 'none';
+                        coin.classList.remove('coin-shrink');
+                        coinVisible = false;
+                        showCoin();
+                    }, 200);
+                } else {
+                    // Normal rules (Red coin also here)
+                    originalCatchCoin(e);
+                }
+            };
+
+            // Update initial UI
+            updateShopUI();
+
+            // ==================== REFERRAL FUNCTIONALITY ====================
+            const referralBtn = document.getElementById('referral-btn');
+            const referralModal = document.getElementById('referral-modal');
+            const closeReferral = document.getElementById('close-referral');
+            const referralLinkInput = document.getElementById('referral-link');
+
+            async function loadReferralData() {
+                if (!userId) return;
+                
+                // Set invite link with user name for trust
+                const userName = safeFirstName || safeLastName ? `${safeFirstName}${safeLastName ? '_' + safeLastName : ''}` : '';
+                const inviteLink = userName 
+                    ? `https://t.me/asratonbot?start=${userId}_${userName}`
+                    : `https://t.me/asratonbot?start=${userId}`;
+                referralLinkInput.value = inviteLink;
+            }
+
+
+
+            closeReferral.addEventListener('click', () => {
+                referralModal.classList.remove('open');
+            });
+
+            // ==================== LEADERBOARD FUNCTIONALITY ====================
+            const leaderboardBtn = document.getElementById('leaderboard-btn');
+            const leaderboardModal = document.getElementById('leaderboard-modal');
+            const closeLeaderboard = document.getElementById('close-leaderboard');
+            const leaderboardBody = document.getElementById('leaderboard-body');
+            const userRankEl = document.getElementById('user-rank');
+
+            // Coin names mapping for display
+            const COIN_NAMES = {
+                gunmetal: 'Gunmetal',
+                blue: 'Blue',
+                green: 'Green',
+                pink: 'Pink',
+                red: 'Red',
+                yellow: 'Yellow',
+                asra: 'ASRA'
+            };
+
+            async function loadLeaderboard() {
+                try {
+                    // Load top 50
+                    const res = await fetch(API_BASE + '/leaderboard');
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        leaderboardBody.innerHTML = data.leaderboard.slice(0, 20).map((user, index) => {
+                            // Format display name: use firstName if available, otherwise userId
+                            let displayName = user.firstName || user.userId;
+                            // Truncate if longer than 8 chars
+                            if (displayName.length > 8) {
+                                displayName = displayName.substring(0, 8) + '...';
+                            }
+                            
+                            // Format purchased coins
+                            const purchasedCoins = user.purchasedCoins || [];
+                            let coinsDisplay = '';
+                            if (purchasedCoins.length === 0) {
+                                coinsDisplay = '<span style="color:#888;font-size:9px;">-</span>';
+                            } else {
+                                // Get coin names and join with commas, limit to fit
+                                const coinNames = purchasedCoins.map(coin => COIN_NAMES[coin] || coin);
+                                // If more than 2 coins, show first 2 + "+N"
+                                if (coinNames.length > 2) {
+                                    coinsDisplay = coinNames.slice(0, 2).join(', ') + ` <span style="color:#ffd700;font-size:9px;">+${coinNames.length - 2}</span>`;
+                                } else {
+                                    coinsDisplay = coinNames.join(', ');
+                                }
+                            }
+                            
+                            return `
+                            <tr class="leaderboard-row ${user.userId.includes(userId?.slice(0, 8)) ? 'current-user' : ''}">
+                                <td style="padding:6px 4px;border:1px solid rgba(255,255,255,0.1);color:${index < 3 ? '#ffd700' : '#ccc'};font-weight:${index < 3 ? 'bold' : 'normal'};text-align:center;">${index + 1}</td>
+                                <td style="padding:6px 4px;border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:10px;">${displayName}</td>
+                                <td style="padding:6px 4px;border:1px solid rgba(255,255,255,0.1);color:#00d2ff;font-size:9px;word-break:break-word;max-width:100px;">${coinsDisplay}</td>
+                                <td style="padding:6px 4px;border:1px solid rgba(255,255,255,0.1);color:#00ff00;font-size:10px;text-align:right;">${user.asraScore.toLocaleString()}</td>
+                            </tr>
+                        `}).join('');
+                    }
+                } catch (e) {
+                    console.error('Failed to load leaderboard:', e);
+                }
+
+                // Load user rank
+                if (userId) {
+                    try {
+                        const rankRes = await fetch(API_BASE + '/leaderboard/rank/' + userId);
+                        const rankData = await rankRes.json();
+                        if (rankData.success) {
+                            userRankEl.innerHTML = `
+                                <div style="color:#ffd700;font-size:14px;">Your Rank: #${rankData.rank || '-'}</div>
+                                <div style="color:#888;font-size:11px;">Total ASRA: ${rankData.userTotalAsra?.toLocaleString() || 0} | Players: ${rankData.totalPlayers || 0}</div>
+                            `;
+                        }
+                    } catch (e) {
+                        console.error('Failed to load user rank:', e);
+                    }
+                }
+            }
+
+
+
+            closeLeaderboard.addEventListener('click', () => {
+                leaderboardModal.classList.remove('open');
+            });
+
+            // User Badge panel buttons for Invite, Rank
+            document.getElementById('btn-invite').addEventListener('click', () => {
+                userBadgePanel.classList.remove('open');
+                // IMMEDIATE ASRA PRO CANCEL: Cancel ASRA PRO and reset ASRA immediately
+                cancelAsraProImmediately();
+                if (gameActive) stopGame();
+                // Referral works for ALL users - no payment check needed
+                loadReferralData();
+                referralModal.classList.add('open');
+            });
+
+            document.getElementById('btn-rank').addEventListener('click', () => {
+                userBadgePanel.classList.remove('open');
+                // IMMEDIATE ASRA PRO CANCEL: Cancel ASRA PRO and reset ASRA immediately
+                cancelAsraProImmediately();
+                if (gameActive) stopGame();
+                loadLeaderboard();
+                leaderboardModal.classList.add('open');
+            });
+
+            // Close modals when clicking outside
+            referralModal.addEventListener('click', (e) => {
+                if (e.target === referralModal) referralModal.classList.remove('open');
+            });
+            leaderboardModal.addEventListener('click', (e) => {
+                if (e.target === leaderboardModal) leaderboardModal.classList.remove('open');
+            });
+        });
+    </script>
+</body>
+</html>

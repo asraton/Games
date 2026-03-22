@@ -1,0 +1,8 @@
+[phases.build]
+cmds = ["cd server && npm install"]
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[start]
+cmd = "cd server && node server-real.js"
