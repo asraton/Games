@@ -954,7 +954,7 @@
             <h3>Game Information</h3>
             
             <div class="help-text" style="background:rgba(0,210,255,0.1);border:1px solid rgba(0,210,255,0.3);border-radius:8px;padding:12px;margin-bottom:15px;font-size:12px;color:#00d2ff;text-align:center;">
-                <a href="https://dyor.io/ru/token/EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy" target="_blank" style="color:#00d2ff;text-decoration:underline;">🔗 Buy or exchange ASRA here</a>
+                <button id="btn-asra-market" class="wallet-panel-btn btn-green" style="width:100%;">🏪 ASRA bozori</button>
             </div>
             
             <div class="help-section-title">How to Play?</div>
@@ -2959,6 +2959,11 @@
 
             closeHelp.addEventListener('click', () => {
                 helpModal.classList.remove('open');
+            });
+
+            // ASRA Market button - redirect to dyor.io
+            document.getElementById('btn-asra-market').addEventListener('click', () => {
+                window.open('https://dyor.io/ru/token/EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy', '_blank');
             });
 
             // Close help when clicking outside
