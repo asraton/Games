@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const { TonClient, WalletContractV5R1, internal, toNano, Address, beginCell, Cell } = require('@ton/ton');
+const { TonClient, WalletContractV5R1, internal, toNano, Address, beginCell } = require('@ton/ton');
 const { mnemonicNew, mnemonicToWalletKey } = require('@ton/crypto');
 const axios = require('axios');
 
@@ -405,78 +405,6 @@ async function getJettonBalance(jettonWalletAddress) {
     } catch (error) {
         console.error('❌ Jetton balance check error:', error.message);
         return 0;
-    }
-}
-
-// Check ASRA Jetton transfers to payment address - SIMPLIFIED VERSION
-async function checkAsraPayment(requiredAmount = 10000) {
-    try {
-        console.log(`🔍 Checking ASRA payments to ${PAYMENT_ADDRESS?.slice(0, 15)}...`);
-        console.log(`   Required: ${requiredAmount} ASRA`);
-        
-        // Get transactions for payment address
-        const transactions = await getTransactions(PAYMENT_ADDRESS, 50);
-        console.log(`   Found ${transactions.length} transactions`);
-        
-        for (let i = 0; i < transactions.length; i++) {
-            const tx = transactions[i];
-            
-            if (tx.in_msg) {
-                const from = tx.in_msg.source;
-                const value = tx.in_msg.value || 0;
-                
-                // Check if this is a Jetton transfer notification by examining the body
-                if (tx.in_msg.msg_data && tx.in_msg.msg_data.body) {
-                    try {
-                        const bodyCell = Cell.fromBase64(tx.in_msg.msg_data.body);
-                        const bodySlice = bodyCell.beginParse();
-                        
-                        if (bodySlice.remainingBits >= 32) {
-                            const op = bodySlice.loadUint(32);
-                            
-                            // Jetton transfer notification op = 0x7362d09c (Jetton Notify)
-                            // OR internal_transfer = 0x178d4519
-                            if (op === 0x7362d09c || op === 0x178d4519) {
-                                console.log(`   [${i}] ⭐ Jetton transfer! From: ${from?.slice(0, 15)}...`);
-                                console.log(`       Op: 0x${op.toString(16)}`);
-                                
-                                // Skip query_id (64 bits)
-                                if (bodySlice.remainingBits >= 64) {
-                                    bodySlice.loadUint(64);
-                                }
-                                
-                                // Load amount (Coins = var uint)
-                                if (bodySlice.remainingBits > 0) {
-                                    const amount = bodySlice.loadCoins();
-                                    const asraAmount = Number(amount) / 1e9;
-                                    console.log(`       💰 Amount: ${asraAmount} ASRA`);
-                                    
-                                    if (asraAmount >= requiredAmount) {
-                                        console.log(`       ✅✅✅ VALID PAYMENT: ${asraAmount} ASRA`);
-                                        return {
-                                            found: true,
-                                            hash: tx.transaction_id?.hash || tx.hash,
-                                            amount: asraAmount,
-                                            from: from,
-                                            time: tx.utime
-                                        };
-                                    }
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        // Not a Jetton transfer or parse error, skip
-                    }
-                }
-            }
-        }
-        
-        console.log(`❌ No ASRA payment found`);
-        return { found: false };
-        
-    } catch (error) {
-        console.error('❌ ASRA payment check error:', error.message);
-        return { found: false, error: error.message };
     }
 }
 
@@ -1327,8 +1255,7 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             console.log(`✅ User created: ${userId}`);
         }
         
-        const REQUIRED_TON_AMOUNT = 1; // 1 TON
-        const REQUIRED_ASRA_AMOUNT = 10000; // 10,000 ASRA
+        const REQUIRED_AMOUNT = 1; // 1 TON
 
         // If already paid
         if (user.hasPaid) {
@@ -1342,11 +1269,10 @@ app.get('/api/check-payment/:userId', async (req, res) => {
         
         console.log(`⚠️ User ${userId} hasPaid=${user.hasPaid}, checking blockchain...`);
         
-        // Check transactions (TON and ASRA)
+        // Check transactions (ONLY via TON Center)
         let paymentTx = null;
-        let paymentType = null;
         
-        // Check 1: TON Payment
+        // Check from TON Center
         try {
             console.log(`🔍 TON Center: Getting transactions for ${PAYMENT_ADDRESS}...`);
             const tonTransactions = await getTransactions(PAYMENT_ADDRESS, 20);
@@ -1389,14 +1315,13 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 const tonAmount = Number(BigInt(value)) / 1e9;
                 // Use Address library for proper comparison
                 const isAddressMatch = areAddressesEqual(toAddress, PAYMENT_ADDRESS);
-                const isMatch = isAddressMatch && tonAmount >= REQUIRED_TON_AMOUNT;
+                const isMatch = isAddressMatch && tonAmount >= REQUIRED_AMOUNT;
                 console.log(`   🔍 Checking: to=${toAddress?.slice(0, 20)}... amount=${tonAmount} TON, time=${new Date(txTime).toISOString()}, addressMatch=${isAddressMatch}, match=${isMatch}`);
                 return isMatch;
             });
             
             if (paymentTx) {
                 console.log(`✅ Payment found on TON Center: ${paymentTx.transaction_id?.hash}`);
-                paymentType = 'TON';
             } else {
                 console.log(`❌ Payment not found on TON Center`);
             }
@@ -1404,37 +1329,14 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             console.log('⚠️ TON Center check error:', tonError.message);
         }
         
-        // Check 2: ASRA Payment (if TON not found)
-        if (!paymentTx) {
-            try {
-                console.log(`🔍 Checking ASRA payments...`);
-                const asraResult = await checkAsraPayment(REQUIRED_ASRA_AMOUNT);
-                
-                if (asraResult.found) {
-                    console.log(`✅ ASRA Payment found: ${asraResult.amount} ASRA`);
-                    paymentTx = {
-                        id: asraResult.hash,
-                        hash: asraResult.hash,
-                        from: { address: asraResult.from },
-                        amount: asraResult.amount,
-                        utime: asraResult.time
-                    };
-                    paymentType = 'ASRA';
-                }
-            } catch (asraError) {
-                console.log('⚠️ ASRA check error:', asraError.message);
-            }
-        }
-        
         // Process check results
         if (paymentTx) {
             // Payment made!
             user.hasPaid = true;
             user.paidAt = new Date().toISOString();
-            user.paidAmount = paymentType === 'ASRA' ? REQUIRED_ASRA_AMOUNT : REQUIRED_TON_AMOUNT;
+            user.paidAmount = REQUIRED_AMOUNT;
             user.paymentTxHash = paymentTx.id || paymentTx.hash || null;
             user.paidFromAddress = paymentTx.from?.address || null;
-            user.paymentType = paymentType || 'TON'; // Track payment type
             
             // Transfer demo asra to real balance (or reset to 0)
             user.demoAsraBalance = 0;
@@ -1442,18 +1344,16 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             userDB.set(userId, user);
             
             console.log(`✅ Payment made: ${userId}`);
-            console.log(`   Type: ${paymentType}`);
-            console.log(`   Amount: ${paymentType === 'ASRA' ? REQUIRED_ASRA_AMOUNT + ' ASRA' : REQUIRED_TON_AMOUNT + ' TON'}`);
-            console.log(`   Tx: ${paymentTx.id || paymentTx.hash}`);
+            console.log(`   Amount: ${paymentTx.amount} TON`);
+            console.log(`   Tx: ${paymentTx.id}`);
             console.log(`   From: ${paymentTx.from?.address}`);
             
             return res.json({
                 success: true,
                 hasPaid: true,
-                message: `Payment made (${paymentType})! You can now start the real game.`,
+                message: 'Payment made! You can now start the real game.',
                 resetRequired: true,
-                txHash: paymentTx.id || paymentTx.hash,
-                paymentType: paymentType
+                txHash: paymentTx.id
             });
         }
         
@@ -1462,8 +1362,7 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             success: true,
             hasPaid: false,
             message: 'Payment pending',
-            requiredAmountTon: REQUIRED_TON_AMOUNT,
-            requiredAmountAsra: REQUIRED_ASRA_AMOUNT,
+            requiredAmount: REQUIRED_AMOUNT,
             paymentAddress: PAYMENT_ADDRESS || '',
             demoAsraBalance: user.demoAsraBalance || 0
         });
