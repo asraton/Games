@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const { TonClient, WalletContractV5R1, internal, toNano, Address, beginCell } = require('@ton/ton');
+const { TonClient, WalletContractV5R1, internal, toNano, Address, beginCell, Cell } = require('@ton/ton');
 const { mnemonicNew, mnemonicToWalletKey } = require('@ton/crypto');
 const axios = require('axios');
 
@@ -408,98 +408,79 @@ async function getJettonBalance(jettonWalletAddress) {
     }
 }
 
-// Check ASRA Jetton transfers to payment address - FIXED VERSION
+// Check ASRA Jetton transfers to payment address - CORRECT VERSION
 async function checkAsraPayment(requiredAmount = 10000) {
     try {
         console.log(`🔍 Checking ASRA payments to ${PAYMENT_ADDRESS?.slice(0, 15)}...`);
         console.log(`   Required: ${requiredAmount} ASRA`);
         
+        // Get payment address's Jetton wallet address for ASRA
+        const { JettonMaster } = require('@ton/ton');
+        const jettonMaster = client.open(JettonMaster.create(Address.parse(ASRA_CONTRACT_ADDRESS)));
+        const paymentJettonWallet = await jettonMaster.getWalletAddress(Address.parse(PAYMENT_ADDRESS));
+        console.log(`   Payment's ASRA Jetton Wallet: ${paymentJettonWallet.toString()}`);
+        
         // Get transactions for payment address
         const transactions = await getTransactions(PAYMENT_ADDRESS, 50);
         console.log(`   Found ${transactions.length} transactions`);
         
-        // Look for incoming messages from ASRA contract (EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy)
-        const ASRA_JETTON_WALLET = 'EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy';
-        
         for (let i = 0; i < transactions.length; i++) {
             const tx = transactions[i];
             
-            // Check incoming message
             if (tx.in_msg) {
                 const from = tx.in_msg.source;
                 const value = tx.in_msg.value || 0;
                 
-                console.log(`   [${i}] From: ${from?.slice(0, 20)}... Value: ${value} nanoTON`);
+                // Check if transaction is from payment's Jetton wallet (ASRA transfers)
+                const isFromJettonWallet = areAddressesEqual(from, paymentJettonWallet.toString());
                 
-                // Jetton transfer notification from ASRA wallet
-                // Sender should be the Jetton wallet for ASRA token
-                // OR the body should contain op code for transfer notification
-                if (tx.in_msg.msg_data && tx.in_msg.msg_data.body) {
-                    try {
-                        const body = Buffer.from(tx.in_msg.msg_data.body, 'base64');
-                        console.log(`       Body: ${body.length} bytes`);
-                        
-                        // Skip BOC header (first 4 bytes are usually BOC magic)
-                        // Real payload starts after cell descriptors
-                        if (body.length >= 8) {
-                            // Try to find Jetton transfer notification op code
-                            // op = 0x7369676e = 'sign' in ascii = transfer notification
-                            // OR op = 0x178d4519 (internal_transfer)
+                if (isFromJettonWallet) {
+                    console.log(`   [${i}] From ASRA Jetton Wallet! Value: ${value} nanoTON`);
+                    
+                    // Parse the body for transfer notification
+                    if (tx.in_msg.msg_data && tx.in_msg.msg_data.body) {
+                        try {
+                            const bodyCell = Cell.fromBase64(tx.in_msg.msg_data.body);
+                            const bodySlice = bodyCell.beginParse();
                             
-                            // Check at offset 4 (after BOC magic)
-                            if (body.length >= 12) {
-                                const op1 = body.readUInt32BE(4);
-                                console.log(`       Op at offset 4: 0x${op1.toString(16)}`);
+                            if (bodySlice.remainingBits >= 32) {
+                                const op = bodySlice.loadUint(32);
+                                console.log(`       Op: 0x${op.toString(16)}`);
                                 
-                                // Jetton transfer notification
-                                if (op1 === 0x178d4519 || op1 === 0xf8a7ea5 || op1 === 0x7369676e) {
-                                    console.log(`       ✅ Jetton transfer notification found!`);
+                                // transfer_notification op = 0x7369676e
+                                if (op === 0x7369676e) {
+                                    console.log(`       ✅ Transfer notification!`);
                                     
-                                    // Parse amount - typically after op(4) + query_id(8) + amount(var uint)
-                                    let offset = 16; // Skip op + query_id
-                                    let amount = BigInt(0);
-                                    
-                                    if (body.length > offset) {
-                                        const lenByte = body[offset];
-                                        console.log(`       Length byte: 0x${lenByte.toString(16)}`);
-                                        
-                                        if (lenByte <= 0x7f) {
-                                            amount = BigInt(lenByte);
-                                        } else {
-                                            const numBytes = lenByte - 0x80;
-                                            offset++;
-                                            for (let b = 0; b < numBytes && offset < body.length; b++) {
-                                                amount = (amount << BigInt(8)) | BigInt(body[offset++]);
-                                            }
-                                        }
+                                    // Skip query_id
+                                    if (bodySlice.remainingBits >= 64) {
+                                        bodySlice.loadUint(64);
                                     }
                                     
-                                    const asraAmount = Number(amount) / 1e9;
-                                    console.log(`       Amount: ${asraAmount} ASRA`);
-                                    
-                                    if (asraAmount >= requiredAmount) {
-                                        console.log(`       ✅ VALID PAYMENT: ${asraAmount} ASRA`);
-                                        return {
-                                            found: true,
-                                            hash: tx.transaction_id?.hash || tx.hash,
-                                            amount: asraAmount,
-                                            from: from,
-                                            time: tx.utime
-                                        };
+                                    // Load amount
+                                    if (bodySlice.remainingBits > 0) {
+                                        const amount = bodySlice.loadCoins();
+                                        const asraAmount = Number(amount) / 1e9;
+                                        console.log(`       Amount: ${asraAmount} ASRA`);
+                                        
+                                        if (asraAmount >= requiredAmount) {
+                                            console.log(`       ✅ VALID PAYMENT: ${asraAmount} ASRA`);
+                                            return {
+                                                found: true,
+                                                hash: tx.transaction_id?.hash || tx.hash,
+                                                amount: asraAmount,
+                                                from: from,
+                                                time: tx.utime
+                                            };
+                                        }
                                     }
                                 }
                             }
-                            
-                            // Alternative: Check if sender is ASRA contract
-                            if (from && from.includes('EQA8Mx1E9')) {
-                                console.log(`       ℹ️ Transaction from ASRA contract`);
-                                // These are likely Jetton transfers, check the value as proxy
-                                // Actual ASRA amount is encoded in the body
-                            }
+                        } catch (e) {
+                            console.log(`       Parse error: ${e.message}`);
                         }
-                    } catch (e) {
-                        console.log(`       Parse error: ${e.message}`);
                     }
+                } else {
+                    console.log(`   [${i}] From: ${from?.slice(0, 20)}... (not Jetton wallet)`);
                 }
             }
         }
