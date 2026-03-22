@@ -408,85 +408,83 @@ async function getJettonBalance(jettonWalletAddress) {
     }
 }
 
-// Check ASRA Jetton transfers to payment address
+// Check ASRA Jetton transfers to payment address - SIMPLIFIED VERSION
 async function checkAsraPayment(requiredAmount = 10000) {
     try {
         console.log(`🔍 Checking ASRA payments to ${PAYMENT_ADDRESS?.slice(0, 15)}...`);
         console.log(`   Required: ${requiredAmount} ASRA`);
-        console.log(`   ASRA Contract: ${ASRA_CONTRACT_ADDRESS?.slice(0, 20)}...`);
         
         // Get transactions for payment address
         const transactions = await getTransactions(PAYMENT_ADDRESS, 50);
         console.log(`   Found ${transactions.length} transactions`);
         
-        // Look for Jetton transfers in ALL incoming messages
-        for (const tx of transactions) {
-            if (tx.in_msg && tx.in_msg.msg_data && tx.in_msg.msg_data.body) {
-                try {
-                    const body = Buffer.from(tx.in_msg.msg_data.body, 'base64');
-                    
-                    // Jetton transfer body structure:
-                    // op (4 bytes) + query_id (8 bytes) + amount (var uint) + destination (MsgAddress) + ...
-                    // op code for transfer: 0xf8a7ea5
-                    
-                    if (body.length >= 12) {
-                        const op = body.readUInt32BE(0);
+        // Look for incoming messages with value (Jetton transfers have in_msg with body)
+        for (let i = 0; i < transactions.length; i++) {
+            const tx = transactions[i];
+            
+            if (tx.in_msg) {
+                console.log(`   [${i}] Checking tx from ${tx.in_msg.source?.slice(0, 15)}...`);
+                console.log(`       Body present: ${!!tx.in_msg.msg_data?.body}`);
+                console.log(`       Value (nanoTON): ${tx.in_msg.value || 0}`);
+                
+                // Check if this is a Jetton transfer by examining body
+                if (tx.in_msg.msg_data && tx.in_msg.msg_data.body) {
+                    try {
+                        const body = Buffer.from(tx.in_msg.msg_data.body, 'base64');
+                        console.log(`       Body length: ${body.length} bytes`);
+                        console.log(`       First 16 bytes: ${body.slice(0, 16).toString('hex')}`);
                         
-                        // Check if it's a Jetton transfer (op code 0xf8a7ea5)
-                        if (op === 0xf8a7ea5) {
-                            console.log(`   🔍 Found Jetton transfer from ${tx.in_msg.source?.slice(0, 15)}...`);
+                        // Jetton transfer op code is 0xf8a7ea5 (internal message from jetton wallet)
+                        if (body.length >= 4) {
+                            const op = body.readUInt32BE(0);
+                            console.log(`       Op code: 0x${op.toString(16)}`);
                             
-                            // Parse amount - it's after op(4) + query_id(8) = 12 bytes
-                            // Coins in TON are serialized as var uint (1-4 bytes prefix for length)
-                            let offset = 12;
-                            let amount = BigInt(0);
-                            
-                            // Read Coins (variable length uint)
-                            // First byte indicates length: 0x00-0x7F = 0-7 bytes follow
-                            if (body.length > offset) {
-                                const firstByte = body[offset];
-                                let length = 0;
+                            // Jetton internal transfer op code
+                            if (op === 0x178d4519 || op === 0xf8a7ea5) {
+                                console.log(`       ✅ Found Jetton transfer!`);
                                 
-                                if (firstByte <= 0x7f) {
-                                    // Short format: value is in first 7 bits
-                                    length = firstByte;
-                                    offset += 1;
-                                } else {
-                                    // Long format: 0x80 + number of bytes to read
-                                    length = firstByte - 0x80;
-                                    if (length > 8) length = 8; // Max 8 bytes
-                                    offset += 1;
+                                // Parse amount from body
+                                // Structure: op(4) + query_id(8) + amount(var uint) + ...
+                                let offset = 12; // Skip op and query_id
+                                let amount = BigInt(0);
+                                
+                                if (body.length > offset) {
+                                    // Parse var uint (Coins)
+                                    const lenByte = body[offset];
+                                    console.log(`       Length byte: ${lenByte} (0x${lenByte.toString(16)})`);
                                     
-                                    // Read the actual value
-                                    for (let i = 0; i < length && offset < body.length; i++) {
-                                        amount = (amount << BigInt(8)) | BigInt(body[offset++]);
+                                    if (lenByte <= 0x7f) {
+                                        // Small value in first byte
+                                        amount = BigInt(lenByte);
+                                        offset += 1;
+                                    } else {
+                                        // Multi-byte value
+                                        const numBytes = lenByte - 0x80;
+                                        offset += 1;
+                                        for (let b = 0; b < numBytes && offset < body.length; b++) {
+                                            amount = (amount << BigInt(8)) | BigInt(body[offset++]);
+                                        }
                                     }
                                 }
                                 
-                                if (firstByte <= 0x7f) {
-                                    amount = BigInt(firstByte);
+                                const asraAmount = Number(amount) / 1e9;
+                                console.log(`       Parsed amount: ${asraAmount} ASRA`);
+                                
+                                if (asraAmount >= requiredAmount) {
+                                    console.log(`       ✅ ASRA payment found: ${asraAmount} ASRA`);
+                                    return {
+                                        found: true,
+                                        hash: tx.transaction_id?.hash || tx.hash,
+                                        amount: asraAmount,
+                                        from: tx.in_msg.source,
+                                        time: tx.utime
+                                    };
                                 }
                             }
-                            
-                            // ASRA has 9 decimals
-                            const asraAmount = Number(amount) / 1e9;
-                            console.log(`   💰 Parsed amount: ${asraAmount} ASRA`);
-                            
-                            if (asraAmount >= requiredAmount) {
-                                console.log(`✅ ASRA payment found: ${asraAmount} ASRA`);
-                                return {
-                                    found: true,
-                                    hash: tx.transaction_id?.hash,
-                                    amount: asraAmount,
-                                    from: tx.in_msg.source,
-                                    time: tx.utime
-                                };
-                            }
                         }
+                    } catch (e) {
+                        console.log(`       Error parsing body: ${e.message}`);
                     }
-                } catch (e) {
-                    // Skip transactions that can't be parsed
-                    continue;
                 }
             }
         }
