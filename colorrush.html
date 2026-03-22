@@ -2009,14 +2009,14 @@
             
             if (connectedWalletAddress) {
                 wBtn.classList.add('connected');
-                walletActionBtn.textContent = 'Disconnect Wallet';
+                walletActionBtn.textContent = 'Disconnect';
                 walletActionBtn.classList.remove('btn-green');
                 walletActionBtn.classList.add('btn-red');
                 
                 // Show SHORTENED address (ABC...XYZ format)
                 const shortAddress = shortenAddress(connectedWalletAddress);
                 walletAddressDisplay.innerHTML = `
-                    <strong style="color:#888">Connected Wallet:</strong> 
+                    <strong style="color:#888">Wallet:</strong> 
                     <span style="color:#fff; font-family:monospace;">${shortAddress}</span>
                 `;
                 walletAddressDisplay.style.display = 'block';
