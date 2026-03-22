@@ -2315,23 +2315,23 @@
                 
                 modalTitle.textContent = '';
                 modalBody.innerHTML = `
-                    <div style="text-align:center;padding:16px;">
-                        <p style="color:#fff;font-size:13px;margin-bottom:8px;">
+                    <div style="text-align:center;padding:16px;display:flex;flex-direction:column;align-items:center;">
+                        <p style="color:#fff;font-size:13px;margin-bottom:8px;width:100%;">
                             Pay <b>1 TON</b> to start real game
                         </p>
-                        <p style="color:#ffd700;font-size:11px;margin-bottom:12px;">
+                        <p style="color:#ffd700;font-size:11px;margin-bottom:12px;width:100%;">
                             Or buy any coin from SHOP to unlock
                         </p>
-                        <p style="color:#888;font-size:11px;margin-bottom:4px;">TON network address:</p>
-                        <input type="text" id="payment-address-input" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:11px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;text-align:center;user-select:all;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
+                        <p style="color:#888;font-size:11px;margin-bottom:4px;width:100%;">TON network address:</p>
+                        <input type="text" id="payment-address-input" value="${PAYMENT_ADDRESS}" readonly style="color:#fff;font-size:11px;margin-bottom:8px;word-break:break-all;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);padding:8px;border-radius:6px;width:100%;max-width:280px;text-align:center;user-select:all;box-sizing:border-box;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
                         
-                        <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;">
+                        <img src="${QR_CODE_URL}" alt="QR Code" style="width:200px;height:200px;margin:12px auto;display:block;background:#fff;padding:8px;border-radius:8px;box-sizing:border-box;">
                         
-                        <button id="pay-wallet-btn-panel" class="wallet-panel-btn btn-green" style="width:100%;">
+                        <button id="pay-wallet-btn-panel" class="wallet-panel-btn btn-green" style="width:100%;max-width:280px;">
                             Open Wallet
                         </button>
                         
-                        <button class="wallet-panel-btn close-modal btn-red" style="width:100%;margin-top:16px;">
+                        <button class="wallet-panel-btn close-modal btn-red" style="width:100%;max-width:280px;margin-top:16px;">
                             Back
                         </button>
                     </div>
