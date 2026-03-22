@@ -2381,21 +2381,8 @@
             document.getElementById('btn-pay-with-asra').addEventListener('click', () => {
                 walletPanel.classList.remove('open');
                 
-                // Check if wallet connected
-                if (!connectedWalletAddress) {
-                    Swal.fire({
-                        title: 'Wallet ulanmagan',
-                        text: 'Swap uchun wallet ulang',
-                        icon: 'warning',
-                        background: '#1a1a2e',
-                        color: '#fff',
-                        confirmButtonColor: '#00d2ff'
-                    });
-                    return;
-                }
-                
                 // Open Ston.fi with 1 TON pre-filled
-                const stonFiUrl = 'https://app.ston.fi/swap?chartVisible=false&ft=TON&tt=EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy&fa=%221%22';
+                const stonFiUrl = 'https://app.ston.fi/swap?chartVisible=false&ft=TON&tt=EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy&fa=1&confirmed=true';
                 window.open(stonFiUrl, '_blank');
             });
 
