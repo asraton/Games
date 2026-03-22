@@ -408,17 +408,11 @@ async function getJettonBalance(jettonWalletAddress) {
     }
 }
 
-// Check ASRA Jetton transfers to payment address - CORRECT VERSION
+// Check ASRA Jetton transfers to payment address - SIMPLIFIED VERSION
 async function checkAsraPayment(requiredAmount = 10000) {
     try {
         console.log(`🔍 Checking ASRA payments to ${PAYMENT_ADDRESS?.slice(0, 15)}...`);
         console.log(`   Required: ${requiredAmount} ASRA`);
-        
-        // Get payment address's Jetton wallet address for ASRA
-        const { JettonMaster } = require('@ton/ton');
-        const jettonMaster = client.open(JettonMaster.create(Address.parse(ASRA_CONTRACT_ADDRESS)));
-        const paymentJettonWallet = await jettonMaster.getWalletAddress(Address.parse(PAYMENT_ADDRESS));
-        console.log(`   Payment's ASRA Jetton Wallet: ${paymentJettonWallet.toString()}`);
         
         // Get transactions for payment address
         const transactions = await getTransactions(PAYMENT_ADDRESS, 50);
@@ -431,56 +425,48 @@ async function checkAsraPayment(requiredAmount = 10000) {
                 const from = tx.in_msg.source;
                 const value = tx.in_msg.value || 0;
                 
-                // Check if transaction is from payment's Jetton wallet (ASRA transfers)
-                const isFromJettonWallet = areAddressesEqual(from, paymentJettonWallet.toString());
-                
-                if (isFromJettonWallet) {
-                    console.log(`   [${i}] From ASRA Jetton Wallet! Value: ${value} nanoTON`);
-                    
-                    // Parse the body for transfer notification
-                    if (tx.in_msg.msg_data && tx.in_msg.msg_data.body) {
-                        try {
-                            const bodyCell = Cell.fromBase64(tx.in_msg.msg_data.body);
-                            const bodySlice = bodyCell.beginParse();
+                // Check if this is a Jetton transfer notification by examining the body
+                if (tx.in_msg.msg_data && tx.in_msg.msg_data.body) {
+                    try {
+                        const bodyCell = Cell.fromBase64(tx.in_msg.msg_data.body);
+                        const bodySlice = bodyCell.beginParse();
+                        
+                        if (bodySlice.remainingBits >= 32) {
+                            const op = bodySlice.loadUint(32);
                             
-                            if (bodySlice.remainingBits >= 32) {
-                                const op = bodySlice.loadUint(32);
+                            // Jetton transfer notification op = 0x7362d09c (Jetton Notify)
+                            // OR internal_transfer = 0x178d4519
+                            if (op === 0x7362d09c || op === 0x178d4519) {
+                                console.log(`   [${i}] ⭐ Jetton transfer! From: ${from?.slice(0, 15)}...`);
                                 console.log(`       Op: 0x${op.toString(16)}`);
                                 
-                                // transfer_notification op = 0x7369676e
-                                if (op === 0x7369676e) {
-                                    console.log(`       ✅ Transfer notification!`);
+                                // Skip query_id (64 bits)
+                                if (bodySlice.remainingBits >= 64) {
+                                    bodySlice.loadUint(64);
+                                }
+                                
+                                // Load amount (Coins = var uint)
+                                if (bodySlice.remainingBits > 0) {
+                                    const amount = bodySlice.loadCoins();
+                                    const asraAmount = Number(amount) / 1e9;
+                                    console.log(`       💰 Amount: ${asraAmount} ASRA`);
                                     
-                                    // Skip query_id
-                                    if (bodySlice.remainingBits >= 64) {
-                                        bodySlice.loadUint(64);
-                                    }
-                                    
-                                    // Load amount
-                                    if (bodySlice.remainingBits > 0) {
-                                        const amount = bodySlice.loadCoins();
-                                        const asraAmount = Number(amount) / 1e9;
-                                        console.log(`       Amount: ${asraAmount} ASRA`);
-                                        
-                                        if (asraAmount >= requiredAmount) {
-                                            console.log(`       ✅ VALID PAYMENT: ${asraAmount} ASRA`);
-                                            return {
-                                                found: true,
-                                                hash: tx.transaction_id?.hash || tx.hash,
-                                                amount: asraAmount,
-                                                from: from,
-                                                time: tx.utime
-                                            };
-                                        }
+                                    if (asraAmount >= requiredAmount) {
+                                        console.log(`       ✅✅✅ VALID PAYMENT: ${asraAmount} ASRA`);
+                                        return {
+                                            found: true,
+                                            hash: tx.transaction_id?.hash || tx.hash,
+                                            amount: asraAmount,
+                                            from: from,
+                                            time: tx.utime
+                                        };
                                     }
                                 }
                             }
-                        } catch (e) {
-                            console.log(`       Parse error: ${e.message}`);
                         }
+                    } catch (e) {
+                        // Not a Jetton transfer or parse error, skip
                     }
-                } else {
-                    console.log(`   [${i}] From: ${from?.slice(0, 20)}... (not Jetton wallet)`);
                 }
             }
         }
