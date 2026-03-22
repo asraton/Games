@@ -520,8 +520,30 @@ app.post('/api/user/register', async (req, res) => {
             console.log(`   10000 ASRA added`);
         }
         
+        // REFERRAL SYSTEM: Check if user was referred by someone
+        const { referredBy } = req.body;
+        let referrer = null;
+        
+        if (referredBy && referredBy !== userId) {
+            // Find the referrer user
+            const allUsers = userDB.getAll();
+            for (const [uid, u] of Object.entries(allUsers)) {
+                if (uid === referredBy || u.referralCode === referredBy) {
+                    referrer = uid;
+                    break;
+                }
+            }
+            
+            if (referrer) {
+                console.log(`🎁 REFERRAL: ${userId} was referred by ${referrer}`);
+            }
+        }
+        
         // Create new deposit wallet
         const depositWallet = await createDepositWallet();
+        
+        // Generate unique referral code for this user
+        const referralCode = `ref_${userId}_${Date.now().toString(36)}`;
         
         // Create new user with shopData including special coins if applicable
         user = {
@@ -557,13 +579,50 @@ app.post('/api/user/register', async (req, res) => {
             gameData: {
                 asraScore: specialCoins ? SPECIAL_WALLET_ASRA : 0,
                 lastSaved: null
-            }
+            },
+            // REFERRAL SYSTEM FIELDS
+            referralCode: referralCode,
+            referredBy: referrer,
+            referredUsers: [],
+            referralBonusTotal: 0,
+            lastReferralBonusClaim: null
         };
         
         userDB.set(userId, user);
         
+        // If user was referred, add to referrer's list
+        if (referrer) {
+            const referrerUser = userDB.get(referrer);
+            if (referrerUser) {
+                if (!referrerUser.referredUsers) {
+                    referrerUser.referredUsers = [];
+                }
+                referrerUser.referredUsers.push({
+                    userId: userId,
+                    firstName: firstName || null,
+                    joinedAt: new Date().toISOString(),
+                    totalBonusGiven: 0
+                });
+                userDB.set(referrer, referrerUser);
+                
+                // Send notification to referrer about new referral
+                const refMessage = `🎉 *Yangi Do'st Taklif Qildi!*\n\n` +
+                    `Sizning havolangiz orqali yangi foydalanuvchi qo'shildi:\n` +
+                    `👤 ${firstName || 'Foydalanuvchi'}\n\n` +
+                    `📊 *Statistika:*\n` +
+                    `• Jami takliflar: ${referrerUser.referredUsers.length}\n` +
+                    `• Kunlik bonus: har bir do'stingiz uchun *+100 ASRA*\n\n` +
+                    `Har kuni bot orqali bonus olishingiz mumkin! 🎁`;
+                
+                await sendNotificationToUser(referrer, refMessage);
+                
+                console.log(`✅ Referrer ${referrer} notified about new referral ${userId}`);
+            }
+        }
+        
         console.log(`✅ New user created: ${userId}`);
         console.log(`🏦 Deposit address: ${depositWallet.address}`);
+        console.log(`🔗 Referral code: ${referralCode}`);
         
         res.json({
             success: true,
@@ -2358,6 +2417,37 @@ async function migrateDatabase() {
                 userDB.set(userId, user);
                 console.log(`   ✅ ${userId} - totalAsraSpent field added`);
             }
+            
+            // REFERRAL SYSTEM: Migrate referral fields if not exists
+            if (!user.hasOwnProperty('referralCode')) {
+                user.referralCode = `ref_${userId}_${Date.now().toString(36)}`;
+                userDB.set(userId, user);
+                console.log(`   ✅ ${userId} - referralCode field added`);
+            }
+            
+            if (!user.hasOwnProperty('referredBy')) {
+                user.referredBy = null;
+                userDB.set(userId, user);
+                console.log(`   ✅ ${userId} - referredBy field added`);
+            }
+            
+            if (!user.hasOwnProperty('referredUsers')) {
+                user.referredUsers = [];
+                userDB.set(userId, user);
+                console.log(`   ✅ ${userId} - referredUsers field added`);
+            }
+            
+            if (!user.hasOwnProperty('referralBonusTotal')) {
+                user.referralBonusTotal = 0;
+                userDB.set(userId, user);
+                console.log(`   ✅ ${userId} - referralBonusTotal field added`);
+            }
+            
+            if (!user.hasOwnProperty('lastReferralBonusClaim')) {
+                user.lastReferralBonusClaim = null;
+                userDB.set(userId, user);
+                console.log(`   ✅ ${userId} - lastReferralBonusClaim field added`);
+            }
         }
         
         console.log(`✅ Migration completed: ${migratedCount} users updated`);
@@ -2475,6 +2565,157 @@ app.get('/api/leaderboard/rank/:userId', async (req, res) => {
 });
 
 // =============================================================================
+// REFERRAL SYSTEM API
+// =============================================================================
+
+// Get referral info for user
+app.get('/api/referral/info/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        if (!isValidUserId(userId)) {
+            return res.status(400).json({ error: 'Invalid userId' });
+        }
+        
+        const user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Ensure referral fields exist (for old users)
+        if (!user.referralCode) {
+            user.referralCode = `ref_${userId}_${Date.now().toString(36)}`;
+            user.referredUsers = [];
+            user.referralBonusTotal = 0;
+            user.lastReferralBonusClaim = null;
+            userDB.set(userId, user);
+        }
+        
+        // Calculate available daily bonus
+        const referredUsers = user.referredUsers || [];
+        const activeReferrals = referredUsers.filter(ref => {
+            const refUser = userDB.get(ref.userId);
+            return refUser && refUser.gameData;
+        });
+        
+        const today = new Date().toDateString();
+        const lastClaim = user.lastReferralBonusClaim ? new Date(user.lastReferralBonusClaim).toDateString() : null;
+        const canClaimToday = lastClaim !== today;
+        
+        const dailyBonusAmount = activeReferrals.length * 100; // 100 ASRA per referral
+        
+        res.json({
+            success: true,
+            referralCode: user.referralCode,
+            totalReferrals: referredUsers.length,
+            activeReferrals: activeReferrals.length,
+            totalBonusEarned: user.referralBonusTotal || 0,
+            dailyBonusAmount: dailyBonusAmount,
+            canClaimToday: canClaimToday,
+            lastClaimDate: user.lastReferralBonusClaim,
+            referredUsers: referredUsers.map(ref => ({
+                userId: ref.userId,
+                firstName: ref.firstName,
+                joinedAt: ref.joinedAt,
+                totalBonusGiven: ref.totalBonusGiven || 0
+            }))
+        });
+        
+    } catch (error) {
+        console.error('Get referral info error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Claim daily referral bonus
+app.post('/api/referral/claim-bonus/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        if (!isValidUserId(userId)) {
+            return res.status(400).json({ error: 'Invalid userId' });
+        }
+        
+        const user = userDB.get(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Check if already claimed today
+        const today = new Date().toDateString();
+        const lastClaim = user.lastReferralBonusClaim ? new Date(user.lastReferralBonusClaim).toDateString() : null;
+        
+        if (lastClaim === today) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Bonus already claimed today',
+                nextClaimTime: 'Tomorrow'
+            });
+        }
+        
+        // Calculate bonus amount
+        const referredUsers = user.referredUsers || [];
+        const activeReferrals = referredUsers.filter(ref => {
+            const refUser = userDB.get(ref.userId);
+            return refUser && refUser.gameData;
+        });
+        
+        if (activeReferrals.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'No active referrals'
+            });
+        }
+        
+        const bonusAmount = activeReferrals.length * 100; // 100 ASRA per referral
+        
+        // Add bonus to user's ASRA score
+        if (!user.gameData) {
+            user.gameData = { asraScore: 0, lastSaved: null };
+        }
+        user.gameData.asraScore += bonusAmount;
+        user.gameData.lastSaved = new Date().toISOString();
+        
+        // Update referral stats
+        user.referralBonusTotal = (user.referralBonusTotal || 0) + bonusAmount;
+        user.lastReferralBonusClaim = new Date().toISOString();
+        
+        // Update each referral's total bonus given
+        activeReferrals.forEach(ref => {
+            ref.totalBonusGiven = (ref.totalBonusGiven || 0) + 100;
+        });
+        
+        userDB.set(userId, user);
+        
+        // Send notification about bonus
+        const bonusMessage = `🎁 *Kunlik Referral Bonus!*\n\n` +
+            `Sizga ${activeReferrals.length} ta do'stingiz uchun bonus:\n` +
+            `💰 *+${bonusAmount.toLocaleString()} ASRA*\n\n` +
+            `📊 *Jami statistika:*\n` +
+            `• Taklif qilingan do'stlar: ${referredUsers.length}\n` +
+            `• Jami bonus: ${user.referralBonusTotal.toLocaleString()} ASRA\n\n` +
+            `Ertaga yana bonus olishingiz mumkin! 🌟`;
+        
+        await sendNotificationToUser(userId, bonusMessage);
+        
+        console.log(`✅ Referral bonus claimed: ${userId} got ${bonusAmount} ASRA for ${activeReferrals.length} referrals`);
+        
+        res.json({
+            success: true,
+            message: 'Bonus claimed successfully',
+            bonusAmount: bonusAmount,
+            activeReferrals: activeReferrals.length,
+            totalReferrals: referredUsers.length,
+            newAsraScore: user.gameData.asraScore
+        });
+        
+    } catch (error) {
+        console.error('Claim referral bonus error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// =============================================================================
 // TELEGRAM NOTIFICATION SYSTEM
 // =============================================================================
 
@@ -2570,7 +2811,7 @@ app.post('/api/notify/:userId', async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('Jetton wallet endpoint error:', error);
+        console.error('Notify API error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
