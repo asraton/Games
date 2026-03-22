@@ -2323,10 +2323,27 @@
                     if (connectedWalletAddress && userId && !userRegisteredThisSession) {
                         userRegisteredThisSession = true;
                         console.log('📝 [REGISTER] First time registration:', userId);
+                        
+                        // Get referral code from localStorage (if came via referral link)
+                        let referralCode = null;
+                        try {
+                            referralCode = localStorage.getItem('asra_referral_code');
+                            if (referralCode) {
+                                console.log('🎁 [REGISTER] Sending referral code:', referralCode);
+                            }
+                        } catch (e) {
+                            console.log('⚠️ Cannot read referral code from localStorage');
+                        }
+                        
                         fetch(API_BASE + '/user/register', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId, connectedWallet: connectedWalletAddress, firstName: safeFirstName || null })
+                            body: JSON.stringify({ 
+                                userId, 
+                                connectedWallet: connectedWalletAddress, 
+                                firstName: safeFirstName || null,
+                                referredBy: referralCode  // REFERRAL SYSTEM
+                            })
                         }).catch(err => {
                             console.error('❌ [REGISTER] Error:', err);
                         });
