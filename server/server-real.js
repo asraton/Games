@@ -1255,7 +1255,8 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             console.log(`✅ User created: ${userId}`);
         }
         
-        const REQUIRED_AMOUNT = 1; // 1 TON
+        const REQUIRED_TON_AMOUNT = 1; // 1 TON
+        const REQUIRED_ASRA_AMOUNT = 10000; // 10,000 ASRA
 
         // If already paid
         if (user.hasPaid) {
@@ -1315,7 +1316,7 @@ app.get('/api/check-payment/:userId', async (req, res) => {
                 const tonAmount = Number(BigInt(value)) / 1e9;
                 // Use Address library for proper comparison
                 const isAddressMatch = areAddressesEqual(toAddress, PAYMENT_ADDRESS);
-                const isMatch = isAddressMatch && tonAmount >= REQUIRED_AMOUNT;
+                const isMatch = isAddressMatch && tonAmount >= REQUIRED_TON_AMOUNT;
                 console.log(`   🔍 Checking: to=${toAddress?.slice(0, 20)}... amount=${tonAmount} TON, time=${new Date(txTime).toISOString()}, addressMatch=${isAddressMatch}, match=${isMatch}`);
                 return isMatch;
             });
@@ -1334,9 +1335,10 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             // Payment made!
             user.hasPaid = true;
             user.paidAt = new Date().toISOString();
-            user.paidAmount = REQUIRED_AMOUNT;
+            user.paidAmount = paymentType === 'ASRA' ? REQUIRED_ASRA_AMOUNT : REQUIRED_TON_AMOUNT;
             user.paymentTxHash = paymentTx.id || paymentTx.hash || null;
             user.paidFromAddress = paymentTx.from?.address || null;
+            user.paymentType = paymentType || 'TON'; // Track payment type
             
             // Transfer demo asra to real balance (or reset to 0)
             user.demoAsraBalance = 0;
@@ -1344,16 +1346,18 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             userDB.set(userId, user);
             
             console.log(`✅ Payment made: ${userId}`);
-            console.log(`   Amount: ${paymentTx.amount} TON`);
-            console.log(`   Tx: ${paymentTx.id}`);
+            console.log(`   Type: ${paymentType}`);
+            console.log(`   Amount: ${paymentType === 'ASRA' ? REQUIRED_ASRA_AMOUNT + ' ASRA' : REQUIRED_TON_AMOUNT + ' TON'}`);
+            console.log(`   Tx: ${paymentTx.id || paymentTx.hash}`);
             console.log(`   From: ${paymentTx.from?.address}`);
             
             return res.json({
                 success: true,
                 hasPaid: true,
-                message: 'Payment made! You can now start the real game.',
+                message: `Payment made (${paymentType})! You can now start the real game.`,
                 resetRequired: true,
-                txHash: paymentTx.id
+                txHash: paymentTx.id || paymentTx.hash,
+                paymentType: paymentType
             });
         }
         
@@ -1362,7 +1366,8 @@ app.get('/api/check-payment/:userId', async (req, res) => {
             success: true,
             hasPaid: false,
             message: 'Payment pending',
-            requiredAmount: REQUIRED_AMOUNT,
+            requiredAmountTon: REQUIRED_TON_AMOUNT,
+            requiredAmountAsra: REQUIRED_ASRA_AMOUNT,
             paymentAddress: PAYMENT_ADDRESS || '',
             demoAsraBalance: user.demoAsraBalance || 0
         });
@@ -2565,7 +2570,7 @@ app.post('/api/notify/:userId', async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('Notify API error:', error);
+        console.error('Jetton wallet endpoint error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
