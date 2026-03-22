@@ -1187,11 +1187,53 @@
         <div class="referral-modal-content">
             <h3>👥 Invite Friends</h3>
             <div id="referral-content">
-                <div class="referral-link-section" style="padding:12px 0;margin-bottom:16px;">
+                <!-- Referral Link Section -->
+                <div class="referral-link-section" style="padding:12px 0;margin-bottom:12px;">
+                    <p style="color:#ffd700;font-size:12px;margin-bottom:8px;">🔗 Your Invite Link:</p>
                     <input type="text" id="referral-link" readonly style="width:100%;padding:12px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.5);color:#ffd700;border-radius:6px;font-size:11px;margin-bottom:8px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-sizing:border-box;" onclick="this.select();document.execCommand('copy');Swal.fire({text:'Copied!',icon:'success',timer:1500,showConfirmButton:false,width:'200px',position:'center'});">
                 </div>
+                
+                <!-- Referral Stats Section -->
+                <div id="referral-stats" style="background:rgba(46,213,115,0.1);border:1px solid rgba(46,213,115,0.3);border-radius:12px;padding:12px;margin-bottom:12px;">
+                    <p style="color:#2ed573;font-size:13px;font-weight:bold;margin-bottom:8px;text-align:center;">📊 Referral Stats</p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+                        <div style="text-align:center;background:rgba(0,0,0,0.2);padding:8px;border-radius:8px;">
+                            <p style="color:#888;font-size:10px;margin:0;">Friends Joined</p>
+                            <p id="ref-total-count" style="color:#ffd700;font-size:18px;font-weight:bold;margin:0;">0</p>
+                        </div>
+                        <div style="text-align:center;background:rgba(0,0,0,0.2);padding:8px;border-radius:8px;">
+                            <p style="color:#888;font-size:10px;margin:0;">Total Bonus</p>
+                            <p id="ref-total-bonus" style="color:#00ff00;font-size:18px;font-weight:bold;margin:0;">0</p>
+                        </div>
+                    </div>
+                    <div style="text-align:center;background:rgba(255,215,0,0.1);padding:8px;border-radius:8px;margin-bottom:8px;">
+                        <p style="color:#888;font-size:10px;margin:0;">Daily Bonus Available</p>
+                        <p id="ref-daily-bonus" style="color:#ffd700;font-size:20px;font-weight:bold;margin:0;">+0 ASRA</p>
+                        <p style="color:#888;font-size:9px;margin:4px 0 0 0;">(100 ASRA per friend per day)</p>
+                    </div>
+                    <button id="btn-claim-bonus" class="wallet-panel-btn btn-green" style="width:100%;margin-top:8px;display:none;">
+                        🎁 Claim Daily Bonus
+                    </button>
+                    <p id="ref-claimed-msg" style="color:#00d2ff;font-size:11px;text-align:center;margin:8px 0 0 0;display:none;">
+                        ✅ Bonus claimed today! Come back tomorrow.
+                    </p>
+                </div>
+                
+                <!-- Referred Friends List -->
+                <div id="referral-friends-list" style="background:rgba(0,0,0,0.2);border-radius:8px;padding:8px;margin-bottom:12px;max-height:150px;overflow-y:auto;display:none;">
+                    <p style="color:#00d2ff;font-size:11px;margin-bottom:8px;text-align:center;">👥 Your Friends</p>
+                    <div id="ref-friends-container"></div>
+                </div>
+                
+                <!-- Referral Info Text -->
+                <div style="background:rgba(0,210,255,0.1);border:1px solid rgba(0,210,255,0.3);border-radius:8px;padding:10px;margin-bottom:12px;">
+                    <p style="color:#00d2ff;font-size:11px;margin:0;text-align:center;">
+                        💡 <strong>How it works:</strong><br>
+                        Share your link with friends. When they join through your link, you get <strong>100 ASRA daily bonus</strong> for each friend!
+                    </p>
+                </div>
             </div>
-            <button class="wallet-panel-btn close-modal btn-red" id="close-referral" style="width:100%;margin-top:16px;">Close</button>
+            <button class="wallet-panel-btn close-modal btn-red" id="close-referral" style="width:100%;">Close</button>
         </div>
     </div>
 
@@ -1265,6 +1307,21 @@
         // userId - from Telegram URL OR localStorage (for page refresh)
         const urlParams = new URLSearchParams(window.location.search);
         const urlUserId = urlParams.get('userId') || urlParams.get('user_id') || '';
+        
+        // REFERRAL SYSTEM: Extract referral code from URL (from Telegram bot start parameter)
+        const startParam = urlParams.get('start') || '';
+        const referralCode = startParam.startsWith('ref_') ? startParam : 
+                             startParam.includes('_') ? startParam.split('_')[0] : null;
+        
+        if (referralCode) {
+            console.log('🎁 REFERRAL: Detected referral code:', referralCode);
+            // Save to localStorage for persistence
+            try {
+                localStorage.setItem('asra_referral_code', referralCode);
+            } catch (e) {
+                console.log('⚠️ Cannot save referral code to localStorage');
+            }
+        }
         
         // Get userId from Telegram WebApp initData (in case URL loses it on restart)
         let tgUserId = '';
@@ -3434,7 +3491,110 @@
                     ? `https://t.me/asratonbot?start=${userId}_${userName}`
                     : `https://t.me/asratonbot?start=${userId}`;
                 referralLinkInput.value = inviteLink;
+                
+                // Fetch referral stats from backend
+                try {
+                    const res = await fetch(API_BASE + '/referral/info/' + userId);
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        // Update stats
+                        document.getElementById('ref-total-count').textContent = data.totalReferrals || 0;
+                        document.getElementById('ref-total-bonus').textContent = (data.totalBonusEarned || 0).toLocaleString();
+                        document.getElementById('ref-daily-bonus').textContent = '+' + (data.dailyBonusAmount || 0).toLocaleString() + ' ASRA';
+                        
+                        // Show/hide claim button based on availability
+                        const claimBtn = document.getElementById('btn-claim-bonus');
+                        const claimedMsg = document.getElementById('ref-claimed-msg');
+                        
+                        if (data.canClaimToday && data.dailyBonusAmount > 0) {
+                            claimBtn.style.display = 'block';
+                            claimedMsg.style.display = 'none';
+                        } else if (data.dailyBonusAmount > 0) {
+                            claimBtn.style.display = 'none';
+                            claimedMsg.style.display = 'block';
+                        } else {
+                            claimBtn.style.display = 'none';
+                            claimedMsg.style.display = 'none';
+                        }
+                        
+                        // Show referred friends list if there are any
+                        const friendsListDiv = document.getElementById('referral-friends-list');
+                        const friendsContainer = document.getElementById('ref-friends-container');
+                        
+                        if (data.referredUsers && data.referredUsers.length > 0) {
+                            friendsListDiv.style.display = 'block';
+                            friendsContainer.innerHTML = data.referredUsers.map(ref => `
+                                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:6px;margin-bottom:4px;">
+                                    <span style="color:#fff;font-size:11px;">${ref.firstName || 'Foydalanuvchi'}</span>
+                                    <span style="color:#00ff00;font-size:10px;">+${(ref.totalBonusGiven || 0).toLocaleString()} ASRA</span>
+                                </div>
+                            `).join('');
+                        } else {
+                            friendsListDiv.style.display = 'none';
+                        }
+                        
+                        console.log('✅ Referral stats loaded:', data);
+                    }
+                } catch (e) {
+                    console.error('Failed to load referral stats:', e);
+                }
             }
+            
+            // Claim daily referral bonus
+            document.getElementById('btn-claim-bonus')?.addEventListener('click', async () => {
+                if (!userId) return;
+                
+                try {
+                    const res = await fetch(API_BASE + '/referral/claim-bonus/' + userId, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        // Update ASRA score
+                        asraScore = data.newAsraScore;
+                        updateDisplay();
+                        
+                        // Show success message
+                        Swal.fire({
+                            title: '🎁 Bonus Claimed!',
+                            html: `<p style="color:#2ed573;font-size:18px;font-weight:bold;">+${data.bonusAmount.toLocaleString()} ASRA</p>` +
+                                  `<p style="color:#888;font-size:11px;">Your friends are earning you ASRA daily!</p>`,
+                            icon: 'success',
+                            timer: 3000,
+                            showConfirmButton: false,
+                            width: '280px',
+                            position: 'center'
+                        });
+                        
+                        // Refresh referral stats
+                        await loadReferralData();
+                        
+                        console.log('✅ Referral bonus claimed:', data.bonusAmount);
+                    } else {
+                        Swal.fire({
+                            text: data.error || 'Failed to claim bonus',
+                            icon: 'warning',
+                            timer: 2000,
+                            showConfirmButton: false,
+                            width: '250px',
+                            position: 'center'
+                        });
+                    }
+                } catch (e) {
+                    console.error('Failed to claim bonus:', e);
+                    Swal.fire({
+                        text: 'Error claiming bonus. Please try again.',
+                        icon: 'error',
+                        timer: 2000,
+                        showConfirmButton: false,
+                        width: '250px',
+                        position: 'center'
+                    });
+                }
+            });
 
 
 
