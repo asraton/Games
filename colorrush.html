@@ -900,6 +900,146 @@
             background: rgba(255, 215, 0, 0.15);
             font-weight: bold;
         }
+
+        /* Simple Swap Modal */
+        #simple-swap-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #simple-swap-modal.open { display: flex; }
+
+        .simple-swap-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 20px;
+            border-radius: 16px;
+            width: min(340px, 90vw);
+            border: 2px solid rgba(0, 210, 255, 0.4);
+            box-sizing: border-box;
+        }
+
+        .simple-swap-content h3 {
+            color: #00d2ff;
+            margin-bottom: 16px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .swap-box {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+
+        .swap-box label {
+            color: #888;
+            font-size: 11px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .swap-input-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .swap-input-row input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 20px;
+            font-weight: 600;
+            outline: none;
+            width: 100%;
+        }
+
+        .swap-token-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .swap-token-badge .ton-icon {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg,#0088cc,#00d2ff);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: bold;
+        }
+
+        .swap-token-badge .asra-icon {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg,#ffd700,#ff8c00);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: bold;
+        }
+
+        .swap-divider {
+            text-align: center;
+            padding: 8px;
+            color: #888;
+            font-size: 18px;
+        }
+
+        .swap-info-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .swap-info-line:last-child { border-bottom: none; }
+
+        .swap-info-label { color: #888; }
+        .swap-info-value { color: #fff; }
+
+        #simple-swap-btn {
+            width: 100%;
+            margin-top: 16px;
+            padding: 14px;
+            font-size: 16px;
+        }
+
+        #simple-swap-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .swap-loading {
+            display: none;
+            text-align: center;
+            color: #888;
+            font-size: 12px;
+            padding: 8px;
+        }
+
+        .wallet-notice {
+            background: rgba(255,107,107,0.1);
+            border: 1px solid rgba(255,107,107,0.3);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            color: #ff6b6b;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
     </style>
 </head>
 <body>
@@ -1219,6 +1359,66 @@
                 </table>
             </div>
             <button class="wallet-panel-btn close-modal btn-red" id="close-leaderboard" style="width:100%;margin-top:16px;">Close</button>
+        </div>
+    </div>
+
+    <!-- Simple Swap Modal -->
+    <div id="simple-swap-modal">
+        <div class="simple-swap-content">
+            <h3>🔀 TON ↔ ASRA</h3>
+            
+            <!-- Wallet notice -->
+            <div id="swap-wallet-notice" class="wallet-notice" style="display:none;">
+                ⚠️ Wallet ulanmagan<br>
+                <small>Swap uchun wallet ulang</small>
+            </div>
+
+            <!-- From TON -->
+            <div class="swap-box">
+                <label>Siz yuborasiz</label>
+                <div class="swap-input-row">
+                    <input type="number" id="swap-input-ton" placeholder="0.0" step="0.1" min="0">
+                    <div class="swap-token-badge">
+                        <div class="ton-icon">T</div>
+                        <span>TON</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="swap-divider">↓</div>
+
+            <!-- To ASRA -->
+            <div class="swap-box">
+                <label>Siz olasiz (taxminan)</label>
+                <div class="swap-input-row">
+                    <input type="text" id="swap-output-asra" placeholder="0" readonly>
+                    <div class="swap-token-badge">
+                        <div class="asra-icon">A</div>
+                        <span>ASRA</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div style="margin-top:12px;">
+                <div class="swap-info-line">
+                    <span class="swap-info-label">Kurs</span>
+                    <span class="swap-info-value" id="swap-rate-display">1 TON ≈ ... ASRA</span>
+                </div>
+                <div class="swap-info-line">
+                    <span class="swap-info-label">Slippage</span>
+                    <span class="swap-info-value" style="color:#00d2ff;">0.5%</span>
+                </div>
+                <div class="swap-info-line">
+                    <span class="swap-info-label">Network fee</span>
+                    <span class="swap-info-value">~0.05 TON</span>
+                </div>
+            </div>
+
+            <div class="swap-loading" id="swap-loading">Narx yuklanmoqda...</div>
+
+            <button class="wallet-panel-btn btn-green" id="simple-swap-btn" disabled>Swap</button>
+            <button class="wallet-panel-btn close-modal btn-red" style="width:100%;margin-top:8px;">Bekor qilish</button>
         </div>
     </div>
 
@@ -2377,12 +2577,167 @@
                 }
             });
 
-            // TON → ASRA - Redirect to dyor.io swap site
+            // TON → ASRA - Open Simple Swap Modal
             document.getElementById('btn-pay-with-asra').addEventListener('click', () => {
                 walletPanel.classList.remove('open');
-                // Open dyor.io ASRA token page in new tab
-                window.open('https://dyor.io/token/EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy', '_blank');
+                if (gameActive) stopGame();
+                openSimpleSwapModal();
             });
+
+            // ==================== SIMPLE SWAP FUNCTIONALITY ====================
+            const simpleSwapModal = document.getElementById('simple-swap-modal');
+            const swapInputTon = document.getElementById('swap-input-ton');
+            const swapOutputAsra = document.getElementById('swap-output-asra');
+            const swapRateDisplay = document.getElementById('swap-rate-display');
+            const swapLoading = document.getElementById('swap-loading');
+            const swapWalletNotice = document.getElementById('swap-wallet-notice');
+            const simpleSwapBtn = document.getElementById('simple-swap-btn');
+
+            // ASRA token contract
+            const ASRA_CONTRACT = 'EQA8Mx1E9_RXEroXSW7PI5EHwEAMxAMhwKLXTlKX-3uQOJWy';
+            let currentTonRate = 0;
+            let isRateLoading = false;
+
+            // Open swap modal
+            function openSimpleSwapModal() {
+                simpleSwapModal.classList.add('open');
+                
+                // Check wallet connection
+                if (!connectedWalletAddress) {
+                    swapWalletNotice.style.display = 'block';
+                    swapInputTon.disabled = true;
+                    simpleSwapBtn.disabled = true;
+                    simpleSwapBtn.textContent = 'Wallet ulanmagan';
+                } else {
+                    swapWalletNotice.style.display = 'none';
+                    swapInputTon.disabled = false;
+                    simpleSwapBtn.disabled = true;
+                    simpleSwapBtn.textContent = 'Miqdor kiriting';
+                    fetchRealRate();
+                }
+            }
+
+            // Fetch real rate from Ston.fi API
+            async function fetchRealRate() {
+                if (isRateLoading) return;
+                isRateLoading = true;
+                swapLoading.style.display = 'block';
+
+                try {
+                    // Ston.fi API - get pool info for TON/ASRA
+                    const response = await fetch('https://api.ston.fi/v1/pools');
+                    const data = await response.json();
+                    
+                    // Find ASRA pool
+                    const asraPool = data.pool_list?.find(p => 
+                        p.token0_address === ASRA_CONTRACT || p.token1_address === ASRA_CONTRACT
+                    );
+
+                    if (asraPool) {
+                        // Calculate rate from pool reserves
+                        const reserve0 = parseFloat(asraPool.reserve0);
+                        const reserve1 = parseFloat(asraPool.reserve1);
+                        
+                        if (asraPool.token0_address === ASRA_CONTRACT) {
+                            currentTonRate = reserve1 / reserve0; // TON per ASRA
+                        } else {
+                            currentTonRate = reserve0 / reserve1; // TON per ASRA
+                        }
+                        
+                        // Convert to ASRA per TON
+                        currentTonRate = 1 / currentTonRate;
+                        
+                        swapRateDisplay.textContent = `1 TON ≈ ${currentTonRate.toLocaleString()} ASRA`;
+                    } else {
+                        // Fallback rate if pool not found
+                        currentTonRate = 1500;
+                        swapRateDisplay.textContent = `1 TON ≈ ${currentTonRate.toLocaleString()} ASRA`;
+                    }
+                } catch (e) {
+                    console.error('Rate fetch error:', e);
+                    // Fallback rate
+                    currentTonRate = 1500;
+                    swapRateDisplay.textContent = `1 TON ≈ ${currentTonRate.toLocaleString()} ASRA`;
+                } finally {
+                    isRateLoading = false;
+                    swapLoading.style.display = 'none';
+                }
+            }
+
+            // Calculate output with slippage
+            function calculateOutput() {
+                const tonAmount = parseFloat(swapInputTon.value) || 0;
+                
+                if (tonAmount <= 0 || currentTonRate <= 0) {
+                    swapOutputAsra.value = '';
+                    simpleSwapBtn.disabled = true;
+                    simpleSwapBtn.textContent = 'Miqdor kiriting';
+                    return;
+                }
+
+                // Calculate with 0.5% slippage
+                const asraAmount = tonAmount * currentTonRate * 0.995;
+                swapOutputAsra.value = Math.floor(asraAmount).toLocaleString();
+                
+                simpleSwapBtn.disabled = false;
+                simpleSwapBtn.textContent = `Swap ${tonAmount} TON`;
+            }
+
+            // Input listener
+            swapInputTon.addEventListener('input', calculateOutput);
+
+            // Execute swap via Ston.fi
+            simpleSwapBtn.addEventListener('click', async () => {
+                const tonAmount = parseFloat(swapInputTon.value);
+                if (!tonAmount || tonAmount <= 0 || !connectedWalletAddress) return;
+
+                simpleSwapBtn.disabled = true;
+                simpleSwapBtn.textContent = 'Yuklanmoqda...';
+
+                try {
+                    // Build Ston.fi swap URL
+                    const stonFiUrl = `https://app.ston.fi/swap?chartVisible=false&ft=TON&tt=${ASRA_CONTRACT}&fa=${tonAmount}`;
+                    
+                    // Open Ston.fi in new tab
+                    window.open(stonFiUrl, '_blank');
+
+                    Swal.fire({
+                        title: '✅ Ston.fi ochildi',
+                        html: `<p style="color:#fff;">Swapni Ston.fi da davom ettiring</p>`,
+                        icon: 'success',
+                        timer: 3000,
+                        showConfirmButton: false,
+                        background: '#1a1a2e',
+                        color: '#fff'
+                    });
+
+                    // Reset form
+                    swapInputTon.value = '';
+                    swapOutputAsra.value = '';
+                    simpleSwapBtn.textContent = 'Miqdor kiriting';
+                    simpleSwapModal.classList.remove('open');
+
+                } catch (e) {
+                    console.error('Swap error:', e);
+                    Swal.fire({
+                        title: 'Xatolik',
+                        text: 'Swapni amalga oshirib bo\'lmadi',
+                        icon: 'error',
+                        background: '#1a1a2e',
+                        color: '#fff'
+                    });
+                    simpleSwapBtn.disabled = false;
+                    calculateOutput();
+                }
+            });
+
+            // Close modal
+            simpleSwapModal.addEventListener('click', (e) => {
+                if (e.target === simpleSwapModal || e.target.classList.contains('close-modal')) {
+                    simpleSwapModal.classList.remove('open');
+                }
+            });
+            // ==================== END SIMPLE SWAP ====================
 
             // Withdraw ASRA
             document.getElementById('btn-ton-yechish').addEventListener('click', async () => {
